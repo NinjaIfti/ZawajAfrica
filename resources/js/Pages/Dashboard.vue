@@ -102,6 +102,27 @@ const recentMessages = ref([
         unread: true
     }
 ]);
+
+// Language selector
+const languages = [
+    { id: 'en', name: 'English' },
+    { id: 'ha', name: 'Hausa' },
+    { id: 'yo', name: 'Yoruba' },
+    { id: 'ig', name: 'Igbo' }
+];
+const selectedLanguage = ref(languages[0]);
+const showLanguageModal = ref(false);
+
+// Function to toggle language modal
+const toggleLanguageModal = () => {
+    showLanguageModal.value = !showLanguageModal.value;
+};
+
+// Function to select language and close modal
+const selectLanguage = (lang) => {
+    selectedLanguage.value = lang;
+    showLanguageModal.value = false;
+};
 </script>
 
 <template>
@@ -207,12 +228,15 @@ const recentMessages = ref([
                         </svg>
                     </button>
                     
-                    <div class="flex items-center">
-                        <span class="mr-2 text-sm">English</span>
+                    <button 
+                        @click="toggleLanguageModal"
+                        class="flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                        <span class="mr-2">{{ selectedLanguage.name }}</span>
                         <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
-                    </div>
+                    </button>
                     
                     <div class="h-10 w-10 overflow-hidden rounded-full bg-gray-300">
                         <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover" />
@@ -345,6 +369,45 @@ const recentMessages = ref([
                             <span class="text-xs text-gray-500">{{ message.time }}</span>
                             <span v-if="message.unread" class="mt-1 h-5 w-5 rounded-full bg-purple-600 text-center text-xs font-medium text-white">3</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Language Selection Modal -->
+    <div v-if="showLanguageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="relative max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <!-- Modal Header -->
+            <div class="mb-6 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-gray-900">Change Language</h3>
+                <button 
+                    @click="toggleLanguageModal" 
+                    class="text-gray-400 hover:text-gray-500"
+                >
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Language Options -->
+            <div class="space-y-4">
+                <div 
+                    v-for="lang in languages" 
+                    :key="lang.id"
+                    @click="selectLanguage(lang)"
+                    class="flex cursor-pointer items-center justify-between rounded-lg py-3 hover:bg-gray-50"
+                >
+                    <span class="text-lg font-medium text-gray-900">{{ lang.name }}</span>
+                    <div 
+                        class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-gray-300"
+                        :class="{ 'border-purple-600': selectedLanguage.id === lang.id }"
+                    >
+                        <div 
+                            v-if="selectedLanguage.id === lang.id" 
+                            class="h-3 w-3 rounded-full bg-purple-600"
+                        ></div>
                     </div>
                 </div>
             </div>
