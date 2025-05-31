@@ -112,7 +112,7 @@ const recentMessages = ref([
         <div class="w-64 bg-white p-4 shadow-md">
             <!-- Logo -->
             <div class="mb-8">
-                <img src="/images/logo.png" alt="ZawajAfrica" class="h-10" />
+                <img src="/images/dash.png" alt="ZawajAfrica" class="h-10" />
             </div>
             
             <!-- Navigation -->
