@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -21,6 +22,14 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'gender',
+        'interested_in',
+        'dob_day',
+        'dob_month',
+        'dob_year',
+        'country',
+        'state',
+        'city',
     ];
 
     /**
@@ -44,5 +53,45 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+    
+    /**
+     * Get user's age based on date of birth.
+     */
+    public function getAgeAttribute()
+    {
+        if (!$this->dob_day || !$this->dob_month || !$this->dob_year) {
+            return null;
+        }
+        
+        $monthMap = [
+            'Jan' => 1, 'Feb' => 2, 'Mar' => 3, 'Apr' => 4, 
+            'May' => 5, 'Jun' => 6, 'Jul' => 7, 'Aug' => 8, 
+            'Sep' => 9, 'Oct' => 10, 'Nov' => 11, 'Dec' => 12
+        ];
+        
+        $month = isset($monthMap[$this->dob_month]) ? $monthMap[$this->dob_month] : 1;
+        $birthDate = \Carbon\Carbon::createFromDate($this->dob_year, $month, $this->dob_day);
+        return $birthDate->age;
+    }
+    
+    /**
+     * Get the profile associated with the user.
+     */
+    public function profile(): HasOne
+    {
+        return $this->hasOne(Profile::class);
+    }
+    
+    /**
+     * Create or update the user's profile.
+     */
+    public function createOrUpdateProfile(array $attributes)
+    {
+        if ($this->profile) {
+            return $this->profile->update($attributes);
+        }
+        
+        return $this->profile()->create($attributes);
     }
 }
