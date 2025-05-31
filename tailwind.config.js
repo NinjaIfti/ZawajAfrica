@@ -13,7 +13,15 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Montserrat', ...defaultTheme.fontFamily.sans],
+                display: ['Playfair Display', ...defaultTheme.fontFamily.serif],
+            },
+            colors: {
+                primary: {
+                    light: '#EBCEF0', // Light lavender/pink
+                    DEFAULT: '#D1AEE4', // Lavender
+                    dark: '#654396', // Dark purple
+                },
             },
         },
     },
