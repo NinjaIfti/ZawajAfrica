@@ -2,6 +2,14 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+// State for right sidebar visibility
+const isRightSidebarVisible = ref(true);
+
+// Function to toggle right sidebar
+const toggleRightSidebar = () => {
+    isRightSidebarVisible.value = !isRightSidebarVisible.value;
+};
+
 // Sample data for matches
 const matches = ref([
     {
@@ -50,6 +58,22 @@ const therapists = ref([
         online: true
     }
 ]);
+
+// Add state for therapists panel
+const isTherapistsPanelExpanded = ref(true);
+
+// Function to toggle therapists panel
+const toggleTherapistsPanel = () => {
+    isTherapistsPanelExpanded.value = !isTherapistsPanelExpanded.value;
+};
+
+// Add state for messages panel
+const isMessagesPanelExpanded = ref(true);
+
+// Function to toggle messages panel
+const toggleMessagesPanel = () => {
+    isMessagesPanelExpanded.value = !isMessagesPanelExpanded.value;
+};
 
 // Sample data for recent messages
 const recentMessages = ref([
@@ -128,7 +152,7 @@ const selectLanguage = (lang) => {
 <template>
     <Head title="Dashboard" />
 
-    <div class="flex min-h-screen bg-gray-100">
+    <div class="flex min-h-screen bg-gray-100 relative">
         <!-- Left Sidebar -->
         <div class="w-64 bg-white p-4 shadow-md">
             <!-- Logo -->
@@ -207,7 +231,7 @@ const selectLanguage = (lang) => {
         </div>
         
         <!-- Main Content -->
-        <div class="flex-1 p-8">
+        <div class="flex-1 p-8 transition-all duration-300" :class="{ 'pr-8': isRightSidebarVisible, 'pr-20': !isRightSidebarVisible }">
             <!-- Welcome and Search -->
             <div class="mb-8 flex items-center justify-between">
                 <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
@@ -243,6 +267,22 @@ const selectLanguage = (lang) => {
                     </div>
                 </div>
             </div>
+            
+            <!-- Toggle Right Sidebar Button -->
+            <button 
+                @click="toggleRightSidebar" 
+                class="fixed right-0 top-1/2 z-10 -translate-y-1/2 rounded-l-lg bg-purple-600 p-2 text-white shadow-lg transition-all duration-300"
+                :class="{ 'mr-80': isRightSidebarVisible }"
+            >
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path 
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        :d="isRightSidebarVisible ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'"
+                    />
+                </svg>
+            </button>
             
             <!-- All Matches -->
             <div>
@@ -308,19 +348,26 @@ const selectLanguage = (lang) => {
         </div>
         
         <!-- Right Sidebar -->
-        <div class="w-80 bg-white p-6 shadow-md">
+        <div 
+            class="fixed right-0 top-0 h-full w-80 bg-white p-6 shadow-md transition-transform duration-300 ease-in-out z-20"
+            :class="{ 'translate-x-0': isRightSidebarVisible, 'translate-x-full': !isRightSidebarVisible }"
+        >
             <!-- Therapists Section -->
             <div class="mb-8">
                 <div class="mb-4 flex items-center justify-between">
                     <h2 class="text-lg font-bold">Therapists</h2>
-                    <button class="text-gray-500 hover:text-gray-700">
+                    <button @click="toggleTherapistsPanel" class="text-gray-500 hover:text-gray-700">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            <path v-if="isTherapistsPanelExpanded" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
                 </div>
                 
-                <div class="space-y-4">
+                <div 
+                    v-show="isTherapistsPanelExpanded" 
+                    class="space-y-4 transition-all duration-300 ease-in-out"
+                >
                     <div v-for="therapist in therapists" :key="therapist.id" class="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50">
                         <div class="flex items-center">
                             <div class="relative mr-3 h-12 w-12 overflow-hidden rounded-full">
@@ -346,14 +393,18 @@ const selectLanguage = (lang) => {
             <div>
                 <div class="mb-4 flex items-center justify-between">
                     <h2 class="text-lg font-bold">Recent Messages</h2>
-                    <button class="text-gray-500 hover:text-gray-700">
+                    <button @click="toggleMessagesPanel" class="text-gray-500 hover:text-gray-700">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            <path v-if="isMessagesPanelExpanded" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
                 </div>
                 
-                <div class="space-y-4">
+                <div 
+                    v-show="isMessagesPanelExpanded" 
+                    class="space-y-4 transition-all duration-300 ease-in-out"
+                >
                     <div v-for="message in recentMessages" :key="message.id" class="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50">
                         <div class="flex items-center">
                             <div class="mr-3 h-12 w-12 overflow-hidden rounded-full">

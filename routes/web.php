@@ -14,6 +14,14 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
     
+    // If user is not verified and has no verification record, redirect to verification intro
+    if (!$user->is_verified && !$user->verification) {
+        return redirect()->route('verification.intro');
+    }
+    
+    // Remove redirect to verification status for pending verifications
+    // Users will now go directly to dashboard after completing verification
+    
     // Calculate profile completion percentage
     $profileCompletion = 0;
     if ($user->profile) {
@@ -57,6 +65,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages', function() {
         return Inertia::render('Messages/Index');
     })->name('messages');
+});
+
+// Verification routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/verification', [App\Http\Controllers\VerificationController::class, 'intro'])->name('verification.intro');
+    Route::get('/verification/document-type', [App\Http\Controllers\VerificationController::class, 'documentTypeSelection'])->name('verification.document-type');
+    Route::get('/verification/document-upload', [App\Http\Controllers\VerificationController::class, 'documentUpload'])->name('verification.document-upload');
+    Route::post('/verification', [App\Http\Controllers\VerificationController::class, 'store'])->name('verification.store');
+    Route::get('/verification/complete', [App\Http\Controllers\VerificationController::class, 'complete'])->name('verification.complete');
 });
 
 // Public profile viewing

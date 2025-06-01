@@ -56,6 +56,7 @@ class RegisteredUserController extends Controller
             'country' => $request->country,
             'state' => $request->state,
             'city' => $request->city,
+            'is_verified' => false,
         ]);
         
         // Create a blank profile for the user
@@ -67,6 +68,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // Redirect to verification process instead of dashboard
+        return redirect(route('verification.intro', absolute: false));
     }
 }

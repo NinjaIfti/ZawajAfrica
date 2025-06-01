@@ -16,7 +16,7 @@ class User extends Authenticatable
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
@@ -30,6 +30,8 @@ class User extends Authenticatable
         'country',
         'state',
         'city',
+        'is_verified',
+        'verification_type',
     ];
 
     /**
@@ -45,15 +47,13 @@ class User extends Authenticatable
     /**
      * Get the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_verified' => 'boolean',
+    ];
     
     /**
      * Get user's age based on date of birth.
@@ -93,5 +93,13 @@ class User extends Authenticatable
         }
         
         return $this->profile()->create($attributes);
+    }
+
+    /**
+     * Get the user's document verification.
+     */
+    public function verification(): HasOne
+    {
+        return $this->hasOne(Verification::class);
     }
 }
