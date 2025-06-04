@@ -83,7 +83,9 @@ const toggleSection = (sectionId) => {
         <div class="w-64 bg-white shadow-md">
             <!-- Logo -->
             <div class="p-4 mb-6">
-                <div class="text-purple-800 text-2xl font-bold">ZawajAfrica</div>
+                <div>
+                    <img src="/images/dash.png" alt="ZawajAfrica" class="h-10">
+                </div>
             </div>
             
             <!-- Navigation -->
@@ -204,59 +206,35 @@ const toggleSection = (sectionId) => {
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <!-- Profile Header -->
                 <div class="relative">
-                    <!-- Profile Image -->
-                    <div class="h-64 bg-gray-700 relative">
-                        <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover opacity-0">
-                        
-                        <!-- Online Status -->
-                        <div v-if="profile.online" class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
-                            <span class="mr-2 h-2 w-2 rounded-full bg-green-500"></span>
-                            Online
-                        </div>
-                        
-                        <!-- Verified Badge -->
-                        <div class="absolute top-4 right-4 bg-amber-500 rounded-full p-2">
-                            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        
-                        <!-- Match Percentage -->
-                        <div class="absolute bottom-4 left-4 right-4">
-                            <div class="flex items-center justify-between mb-1 text-white">
-                                <span class="font-medium">{{ profile.compatibility }}%</span>
-                                <span class="font-medium">Match</span>
-                            </div>
-                            <div class="h-2 w-full overflow-hidden rounded-full bg-white bg-opacity-30">
-                                <div class="h-full rounded-full bg-amber-400" :style="{ width: profile.compatibility + '%' }"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Profile Info -->
-                    <div class="p-4 bg-white">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h2 class="text-2xl font-bold flex items-center">
-                                    {{ profile.name }}, {{ profile.age }}
-                                    <span v-if="profile.verified" class="ml-2 text-amber-500">✓</span>
-                                </h2>
-                                <p class="text-gray-600">{{ profile.location }}</p>
-                                <p class="text-rose-500 mt-2 flex items-center">
-                                    <svg class="h-5 w-5 mr-1 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                    <!-- Profile Image and Info Section - Restructured with image on left -->
+                    <div class="flex">
+                        <!-- Profile Image (Left Side) -->
+                        <div class="relative w-1/2">
+                            <div class="w-full h-full bg-gray-200 relative">
+                                <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover">
+                                
+                                <!-- Online Status -->
+                                <div v-if="profile.online" class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
+                                    <span class="mr-2 h-2 w-2 rounded-full bg-green-500"></span>
+                                    Online
+                                </div>
+                                
+                                <!-- Verified Badge -->
+                                <div class="absolute top-4 right-4 bg-amber-500 rounded-full p-2">
+                                    <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
-                                    {{ profile.seeking }}
-                                </p>
+                                </div>
                             </div>
                             
-                            <div class="flex space-x-3">
-                                <button class="text-rose-500 border border-rose-500 rounded-full p-2">
+                            <!-- Interaction Buttons -->
+                            <div class="absolute left-4 bottom-4 flex space-x-3">
+                                <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white">
                                     <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                                     </svg>
                                 </button>
-                                <button class="text-purple-800 border border-purple-800 rounded-full p-2">
+                                <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white">
                                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                     </svg>
@@ -264,37 +242,55 @@ const toggleSection = (sectionId) => {
                             </div>
                         </div>
                         
-                        <!-- Profile Actions -->
-                        <div class="mt-6 flex justify-between">
-                            <button class="flex-1 mx-1 bg-red-500 text-white py-2 px-4 rounded-lg flex items-center justify-center">
-                                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        <!-- Profile Information (Right Side) -->
+                        <div class="flex-1 p-6">
+                            <div class="flex items-center mb-1">
+                                <h2 class="text-2xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
+                                <span v-if="profile.verified" class="ml-2 text-amber-500">✓</span>
+                            </div>
+                            <p class="text-gray-600 mb-4">{{ profile.location }}</p>
+                            <p class="text-rose-500 flex items-center mb-6">
+                                <svg class="h-5 w-5 mr-1 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                                 </svg>
-                                Block
-                            </button>
-                            <button class="flex-1 mx-1 border border-red-500 text-red-500 py-2 px-4 rounded-lg flex items-center justify-center">
-                                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                                </svg>
-                                Block and Report
-                            </button>
+                                {{ profile.seeking }}
+                            </p>
+                            
+                            <h3 class="text-lg font-bold mb-2">About Me</h3>
+                            <p class="text-gray-700 mb-6">{{ profile.aboutMe }}</p>
+                            
+                            <!-- Profile Actions -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white rounded-lg flex items-center justify-center py-3">
+                                    <svg class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                    <span class="text-red-500 font-medium">Block</span>
+                                </div>
+                                <div class="bg-white rounded-lg flex items-center justify-center py-3">
+                                    <svg class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                    </svg>
+                                    <span class="text-red-500 font-medium">Block and Report</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Profile Tabs -->
                 <div class="border-t border-gray-200">
-                    <div class="flex">
+                    <div class="grid grid-cols-2">
                         <button 
                             @click="setActiveTab('about')" 
-                            class="flex-1 py-3 px-4 text-center font-medium"
+                            class="py-4 text-center font-medium transition duration-200"
                             :class="activeTab === 'about' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'"
                         >
                             About Me
                         </button>
                         <button 
                             @click="setActiveTab('searching')" 
-                            class="flex-1 py-3 px-4 text-center font-medium"
+                            class="py-4 text-center font-medium transition duration-200"
                             :class="activeTab === 'searching' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'"
                         >
                             Searching For
@@ -304,12 +300,6 @@ const toggleSection = (sectionId) => {
                 
                 <!-- Profile Content -->
                 <div class="p-4" v-if="activeTab === 'about'">
-                    <!-- About Me -->
-                    <div class="mb-4">
-                        <h3 class="text-lg font-bold mb-2">About Me</h3>
-                        <p class="text-gray-700">{{ profile.aboutMe }}</p>
-                    </div>
-                    
                     <!-- Overview Section -->
                     <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
                         <div class="flex items-center justify-between p-4 bg-white cursor-pointer" @click="toggleSection('overview')">
