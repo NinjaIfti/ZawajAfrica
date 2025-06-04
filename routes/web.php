@@ -79,4 +79,11 @@ Route::middleware(['auth'])->group(function () {
 // Public profile viewing
 Route::get('/profile/{id}', [ProfileController::class, 'show'])->name('profile.show');
 
+// Profile view for matches
+Route::get('/matches/profile/{id}', function($id) {
+    return Inertia::render('Profile/View', [
+        'id' => $id
+    ]);
+})->middleware(['auth'])->name('profile.view');
+
 require __DIR__.'/auth.php';

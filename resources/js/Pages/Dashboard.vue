@@ -215,19 +215,19 @@ const selectLanguage = (lang) => {
             <!-- Upgrade Membership -->
             <div class="mt-auto p-4 fixed bottom-0 w-64">
                 <div class="rounded-lg bg-purple-700 p-4 text-center text-white">
-                    <div class="mb-2 flex justify-center">
+                <div class="mb-2 flex justify-center">
                         <svg class="h-8 w-8 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-semibold">Upgrade Membership</h3>
-                    <p class="mt-1 text-xs">Your current membership is standard.</p>
-                    <button class="mt-4 inline-flex items-center rounded-lg bg-purple-800 px-4 py-2 text-sm font-medium text-white hover:bg-purple-900">
-                        Upgrade Now
-                        <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold">Upgrade Membership</h3>
+                <p class="mt-1 text-xs">Your current membership is standard.</p>
+                <button class="mt-4 inline-flex items-center rounded-lg bg-purple-800 px-4 py-2 text-sm font-medium text-white hover:bg-purple-900">
+                    Upgrade Now
+                    <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
                 </div>
             </div>
         </div>
@@ -235,16 +235,16 @@ const selectLanguage = (lang) => {
         <!-- Main Content -->
         <div class="flex-1 p-8">
             <!-- Welcome and Search -->
-            <div class="mb-8 flex items-center justify-between">
-                <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold mb-4">Welcome {{ $page.props.auth.user.name }}!</h1>
                 
                 <div class="flex items-center space-x-4">
-                    <div class="relative">
+                    <div class="relative flex-1">
                         <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2">
                             <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            <input type="text" placeholder="Search" class="w-64 border-none bg-transparent outline-none" />
+                            <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
                         </div>
                     </div>
                     
@@ -262,58 +262,64 @@ const selectLanguage = (lang) => {
                 
                 <div class="space-y-6">
                     <div v-for="match in matches" :key="match.id" class="relative overflow-hidden rounded-lg bg-gray-800 shadow-lg">
-                        <!-- Match Image -->
-                        <div class="h-64 w-full bg-gray-700 relative">
-                            <img :src="match.image" :alt="match.name" class="h-full w-full object-cover opacity-0" />
-
-                            <!-- Online Status -->
-                            <div class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
-                                <span class="mr-2 h-2 w-2 rounded-full bg-green-500"></span>
-                                Online
-                            </div>
+                        <!-- Make the entire card clickable except for the action buttons -->
+                        <Link :href="route('profile.view', { id: match.id })" class="block">
+                            <!-- Match Image -->
+                            <div class="h-64 w-full bg-gray-700 relative">
+                                <img :src="match.image" :alt="match.name" class="h-full w-full object-cover opacity-0" />
                             
-                            <!-- Favorite Button -->
-                            <div class="absolute right-4 top-4 rounded-full bg-amber-500 p-2">
-                                <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                </svg>
-                            </div>
-
-                            <!-- Match percentage (on bottom of image) -->
-                            <div class="absolute bottom-4 left-4 right-4">
-                                <div class="flex items-center justify-between mb-1 text-white">
-                                    <span class="font-medium">{{ match.compatibility }}%</span>
-                                    <span class="font-medium">Match</span>
+                                <!-- Online Status -->
+                                <div class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
+                                    <span class="mr-2 h-2 w-2 rounded-full bg-green-500"></span>
+                                    Online
                                 </div>
-                                <div class="h-2 w-full overflow-hidden rounded-full bg-white bg-opacity-30">
-                                    <div class="h-full rounded-full bg-amber-400" :style="{ width: match.compatibility + '%' }"></div>
+                                
+                                <!-- Favorite Button -->
+                                <div class="absolute right-4 top-4 rounded-full bg-amber-500 p-2">
+                                    <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                    </svg>
+                                </div>
+                            
+                                <!-- Match percentage (on bottom of image) -->
+                                <div class="absolute bottom-4 left-4 right-4">
+                                    <div class="flex items-center justify-between mb-1 text-white">
+                                        <span class="font-medium">{{ match.compatibility }}%</span>
+                                        <span class="font-medium">Match</span>
+                                    </div>
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-white bg-opacity-30">
+                                        <div class="h-full rounded-full bg-amber-400" :style="{ width: match.compatibility + '%' }"></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                         
                         <!-- Match Info (below image) -->
                         <div class="bg-white px-4 py-3 relative overflow-hidden">
                             <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <h3 class="text-lg font-bold">{{ match.name }}</h3>
-                                    <span class="ml-2 text-amber-500 text-lg">✓</span>
-                                    <span class="ml-2 text-gray-500">, {{ match.age }}</span>
-                                </div>
+                                <Link :href="route('profile.view', { id: match.id })" class="block">
+                                    <div class="flex items-center">
+                                        <h3 class="text-lg font-bold">{{ match.name }}</h3>
+                                        <span class="ml-2 text-amber-500 text-lg">✓</span>
+                                        <span class="ml-2 text-gray-500">, {{ match.age }}</span>
+                                    </div>
+                                    <p class="text-gray-600">{{ match.location }}</p>
+                                    <p class="text-sm text-gray-500">{{ match.timestamp }}</p>
+                                </Link>
                                 <div class="flex space-x-2 items-center">
-                                    <button class="text-purple-800">
+                                    <button class="text-purple-800" @click.prevent>
                                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                         </svg>
                                     </button>
-                                    <button class="text-purple-800">
+                                    <button class="text-purple-800" @click.prevent>
                                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
-                            <p class="text-gray-600">{{ match.location }}</p>
-                            <p class="text-sm text-gray-500">{{ match.timestamp }}</p>
+                            
                             <!-- Rainbow pattern image -->
                             <div class="absolute bottom-0 right-8 h-20 w-24 translate-x-1/3 translate-y-1/4">
                                 <img src="/images/card.png" alt="Pattern" class="h-full w-full object-contain opacity-60" />
@@ -325,7 +331,7 @@ const selectLanguage = (lang) => {
         </div>
         
         <!-- Right Sidebar -->
-        <div class="w-80 p-6">
+        <div class="w-50 p-6">
             <!-- Profile and Language at the top -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex-1"></div>
@@ -349,30 +355,30 @@ const selectLanguage = (lang) => {
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-bold">Therapists</h2>
                         <button class="text-gray-500 hover:text-gray-700">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                        </button>
-                    </div>
-                    
+                        </svg>
+                    </button>
+                </div>
+                
                     <div class="space-y-4">
                         <div v-for="therapist in therapists" :key="therapist.id" class="flex items-center justify-between">
-                            <div class="flex items-center">
+                        <div class="flex items-center">
                                 <div class="relative mr-3 h-16 w-16 overflow-hidden rounded-full bg-gray-200 border-2 border-amber-500">
                                     <img :src="therapist.image" :alt="therapist.name" class="h-full w-full object-cover opacity-0" />
-                                    <div v-if="therapist.online" class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"></div>
-                                </div>
-                                <div>
+                                <div v-if="therapist.online" class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"></div>
+                            </div>
+                            <div>
                                     <h3 class="font-bold text-lg">{{ therapist.name }}</h3>
                                     <p class="text-gray-500">{{ therapist.specialty }}</p>
-                                </div>
                             </div>
-                            
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
+                        </div>
+                        
+                        <button class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
                         </div>
                     </div>
                 </div>
@@ -384,15 +390,15 @@ const selectLanguage = (lang) => {
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-bold">Recent Messages</h2>
                         <button class="text-gray-500 hover:text-gray-700">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                        </button>
-                    </div>
-                    
+                        </svg>
+                    </button>
+                </div>
+                
                     <div class="space-y-4">
                         <div v-for="message in recentMessages" :key="message.id" class="flex items-center justify-between">
-                            <div class="flex items-center">
+                        <div class="flex items-center">
                                 <div class="relative mr-3 h-14 w-14 overflow-hidden rounded-full bg-gray-200">
                                     <img :src="message.image" :alt="message.name" class="h-full w-full object-cover opacity-0" />
                                 </div>
