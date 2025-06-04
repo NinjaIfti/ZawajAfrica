@@ -80,7 +80,7 @@ const toggleSection = (sectionId) => {
     <Head title="Profile View" />
 
     <div class="flex min-h-screen bg-gray-100">
-        <!-- Left Sidebar Component -->
+        
         <Sidebar :user="$page.props.auth.user" />
         
         <!-- Main Content -->
