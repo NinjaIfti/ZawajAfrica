@@ -70,20 +70,37 @@ defineProps({
         
         <!-- Upgrade Membership -->
         <div class="mt-auto p-4 fixed bottom-0 w-64">
-            <div class="rounded-lg bg-purple-700 p-4 text-center text-white">
-                <div class="mb-2 flex justify-center">
-                    <svg class="h-8 w-8 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                    </svg>
+            <div class="rounded-lg bg-purple-700 p-4 text-center text-white relative overflow-hidden">
+                <!-- Diagonal gradient strips -->
+                <div class="absolute -top-8 right-10 w-6 h-48 bg-gradient-to-b from-purple-700 via-purple-500 to-purple-700 transform rotate-45"></div>
+                <div class="absolute -top-16 -right-2 w-6 h-48 bg-gradient-to-b from-purple-700 via-purple-500 to-purple-700 transform rotate-45"></div>
+                <div class="absolute -top-12 right-24 w-6 h-48 bg-gradient-to-b from-purple-700 via-purple-500 to-purple-700 transform rotate-45"></div>
+                
+                <!-- Side strip images -->
+                <img src="/images/member/side1.png" alt="Side Decoration" class="absolute left-0 top-0 h-full">
+                <img src="/images/member/side2.png" alt="Side Decoration" class="absolute right-0 top-0 h-full">
+                
+                <!-- Circle element -->
+                <div class="absolute bottom-4 right-8 w-5 h-5 border border-green-800 rounded-full"></div>
+                
+                <!-- Content -->
+                <div class="relative z-10 flex flex-col items-center">
+                    <!-- Icon in orange circle -->
+                    <div class="mb-3 w-9 h-9  rounded-xl flex items-center justify-center">
+                        <img src="/images/member/lock.png" alt="Membership Lock" class="w-8 h-8">
+                    </div>
+                    
+                  
+                    <p class="mt-1 text-s font-bold text-gray-200">Upgrade Membership</p>
+                    
+                    <!-- Button -->
+                    <div class="mt-6 flex items-center justify-center">
+                        <span class="font-medium">Upgrade Now</span>
+                        <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
                 </div>
-                <h3 class="text-lg font-semibold">Upgrade Membership</h3>
-                <p class="mt-1 text-xs">Your current membership is standard.</p>
-                <button class="mt-4 inline-flex items-center rounded-lg bg-purple-800 px-4 py-2 text-sm font-medium text-white hover:bg-purple-900">
-                    Upgrade Now
-                    <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
             </div>
         </div>
     </div>
