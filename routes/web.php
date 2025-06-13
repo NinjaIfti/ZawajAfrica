@@ -136,4 +136,9 @@ Route::get('/matches/profile/{id}', function($id) {
     ]);
 })->middleware(['auth'])->name('profile.view');
 
+// Test route for debugging
+Route::get('/admin/test-verification', function () {
+    return Inertia::render('Admin/TestVerification');
+})->middleware(['auth'])->name('admin.test-verification');
+
 require __DIR__.'/auth.php';

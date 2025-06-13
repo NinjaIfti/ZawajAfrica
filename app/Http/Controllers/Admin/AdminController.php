@@ -51,10 +51,36 @@ class AdminController extends Controller
     {
         $pendingVerifications = User::whereHas('verification', function($query) {
             $query->where('status', 'pending');
-        })->with('verification')->paginate(15);
+        })->with('verification')->get();
+        
+        $approvedVerifications = User::whereHas('verification', function($query) {
+            $query->where('status', 'approved');
+        })->with('verification')->get();
+        
+        $rejectedVerifications = User::whereHas('verification', function($query) {
+            $query->where('status', 'rejected');
+        })->with('verification')->get();
+        
+        // Convert to pagination-like structure for easier frontend usage
+        $pendingData = [
+            'data' => $pendingVerifications,
+            'total' => count($pendingVerifications)
+        ];
+        
+        $approvedData = [
+            'data' => $approvedVerifications,
+            'total' => count($approvedVerifications)
+        ];
+        
+        $rejectedData = [
+            'data' => $rejectedVerifications,
+            'total' => count($rejectedVerifications)
+        ];
         
         return Inertia::render('Admin/Verifications/Index', [
-            'pendingVerifications' => $pendingVerifications,
+            'pendingVerifications' => $pendingData,
+            'approvedVerifications' => $approvedData,
+            'rejectedVerifications' => $rejectedData,
         ]);
     }
     
