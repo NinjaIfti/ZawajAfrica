@@ -1,7 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/Admin/AdminLayout.vue';
-import { onMounted, watch } from 'vue';
 
 const props = defineProps({
     pendingVerifications: Object,
@@ -17,26 +16,6 @@ const formatDate = (dateString) => {
         day: 'numeric',
     });
 };
-
-// Debug output
-onMounted(() => {
-    console.log('Component mounted with props:', props);
-    console.log('Pending verifications:', props.pendingVerifications);
-    console.log('Approved verifications:', props.approvedVerifications);
-    console.log('Rejected verifications:', props.rejectedVerifications);
-    
-    if (props.approvedVerifications && props.approvedVerifications.data) {
-        console.log('Number of approved verifications:', props.approvedVerifications.data.length);
-        console.log('First approved verification:', props.approvedVerifications.data[0] || 'None');
-    } else {
-        console.log('No approved verifications data available');
-    }
-});
-
-// Watch for changes in props
-watch(() => props.approvedVerifications, (newVal) => {
-    console.log('Approved verifications updated:', newVal);
-}, { deep: true });
 </script>
 
 <template>
@@ -129,11 +108,6 @@ watch(() => props.approvedVerifications, (newVal) => {
                             <div class="text-sm text-gray-500">
                                 Total: {{ approvedVerifications?.total || 0 }}
                             </div>
-                        </div>
-
-                        <!-- Debug info -->
-                        <div v-if="approvedVerifications" class="mb-4 p-4 bg-gray-100 rounded">
-                            <p class="text-xs">Debug: {{ JSON.stringify(approvedVerifications) }}</p>
                         </div>
 
                         <!-- Verifications Table -->

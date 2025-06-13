@@ -79,20 +79,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ]);
     })->name('users');
     
-    // Verifications management
-    Route::get('/verifications', function () {
-        if (auth()->user()->email !== 'admin@zawagafrica.com') {
-            return redirect()->route('dashboard');
-        }
-        
-        $pendingVerifications = \App\Models\User::whereHas('verification', function($query) {
-            $query->where('status', 'pending');
-        })->with('verification')->paginate(15);
-        
-        return Inertia::render('Admin/Verifications/Index', [
-            'pendingVerifications' => $pendingVerifications,
-        ]);
-    })->name('verifications');
+    // Verifications management - removed and using AdminController route instead
 });
 
 Route::middleware('auth')->group(function () {
@@ -135,11 +122,6 @@ Route::get('/matches/profile/{id}', function($id) {
         'id' => $id
     ]);
 })->middleware(['auth'])->name('profile.view');
-
-// Test route for debugging
-Route::get('/admin/test-verification', function () {
-    return Inertia::render('Admin/TestVerification');
-})->middleware(['auth'])->name('admin.test-verification');
 
 // Debug route for verification statuses
 Route::get('/admin/debug-verifications', function () {
