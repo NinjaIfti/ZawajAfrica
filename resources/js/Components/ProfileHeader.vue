@@ -1,5 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
+import AppHeader from '@/Components/AppHeader.vue';
 
 const props = defineProps({
     user: Object,
@@ -14,20 +15,11 @@ const props = defineProps({
 <template>
     <div>
         <!-- Header -->
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold">My Profile</h1>
-            <div class="flex items-center gap-2">
-                <span class="text-gray-600">English</span>
-                <button class="rounded-full p-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </button>
-                <div class="h-10 w-10 rounded-full overflow-hidden">
-                    <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover">
-                </div>
-            </div>
-        </div>
+        <AppHeader :user="user">
+            <template #title>
+                <h1 class="text-3xl font-bold">My Profile</h1>
+            </template>
+        </AppHeader>
 
         <!-- Profile Header Card -->
         <div class="bg-white rounded-lg shadow-sm mb-6 relative overflow-hidden">
