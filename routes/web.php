@@ -92,6 +92,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/details', [ProfileController::class, 'editDetails'])->name('profile.edit.details');
     Route::post('/profile/details', [ProfileController::class, 'updateDetails'])->name('profile.update.details');
     
+    // New Me profile routes
+    Route::get('/me/profile', function() {
+        return Inertia::render('Me/Profile');
+    })->name('me.profile');
+    
+    Route::get('/me/photos', function() {
+        return Inertia::render('Me/Photos');
+    })->name('me.photos');
+    
+    Route::get('/me/hobbies', function() {
+        return Inertia::render('Me/Hobbies');
+    })->name('me.hobbies');
+    
+    Route::get('/me/personality', function() {
+        return Inertia::render('Me/Personality');
+    })->name('me.personality');
+    
+    Route::get('/me/faqs', function() {
+        return Inertia::render('Me/FAQs');
+    })->name('me.faqs');
+    
     // Matches routes (placeholder until we create a controller)
     Route::get('/matches', function() {
         return Inertia::render('Matches/Index');
@@ -123,83 +144,9 @@ Route::get('/matches/profile/{id}', function($id) {
     ]);
 })->middleware(['auth'])->name('profile.view');
 
-// Debug route for verification statuses
-Route::get('/admin/debug-verifications', function () {
-    if (auth()->user()->email !== 'admin@zawagafrica.com') {
-        return redirect()->route('dashboard');
-    }
-    
-    $verifications = \DB::table('verifications')
-        ->select('verifications.*', 'users.name', 'users.email')
-        ->join('users', 'users.id', '=', 'verifications.user_id')
-        ->get();
-    
-    return response()->json([
-        'verifications' => $verifications,
-        'counts' => [
-            'total' => $verifications->count(),
-            'pending' => $verifications->where('status', 'pending')->count(),
-            'approved' => $verifications->where('status', 'approved')->count(),
-            'rejected' => $verifications->where('status', 'rejected')->count(),
-        ]
-    ]);
-})->middleware(['auth'])->name('admin.debug-verifications');
-
-// Fix approved verifications route
-Route::get('/admin/fix-verifications', function () {
-    if (auth()->user()->email !== 'admin@zawagafrica.com') {
-        return redirect()->route('dashboard');
-    }
-    
-    // Get all verifications
-    $verifications = \DB::table('verifications')->get();
-    
-    $output = [
-        'before' => [
-            'total' => $verifications->count(),
-            'pending' => $verifications->where('status', 'pending')->count(),
-            'approved' => $verifications->where('status', 'approved')->count(),
-            'rejected' => $verifications->where('status', 'rejected')->count(),
-        ],
-        'fixed' => []
-    ];
-    
-    // Check for users with is_verified=true but verification status not approved
-    $usersToFix = \DB::table('users')
-        ->join('verifications', 'users.id', '=', 'verifications.user_id')
-        ->where('users.is_verified', true)
-        ->where('verifications.status', '!=', 'approved')
-        ->select('users.id', 'users.name', 'users.email', 'verifications.status')
-        ->get();
-        
-    foreach ($usersToFix as $user) {
-        \DB::table('verifications')
-            ->where('user_id', $user->id)
-            ->update([
-                'status' => 'approved',
-                'verified_at' => now()
-            ]);
-            
-        $output['fixed'][] = [
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'old_status' => $user->status,
-            'new_status' => 'approved'
-        ];
-    }
-    
-    // Get updated counts
-    $updatedVerifications = \DB::table('verifications')->get();
-    
-    $output['after'] = [
-        'total' => $updatedVerifications->count(),
-        'pending' => $updatedVerifications->where('status', 'pending')->count(),
-        'approved' => $updatedVerifications->where('status', 'approved')->count(),
-        'rejected' => $updatedVerifications->where('status', 'rejected')->count(),
-    ];
-    
-    return response()->json($output);
-})->middleware(['auth'])->name('admin.fix-verifications');
+// Test route for debugging
+Route::get('/admin/test-verification', function () {
+    return Inertia::render('Admin/TestVerification');
+})->middleware(['auth'])->name('admin.test-verification');
 
 require __DIR__.'/auth.php';
