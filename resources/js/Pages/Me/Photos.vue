@@ -98,6 +98,7 @@ function deletePhoto(index) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
     }).then(response => {
+        console.log('Delete response:', response.data);
         successMessage.value = response.data.message || 'Photo deleted successfully';
         setTimeout(() => { successMessage.value = ''; }, 3000);
         
@@ -109,9 +110,9 @@ function deletePhoto(index) {
             photos.value[index] = { id: null, url: null, is_primary: false };
         }
     }).catch(error => {
+        console.error('Delete error details:', error.response?.data || error.message);
         errorMessage.value = error.response?.data?.message || 'Failed to delete photo';
         setTimeout(() => { errorMessage.value = ''; }, 3000);
-        console.error('Delete error:', error);
     });
 }
 
@@ -124,6 +125,7 @@ function setPrimaryPhoto(index) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
     }).then(response => {
+        console.log('Set primary response:', response.data);
         successMessage.value = response.data.message || 'Primary photo updated';
         setTimeout(() => { successMessage.value = ''; }, 3000);
         
@@ -137,9 +139,9 @@ function setPrimaryPhoto(index) {
             });
         }
     }).catch(error => {
+        console.error('Set primary error details:', error.response?.data || error.message);
         errorMessage.value = error.response?.data?.message || 'Failed to set primary photo';
         setTimeout(() => { errorMessage.value = ''; }, 3000);
-        console.error('Set primary error:', error);
     });
 }
 
