@@ -1,6 +1,6 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 
 const props = defineProps({
@@ -8,109 +8,23 @@ const props = defineProps({
     user: Object,
 });
 
-// Personality traits categories
-const categories = ref([
-    {
-        id: 1,
-        name: 'Communication Style',
-        traits: [
-            { id: 1, name: 'Direct', selected: true },
-            { id: 2, name: 'Diplomatic', selected: false },
-            { id: 3, name: 'Expressive', selected: false },
-            { id: 4, name: 'Reserved', selected: true },
-        ]
-    },
-    {
-        id: 2,
-        name: 'Social Preferences',
-        traits: [
-            { id: 5, name: 'Extroverted', selected: false },
-            { id: 6, name: 'Introverted', selected: true },
-            { id: 7, name: 'Ambivert', selected: false },
-        ]
-    },
-    {
-        id: 3,
-        name: 'Decision Making',
-        traits: [
-            { id: 8, name: 'Analytical', selected: true },
-            { id: 9, name: 'Intuitive', selected: false },
-            { id: 10, name: 'Cautious', selected: false },
-            { id: 11, name: 'Spontaneous', selected: false },
-        ]
-    },
-    {
-        id: 4,
-        name: 'Core Values',
-        traits: [
-            { id: 12, name: 'Family-oriented', selected: true },
-            { id: 13, name: 'Career-focused', selected: false },
-            { id: 14, name: 'Spirituality', selected: true },
-            { id: 15, name: 'Personal Growth', selected: false },
-        ]
-    },
-]);
-
-// Personality test questions
-const questions = ref([
-    {
-        id: 1,
-        text: 'I prefer spending time with a few close friends rather than at large social gatherings.',
-        answer: 4 // Scale of 1-5, where 1 is strongly disagree and 5 is strongly agree
-    },
-    {
-        id: 2,
-        text: 'I like to plan things ahead rather than be spontaneous.',
-        answer: 3
-    },
-    {
-        id: 3,
-        text: 'I often reflect on my feelings and emotions.',
-        answer: 5
-    },
-    {
-        id: 4,
-        text: 'I enjoy deep conversations about philosophy and spirituality.',
-        answer: 4
-    },
-    {
-        id: 5,
-        text: 'I am comfortable expressing my opinions even when they differ from others.',
-        answer: 3
-    }
-]);
-
-// Toggle trait selection
-const toggleTrait = (categoryId, traitId) => {
-    const category = categories.value.find(c => c.id === categoryId);
-    if (category) {
-        const trait = category.traits.find(t => t.id === traitId);
-        if (trait) {
-            trait.selected = !trait.selected;
-        }
-    }
-};
+// Sample personality questions and answers
+const questions = ref({
+    favoriteMovie1: '',
+    favoriteMovie2: 'What is your favorite movie?',
+    foodPreference: 'What sort of food you do like?',
+    musicPreference: 'What sort of music do you like?',
+});
 
 // Update question answer
-const updateAnswer = (questionId, value) => {
-    const question = questions.value.find(q => q.id === questionId);
-    if (question) {
-        question.answer = value;
-    }
+const updateAnswer = (field, value) => {
+    questions.value[field] = value;
 };
-
-// Get selected traits
-const selectedTraits = computed(() => {
-    return categories.value.flatMap(category => 
-        category.traits.filter(trait => trait.selected)
-    );
-});
 
 // Save changes
 const saveChanges = () => {
     // This would be implemented with actual API call
-    console.log('Saving selected traits:', selectedTraits.value);
-    console.log('Saving question answers:', questions.value);
+    console.log('Saving personality answers:', questions.value);
 };
 </script>
 
@@ -126,13 +40,12 @@ const saveChanges = () => {
             <div class="container mx-auto max-w-6xl">
                 <!-- Header -->
                 <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-3xl font-bold">My Personality</h1>
+                    <h1 class="text-3xl font-bold">My Profile</h1>
                     <div class="flex items-center gap-2">
                         <span class="text-gray-600">English</span>
                         <button class="rounded-full p-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                             </svg>
                         </button>
                         <div class="h-10 w-10 rounded-full overflow-hidden">
@@ -141,137 +54,167 @@ const saveChanges = () => {
                     </div>
                 </div>
 
-                <!-- Personality Traits Section -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-semibold">My Personality Traits</h2>
-                        <p class="text-sm text-gray-500">
-                            Selected: {{ selectedTraits.length }}/15
-                        </p>
+                <!-- Profile Header Card -->
+                <div class="bg-white rounded-lg shadow-sm mb-6 relative overflow-hidden">
+                    <!-- Diagonal pattern background -->
+                    <div class="absolute inset-0 opacity-10">
+                        <div class="absolute top-0 left-0 w-full h-full bg-primary-light transform -rotate-45"></div>
                     </div>
+                    
+                    <div class="relative p-8 flex flex-col items-center">
+                        <div class="absolute top-4 right-4">
+                            <button class="text-primary-dark hover:text-primary hover:underline text-sm font-medium">View Preview</button>
+                        </div>
+                        
+                        <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-primary mb-3">
+                            <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover">
+                        </div>
+                        
+                        <h2 class="text-xl font-bold mb-1">Anila Anzah</h2>
+                        <p class="text-gray-500 text-sm">ID: 34564</p>
+                    </div>
+                </div>
 
-                    <div class="space-y-8">
-                        <!-- Categories -->
-                        <div v-for="category in categories" :key="category.id" class="space-y-4">
-                            <h3 class="font-medium text-lg text-gray-800">{{ category.name }}</h3>
-                            
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div 
-                                    v-for="trait in category.traits" 
-                                    :key="trait.id"
-                                    @click="toggleTrait(category.id, trait.id)"
-                                    class="border rounded-lg p-3 cursor-pointer transition-all"
-                                    :class="trait.selected ? 'bg-primary-light border-primary-dark' : 'border-gray-200 hover:border-gray-300'"
-                                >
-                                    <div class="flex items-center">
-                                        <input 
-                                            type="checkbox" 
-                                            :checked="trait.selected" 
-                                            class="rounded text-primary-dark focus:ring-primary-dark mr-3"
-                                            @click.stop
-                                        >
-                                        <span>{{ trait.name }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Navigation Tabs -->
+                <div class="flex mb-6 bg-white rounded-lg shadow-sm overflow-hidden">
+                    <Link 
+                        :href="route('me.profile')" 
+                        class="flex-1 py-3 px-4 flex justify-center items-center gap-2 font-medium"
+                        :class="route().current('me.profile') ? 'bg-primary-dark text-white' : 'text-gray-700 hover:bg-gray-50'"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Profile
+                    </Link>
                     
-                    <div class="mt-8 flex justify-end">
-                        <button 
-                            @click="saveChanges" 
-                            class="bg-primary-dark hover:bg-primary-dark/90 text-white px-6 py-2 rounded-md"
-                        >
-                            Save Traits
-                        </button>
-                    </div>
+                    <Link 
+                        :href="route('me.photos')" 
+                        class="flex-1 py-3 px-4 flex justify-center items-center gap-2 font-medium"
+                        :class="route().current('me.photos') ? 'bg-primary-dark text-white' : 'text-gray-700 hover:bg-gray-50'"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Photos
+                    </Link>
+                    
+                    <Link 
+                        :href="route('me.hobbies')" 
+                        class="flex-1 py-3 px-4 flex justify-center items-center gap-2 font-medium"
+                        :class="route().current('me.hobbies') ? 'bg-primary-dark text-white' : 'text-gray-700 hover:bg-gray-50'"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Hobbies & Interest
+                    </Link>
+                    
+                    <Link 
+                        :href="route('me.personality')" 
+                        class="flex-1 py-3 px-4 flex justify-center items-center gap-2 font-medium"
+                        :class="route().current('me.personality') ? 'bg-primary-dark text-white' : 'text-gray-700 hover:bg-gray-50'"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        Personality
+                    </Link>
+                    
+                    <Link 
+                        :href="route('me.faqs')" 
+                        class="flex-1 py-3 px-4 flex justify-center items-center gap-2 font-medium"
+                        :class="route().current('me.faqs') ? 'bg-primary-dark text-white' : 'text-gray-700 hover:bg-gray-50'"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        FAQs
+                    </Link>
                 </div>
-                
-                <!-- Personality Test Section -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <h2 class="text-xl font-semibold mb-6">Personality Assessment</h2>
-                    <p class="text-gray-600 mb-6">
-                        Answer these questions to help us better understand your personality and find compatible matches.
-                    </p>
-                    
-                    <div class="space-y-8">
-                        <div v-for="question in questions" :key="question.id" class="space-y-3">
-                            <p class="font-medium">{{ question.text }}</p>
-                            
-                            <div class="flex items-center space-x-1">
-                                <span class="text-xs text-gray-500">Strongly Disagree</span>
-                                <div class="flex-1 flex justify-between">
-                                    <button 
-                                        v-for="value in 5" 
-                                        :key="value" 
-                                        @click="updateAnswer(question.id, value)"
-                                        class="w-10 h-10 rounded-full flex items-center justify-center"
-                                        :class="question.answer === value ? 'bg-primary-dark text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
-                                    >
-                                        {{ value }}
-                                    </button>
-                                </div>
-                                <span class="text-xs text-gray-500">Strongly Agree</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-8 flex justify-end">
-                        <button 
-                            @click="saveChanges" 
-                            class="bg-primary-dark hover:bg-primary-dark/90 text-white px-6 py-2 rounded-md"
-                        >
-                            Save Answers
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Compatibility Preferences -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-6">Compatibility Preferences</h2>
+
+                <!-- Personality Content -->
+                <div>
+                    <h2 class="text-2xl font-bold mb-2">Personality</h2>
+                    <p class="text-gray-600 mb-6">Let your personality shine. Express yourself in your own words to give other users a better understanding of who you are.</p>
                     
                     <div class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                How important is it that your match shares your personality traits?
-                            </label>
-                            <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50">
-                                <option>Very important</option>
-                                <option>Somewhat important</option>
-                                <option>Not important</option>
-                            </select>
+                        <!-- Question 1 -->
+                        <div class="bg-white rounded-lg shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <label for="favoriteMovie1" class="block text-gray-700 font-medium">What is favorite movie?</label>
+                                <button class="text-primary-dark">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <input 
+                                id="favoriteMovie1" 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50"
+                                v-model="questions.favoriteMovie1"
+                                @input="updateAnswer('favoriteMovie1', $event.target.value)"
+                                placeholder="Enter your favorite movie..."
+                            >
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                I prefer a partner who is:
-                            </label>
-                            <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50">
-                                <option>Similar to me</option>
-                                <option>Complementary to me</option>
-                                <option>No preference</option>
-                            </select>
+
+                        <!-- Question 2 -->
+                        <div class="bg-white rounded-lg shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <label for="favoriteMovie2" class="block text-gray-700 font-medium">What is your favorite movie?</label>
+                                <button class="text-primary-dark">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <input 
+                                id="favoriteMovie2" 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50"
+                                v-model="questions.favoriteMovie2"
+                                @input="updateAnswer('favoriteMovie2', $event.target.value)"
+                            >
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Top personality trait I value in a partner:
-                            </label>
-                            <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50">
-                                <option>Honesty</option>
-                                <option>Kindness</option>
-                                <option>Ambition</option>
-                                <option>Humor</option>
-                                <option>Intelligence</option>
-                                <option>Patience</option>
-                            </select>
+
+                        <!-- Question 3 -->
+                        <div class="bg-white rounded-lg shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <label for="foodPreference" class="block text-gray-700 font-medium">What sort of food you do like?</label>
+                                <button class="text-primary-dark">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <input 
+                                id="foodPreference" 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50"
+                                v-model="questions.foodPreference"
+                                @input="updateAnswer('foodPreference', $event.target.value)"
+                            >
                         </div>
-                    </div>
-                    
-                    <div class="mt-8 flex justify-end">
-                        <button class="bg-primary-dark hover:bg-primary-dark/90 text-white px-6 py-2 rounded-md">
-                            Save Preferences
-                        </button>
+
+                        <!-- Question 4 -->
+                        <div class="bg-white rounded-lg shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <label for="musicPreference" class="block text-gray-700 font-medium">What sort of music do you like?</label>
+                                <button class="text-primary-dark">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <input 
+                                id="musicPreference" 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-dark focus:ring focus:ring-primary-light focus:ring-opacity-50"
+                                v-model="questions.musicPreference"
+                                @input="updateAnswer('musicPreference', $event.target.value)"
+                            >
+                        </div>
                     </div>
                 </div>
             </div>
