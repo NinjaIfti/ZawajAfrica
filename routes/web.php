@@ -141,4 +141,83 @@ Route::get('/admin/test-verification', function () {
     return Inertia::render('Admin/TestVerification');
 })->middleware(['auth'])->name('admin.test-verification');
 
+// Debug route for verification statuses
+Route::get('/admin/debug-verifications', function () {
+    if (auth()->user()->email !== 'admin@zawagafrica.com') {
+        return redirect()->route('dashboard');
+    }
+    
+    $verifications = \DB::table('verifications')
+        ->select('verifications.*', 'users.name', 'users.email')
+        ->join('users', 'users.id', '=', 'verifications.user_id')
+        ->get();
+    
+    return response()->json([
+        'verifications' => $verifications,
+        'counts' => [
+            'total' => $verifications->count(),
+            'pending' => $verifications->where('status', 'pending')->count(),
+            'approved' => $verifications->where('status', 'approved')->count(),
+            'rejected' => $verifications->where('status', 'rejected')->count(),
+        ]
+    ]);
+})->middleware(['auth'])->name('admin.debug-verifications');
+
+// Fix approved verifications route
+Route::get('/admin/fix-verifications', function () {
+    if (auth()->user()->email !== 'admin@zawagafrica.com') {
+        return redirect()->route('dashboard');
+    }
+    
+    // Get all verifications
+    $verifications = \DB::table('verifications')->get();
+    
+    $output = [
+        'before' => [
+            'total' => $verifications->count(),
+            'pending' => $verifications->where('status', 'pending')->count(),
+            'approved' => $verifications->where('status', 'approved')->count(),
+            'rejected' => $verifications->where('status', 'rejected')->count(),
+        ],
+        'fixed' => []
+    ];
+    
+    // Check for users with is_verified=true but verification status not approved
+    $usersToFix = \DB::table('users')
+        ->join('verifications', 'users.id', '=', 'verifications.user_id')
+        ->where('users.is_verified', true)
+        ->where('verifications.status', '!=', 'approved')
+        ->select('users.id', 'users.name', 'users.email', 'verifications.status')
+        ->get();
+        
+    foreach ($usersToFix as $user) {
+        \DB::table('verifications')
+            ->where('user_id', $user->id)
+            ->update([
+                'status' => 'approved',
+                'verified_at' => now()
+            ]);
+            
+        $output['fixed'][] = [
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'old_status' => $user->status,
+            'new_status' => 'approved'
+        ];
+    }
+    
+    // Get updated counts
+    $updatedVerifications = \DB::table('verifications')->get();
+    
+    $output['after'] = [
+        'total' => $updatedVerifications->count(),
+        'pending' => $updatedVerifications->where('status', 'pending')->count(),
+        'approved' => $updatedVerifications->where('status', 'approved')->count(),
+        'rejected' => $updatedVerifications->where('status', 'rejected')->count(),
+    ];
+    
+    return response()->json($output);
+})->middleware(['auth'])->name('admin.fix-verifications');
+
 require __DIR__.'/auth.php';

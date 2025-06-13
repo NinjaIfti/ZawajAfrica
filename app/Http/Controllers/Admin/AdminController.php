@@ -53,35 +53,117 @@ class AdminController extends Controller
         $allVerifications = DB::table('verifications')->select('id', 'user_id', 'status')->get();
         \Log::info('All verifications:', ['verifications' => $allVerifications]);
         
-        $pendingVerifications = User::whereHas('verification', function($query) {
-            $query->where('status', 'pending');
-        })->with(['verification'])->get();
-        
-        $approvedVerifications = User::whereHas('verification', function($query) {
-            $query->where('status', 'approved');
-        })->with(['verification'])->get();
-        
+        // Get all users with verified status directly from the database
+        $approvedUsers = DB::table('users')
+            ->join('verifications', 'users.id', '=', 'verifications.user_id')
+            ->where('verifications.status', 'approved')
+            ->select('users.*', 'verifications.created_at as verification_created_at', 
+                    'verifications.verified_at', 'verifications.status', 'verifications.document_type')
+            ->get();
+            
         // Debug the approved verifications
-        \Log::info('Approved verifications count: ' . $approvedVerifications->count());
+        \Log::info('Approved users count (direct query): ' . $approvedUsers->count());
         
-        $rejectedVerifications = User::whereHas('verification', function($query) {
-            $query->where('status', 'rejected');
-        })->with(['verification'])->get();
+        // Also check for users with is_verified=true but verification status not approved
+        // and fix them
+        $usersToFix = DB::table('users')
+            ->join('verifications', 'users.id', '=', 'verifications.user_id')
+            ->where('users.is_verified', true)
+            ->where('verifications.status', '!=', 'approved')
+            ->select('users.id', 'users.name', 'users.email', 'verifications.status')
+            ->get();
+            
+        foreach ($usersToFix as $user) {
+            DB::table('verifications')
+                ->where('user_id', $user->id)
+                ->update([
+                    'status' => 'approved',
+                    'verified_at' => now()
+                ]);
+                
+            \Log::info('Fixed user verification status:', [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'old_status' => $user->status,
+                'new_status' => 'approved'
+            ]);
+        }
         
-        // Convert to pagination-like structure for easier frontend usage
+        // Refetch approved users after fixing
+        if ($usersToFix->count() > 0) {
+            $approvedUsers = DB::table('users')
+                ->join('verifications', 'users.id', '=', 'verifications.user_id')
+                ->where('verifications.status', 'approved')
+                ->select('users.*', 'verifications.created_at as verification_created_at', 
+                        'verifications.verified_at', 'verifications.status', 'verifications.document_type')
+                ->get();
+        }
+        
+        // Use DB facade for direct query to ensure we're getting the correct data
+        $pendingUsers = DB::table('users')
+            ->join('verifications', 'users.id', '=', 'verifications.user_id')
+            ->where('verifications.status', 'pending')
+            ->select('users.*', 'verifications.created_at as verification_created_at', 
+                    'verifications.status', 'verifications.document_type')
+            ->get();
+            
+        $rejectedUsers = DB::table('users')
+            ->join('verifications', 'users.id', '=', 'verifications.user_id')
+            ->where('verifications.status', 'rejected')
+            ->select('users.*', 'verifications.created_at as verification_created_at', 
+                    'verifications.status', 'verifications.rejection_reason', 'verifications.document_type')
+            ->get();
+        
+        // Map the users to include verification data in the expected format
         $pendingData = [
-            'data' => $pendingVerifications,
-            'total' => count($pendingVerifications)
+            'data' => $pendingUsers->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'verification' => [
+                        'created_at' => $user->verification_created_at,
+                        'status' => $user->status,
+                        'document_type' => $user->document_type
+                    ]
+                ];
+            }),
+            'total' => $pendingUsers->count()
         ];
         
         $approvedData = [
-            'data' => $approvedVerifications,
-            'total' => count($approvedVerifications)
+            'data' => $approvedUsers->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'verification' => [
+                        'created_at' => $user->verification_created_at,
+                        'verified_at' => $user->verified_at,
+                        'status' => $user->status,
+                        'document_type' => $user->document_type
+                    ]
+                ];
+            }),
+            'total' => $approvedUsers->count()
         ];
         
         $rejectedData = [
-            'data' => $rejectedVerifications,
-            'total' => count($rejectedVerifications)
+            'data' => $rejectedUsers->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'verification' => [
+                        'created_at' => $user->verification_created_at,
+                        'status' => $user->status,
+                        'rejection_reason' => $user->rejection_reason,
+                        'document_type' => $user->document_type
+                    ]
+                ];
+            }),
+            'total' => $rejectedUsers->count()
         ];
         
         return Inertia::render('Admin/Verifications/Index', [
