@@ -10,8 +10,21 @@ const profileDropdownOpen = ref(false);
 const selectedLanguage = ref({ name: 'English' });
 const showLanguageModal = ref(false);
 
+// Language options
+const languages = [
+    { id: 'en', name: 'English' },
+    { id: 'ha', name: 'Hausa' },
+    { id: 'yo', name: 'Yoruba' },
+    { id: 'ig', name: 'Igbo' }
+];
+
 const toggleLanguageModal = () => {
     showLanguageModal.value = !showLanguageModal.value;
+};
+
+const selectLanguage = (lang) => {
+    selectedLanguage.value = lang;
+    showLanguageModal.value = false;
 };
 
 // Close dropdown when clicking outside
@@ -64,6 +77,45 @@ onUnmounted(() => {
                     <Link :href="route('logout')" method="post" as="button" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100">
                         Log Out
                     </Link>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Language Selection Modal -->
+    <div v-if="showLanguageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="relative max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <!-- Modal Header -->
+            <div class="mb-6 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-gray-900">Change Language</h3>
+                <button 
+                    @click="toggleLanguageModal" 
+                    class="text-gray-400 hover:text-gray-500"
+                >
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Language Options -->
+            <div class="space-y-4">
+                <div 
+                    v-for="lang in languages" 
+                    :key="lang.id"
+                    @click="selectLanguage(lang)"
+                    class="flex cursor-pointer items-center justify-between rounded-lg py-3 hover:bg-gray-50"
+                >
+                    <span class="text-lg font-medium text-gray-900">{{ lang.name }}</span>
+                    <div 
+                        class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-gray-300"
+                        :class="{ 'border-purple-600': selectedLanguage.id === lang.id }"
+                    >
+                        <div 
+                            v-if="selectedLanguage.id === lang.id" 
+                            class="h-3 w-3 rounded-full bg-purple-600"
+                        ></div>
+                    </div>
                 </div>
             </div>
         </div>

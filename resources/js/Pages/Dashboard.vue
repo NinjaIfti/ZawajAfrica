@@ -2,8 +2,8 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
-import TherapistWidget from '@/Components/TherapistWidget.vue';
-import MessagesWidget from '@/Components/MessagesWidget.vue';
+import DashboardSidebar from '@/Components/DashboardSidebar.vue';
+import MatchCard from '@/Components/MatchCard.vue';
 
 // State for right sidebar visibility
 const isRightSidebarVisible = ref(true);
@@ -133,27 +133,6 @@ const recentMessages = ref([
     }
 ]);
 
-// Language selector
-const languages = [
-    { id: 'en', name: 'English' },
-    { id: 'ha', name: 'Hausa' },
-    { id: 'yo', name: 'Yoruba' },
-    { id: 'ig', name: 'Igbo' }
-];
-const selectedLanguage = ref(languages[0]);
-const showLanguageModal = ref(false);
-
-// Function to toggle language modal
-const toggleLanguageModal = () => {
-    showLanguageModal.value = !showLanguageModal.value;
-};
-
-// Function to select language and close modal
-const selectLanguage = (lang) => {
-    selectedLanguage.value = lang;
-    showLanguageModal.value = false;
-};
-
 // Close the profile dropdown when clicking outside
 const closeDropdown = (e) => {
     // If the click is outside the dropdown and the dropdown is open, close it
@@ -204,163 +183,16 @@ onUnmounted(() => {
                 </div>
             </div>
             
-            <!-- All Matches -->
-            <div>
-                <h2 class="mb-6 text-xl font-bold">All Matches</h2>
-                
-                <div class="space-y-6">
-                    <div v-for="match in matches" :key="match.id" class="relative overflow-hidden rounded-lg bg-gray-800 shadow-lg">
-                        <!-- Make the entire card clickable except for the action buttons -->
-                        <Link :href="route('profile.view', { id: match.id })" class="block">
-                            <!-- Match Image -->
-                            <div class="h-64 w-full bg-gray-700 relative">
-                                <img :src="match.image" :alt="match.name" class="h-full w-full object-cover opacity-0" />
-                            
-                                <!-- Online Status -->
-                                <div class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
-                                    <span class="mr-2 h-2 w-2 rounded-full bg-green-500"></span>
-                                    Online
-                                </div>
-                                
-                                <!-- Favorite Button -->
-                                <div class="absolute right-4 top-4 rounded-full bg-amber-500 p-2">
-                                    <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                    </svg>
-                                </div>
-                            
-                                <!-- Match percentage (on bottom of image) -->
-                                <div class="absolute bottom-4 left-4 right-4">
-                                    <div class="flex items-center justify-between mb-1 text-white">
-                                        <span class="font-medium">{{ match.compatibility }}%</span>
-                                        <span class="font-medium">Match</span>
-                                    </div>
-                                    <div class="h-2 w-full overflow-hidden rounded-full bg-white bg-opacity-30">
-                                        <div class="h-full rounded-full bg-amber-400" :style="{ width: match.compatibility + '%' }"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </Link>
-                        
-                        <!-- Match Info (below image) -->
-                        <div class="bg-white px-4 py-3 relative overflow-hidden">
-                            <div class="flex items-center justify-between">
-                                <Link :href="route('profile.view', { id: match.id })" class="block">
-                                    <div class="flex items-center">
-                                        <h3 class="text-lg font-bold">{{ match.name }}</h3>
-                                        <span class="ml-2 text-amber-500 text-lg">✓</span>
-                                        <span class="ml-2 text-gray-500">, {{ match.age }}</span>
-                                    </div>
-                                    <p class="text-gray-600">{{ match.location }}</p>
-                                    <p class="text-sm text-gray-500">{{ match.timestamp }}</p>
-                                </Link>
-                                <div class="flex space-x-2 items-center">
-                                    <button class="text-purple-800" @click.prevent>
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                        </svg>
-                                    </button>
-                                    <button class="text-purple-800" @click.prevent>
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Rainbow pattern image -->
-                            <div class="absolute bottom-0 right-8 h-20 w-24 translate-x-1/3 translate-y-1/4">
-                                <img src="/images/card.png" alt="Pattern" class="h-full w-full object-contain opacity-60" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Match Cards Component -->
+            <MatchCard :matches="matches" />
         </div>
         
-        <!-- Right Sidebar -->
-        <div class="w-50 p-6">
-            <!-- Profile and Language at the top -->
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex-1"></div>
-                <div class="flex items-center space-x-3">
-                    <!-- Language Selector -->
-                    <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium cursor-pointer" @click="toggleLanguageModal">
-                        <span class="mr-2">{{ selectedLanguage.name }}</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                        </svg>
-                    </div>
-                    
-                    <!-- Profile Dropdown -->
-                    <div class="relative profile-dropdown">
-                        <div @click.stop="profileDropdownOpen = !profileDropdownOpen" class="h-10 w-10 overflow-hidden rounded-full bg-gray-300 cursor-pointer">
-                            <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover" />
-                        </div>
-                        
-                        <!-- Dropdown Menu -->
-                        <div v-if="profileDropdownOpen" class="absolute right-0 mt-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-                            <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                Your Profile
-                            </Link>
-                            <Link :href="route('dashboard')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                Settings
-                            </Link>
-                            <div class="border-t border-gray-100"></div>
-                            <Link :href="route('logout')" method="post" as="button" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100">
-                                Log Out
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Therapists Widget Component -->
-            <TherapistWidget :therapists="therapists" />
-            
-            <!-- Messages Widget Component -->
-            <MessagesWidget :messages="recentMessages" />
-        </div>
-    </div>
-    
-    <!-- Language Selection Modal -->
-    <div v-if="showLanguageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="relative max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <!-- Modal Header -->
-            <div class="mb-6 flex items-center justify-between">
-                <h3 class="text-xl font-bold text-gray-900">Change Language</h3>
-                <button 
-                    @click="toggleLanguageModal" 
-                    class="text-gray-400 hover:text-gray-500"
-                >
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Language Options -->
-            <div class="space-y-4">
-                <div 
-                    v-for="lang in languages" 
-                    :key="lang.id"
-                    @click="selectLanguage(lang)"
-                    class="flex cursor-pointer items-center justify-between rounded-lg py-3 hover:bg-gray-50"
-                >
-                    <span class="text-lg font-medium text-gray-900">{{ lang.name }}</span>
-                    <div 
-                        class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-gray-300"
-                        :class="{ 'border-purple-600': selectedLanguage.id === lang.id }"
-                    >
-                        <div 
-                            v-if="selectedLanguage.id === lang.id" 
-                            class="h-3 w-3 rounded-full bg-purple-600"
-                        ></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Right Sidebar Component -->
+        <DashboardSidebar 
+            :user="$page.props.auth.user"
+            :therapists="therapists"
+            :messages="recentMessages"
+        />
     </div>
 </template>
 
