@@ -1,12 +1,16 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const showingMobileMenu = ref(false);
 
 const toggleMobileMenu = () => {
     showingMobileMenu.value = !showingMobileMenu.value;
 };
+
+onMounted(() => {
+    console.log('AdminLayout mounted');
+});
 </script>
 
 <template>

@@ -49,17 +49,24 @@ class AdminController extends Controller
      */
     public function verifications()
     {
+        // Log current verification statuses for debugging
+        $allVerifications = DB::table('verifications')->select('id', 'user_id', 'status')->get();
+        \Log::info('All verifications:', ['verifications' => $allVerifications]);
+        
         $pendingVerifications = User::whereHas('verification', function($query) {
             $query->where('status', 'pending');
-        })->with('verification')->get();
+        })->with(['verification'])->get();
         
         $approvedVerifications = User::whereHas('verification', function($query) {
             $query->where('status', 'approved');
-        })->with('verification')->get();
+        })->with(['verification'])->get();
+        
+        // Debug the approved verifications
+        \Log::info('Approved verifications count: ' . $approvedVerifications->count());
         
         $rejectedVerifications = User::whereHas('verification', function($query) {
             $query->where('status', 'rejected');
-        })->with('verification')->get();
+        })->with(['verification'])->get();
         
         // Convert to pagination-like structure for easier frontend usage
         $pendingData = [
@@ -121,6 +128,9 @@ class AdminController extends Controller
             return redirect()->route('admin.verifications')->with('error', 'User has no verification record');
         }
         
+        // Debug before approving
+        \Log::info('Before approval:', ['user_id' => $userId, 'verification' => $user->verification]);
+        
         DB::transaction(function () use ($user) {
             // Update verification record
             $user->verification->update([
@@ -133,6 +143,10 @@ class AdminController extends Controller
                 'is_verified' => true,
             ]);
         });
+        
+        // Debug after approving
+        $refreshedUser = User::with('verification')->find($userId);
+        \Log::info('After approval:', ['user_id' => $userId, 'verification' => $refreshedUser->verification]);
         
         return redirect()->route('admin.verifications')->with('success', 'Verification approved successfully');
     }
@@ -152,10 +166,17 @@ class AdminController extends Controller
             return redirect()->route('admin.verifications')->with('error', 'User has no verification record');
         }
         
+        // Debug before rejecting
+        \Log::info('Before rejection:', ['user_id' => $userId, 'verification' => $user->verification]);
+        
         $user->verification->update([
             'status' => 'rejected',
             'rejection_reason' => $request->reason,
         ]);
+        
+        // Debug after rejecting
+        $refreshedUser = User::with('verification')->find($userId);
+        \Log::info('After rejection:', ['user_id' => $userId, 'verification' => $refreshedUser->verification]);
         
         return redirect()->route('admin.verifications')->with('success', 'Verification rejected successfully');
     }

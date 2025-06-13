@@ -36,7 +36,7 @@ const formatDate = (dateString) => {
                         <div class="mb-6 flex items-center justify-between">
                             <h3 class="text-lg font-medium">Pending Verifications</h3>
                             <div class="text-sm text-gray-500">
-                                Total: {{ pendingVerifications.total || 0 }}
+                                Total: {{ pendingVerifications?.total || 0 }}
                             </div>
                         </div>
 
@@ -60,7 +60,7 @@ const formatDate = (dateString) => {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
-                                    <tr v-for="user in pendingVerifications.data" :key="user.id">
+                                    <tr v-for="user in pendingVerifications?.data || []" :key="user.id">
                                         <td class="whitespace-nowrap px-6 py-4">
                                             <div class="flex items-center">
                                                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-700">
@@ -89,7 +89,7 @@ const formatDate = (dateString) => {
                                             </Link>
                                         </td>
                                     </tr>
-                                    <tr v-if="!pendingVerifications.data || pendingVerifications.data.length === 0">
+                                    <tr v-if="!pendingVerifications?.data || pendingVerifications?.data.length === 0">
                                         <td colspan="4" class="px-6 py-4 text-center text-gray-500">
                                             No pending verifications found
                                         </td>
@@ -106,7 +106,7 @@ const formatDate = (dateString) => {
                         <div class="mb-6 flex items-center justify-between">
                             <h3 class="text-lg font-medium">Approved Verifications</h3>
                             <div class="text-sm text-gray-500">
-                                Total: {{ approvedVerifications.total || 0 }}
+                                Total: {{ approvedVerifications?.total || 0 }}
                             </div>
                         </div>
 
@@ -130,7 +130,7 @@ const formatDate = (dateString) => {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
-                                    <tr v-for="user in approvedVerifications.data" :key="user.id">
+                                    <tr v-for="user in approvedVerifications?.data || []" :key="user.id">
                                         <td class="whitespace-nowrap px-6 py-4">
                                             <div class="flex items-center">
                                                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-700">
@@ -159,7 +159,7 @@ const formatDate = (dateString) => {
                                             </Link>
                                         </td>
                                     </tr>
-                                    <tr v-if="!approvedVerifications.data || approvedVerifications.data.length === 0">
+                                    <tr v-if="!approvedVerifications?.data || approvedVerifications?.data.length === 0">
                                         <td colspan="4" class="px-6 py-4 text-center text-gray-500">
                                             No approved verifications found
                                         </td>
@@ -176,7 +176,7 @@ const formatDate = (dateString) => {
                         <div class="mb-6 flex items-center justify-between">
                             <h3 class="text-lg font-medium">Rejected Verifications</h3>
                             <div class="text-sm text-gray-500">
-                                Total: {{ rejectedVerifications.total || 0 }}
+                                Total: {{ rejectedVerifications?.total || 0 }}
                             </div>
                         </div>
 
@@ -200,7 +200,7 @@ const formatDate = (dateString) => {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
-                                    <tr v-for="user in rejectedVerifications.data" :key="user.id">
+                                    <tr v-for="user in rejectedVerifications?.data || []" :key="user.id">
                                         <td class="whitespace-nowrap px-6 py-4">
                                             <div class="flex items-center">
                                                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-700">
@@ -229,7 +229,7 @@ const formatDate = (dateString) => {
                                             </Link>
                                         </td>
                                     </tr>
-                                    <tr v-if="!rejectedVerifications.data || rejectedVerifications.data.length === 0">
+                                    <tr v-if="!rejectedVerifications?.data || rejectedVerifications?.data.length === 0">
                                         <td colspan="4" class="px-6 py-4 text-center text-gray-500">
                                             No rejected verifications found
                                         </td>
