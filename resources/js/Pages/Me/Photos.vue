@@ -1,13 +1,14 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
-import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
 
 const props = defineProps({
     auth: Object,
     user: Object,
+    photos: Array,
 });
 
 // State for photos
@@ -19,14 +20,16 @@ const errorMessage = ref('');
 
 // Initialize photos from user data or create empty slots
 onMounted(() => {
+    console.log('Props photos:', props.photos);
     initializePhotos();
+    console.log('Initialized photos:', photos.value);
 });
 
 function initializePhotos() {
     const maxPhotos = 8;
     
-    if (props.user?.photos && Array.isArray(props.user.photos)) {
-        photos.value = [...props.user.photos];
+    if (props.photos && Array.isArray(props.photos)) {
+        photos.value = [...props.photos];
         
         // Add empty slots if needed to reach maxPhotos
         while (photos.value.length < maxPhotos) {
@@ -55,29 +58,34 @@ function handleFileSelect(event, index) {
     const formData = new FormData();
     formData.append('photo', file);
     formData.append('index', index);
-    formData.append('is_primary', photos.value[index].is_primary);
     
-    router.post(route('me.photos.upload'), formData, {
-        forceFormData: true,
-        preserveScroll: true,
-        onProgress: (progress) => {
-            uploadProgress.value = progress.percentage;
+    // Add CSRF token
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    axios.post(route('me.photos.upload'), formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            'X-CSRF-TOKEN': token
         },
-        onSuccess: (page) => {
-            isUploading.value = false;
-            successMessage.value = 'Photo uploaded successfully';
-            setTimeout(() => { successMessage.value = ''; }, 3000);
-            
-            // Update photos from server response
-            if (page.props.photos) {
-                photos.value = page.props.photos;
-            }
-        },
-        onError: () => {
-            isUploading.value = false;
-            errorMessage.value = 'Failed to upload photo';
-            setTimeout(() => { errorMessage.value = ''; }, 3000);
+        onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            uploadProgress.value = percentCompleted;
         }
+    }).then(response => {
+        isUploading.value = false;
+        console.log('Upload response:', response.data);
+        successMessage.value = response.data.message || 'Photo uploaded successfully';
+        setTimeout(() => { successMessage.value = ''; }, 3000);
+        
+        // Update photos from API response
+        if (response.data.photos) {
+            updatePhotoArray(response.data.photos);
+        }
+    }).catch(error => {
+        isUploading.value = false;
+        console.error('Upload error details:', error.response?.data || error.message);
+        errorMessage.value = error.response?.data?.message || 'Failed to upload photo';
+        setTimeout(() => { errorMessage.value = ''; }, 3000);
     });
 }
 
@@ -85,24 +93,25 @@ function handleFileSelect(event, index) {
 function deletePhoto(index) {
     if (!photos.value[index].id) return;
     
-    router.delete(route('me.photos.delete', { id: photos.value[index].id }), {
-        preserveScroll: true,
-        onSuccess: (page) => {
-            successMessage.value = 'Photo deleted successfully';
-            setTimeout(() => { successMessage.value = ''; }, 3000);
-            
-            // Update photos from server response
-            if (page.props.photos) {
-                photos.value = page.props.photos;
-            } else {
-                // Reset this photo slot if no response
-                photos.value[index] = { id: null, url: null, is_primary: false };
-            }
-        },
-        onError: () => {
-            errorMessage.value = 'Failed to delete photo';
-            setTimeout(() => { errorMessage.value = ''; }, 3000);
+    axios.delete(route('me.photos.delete', { id: photos.value[index].id }), {
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
+    }).then(response => {
+        successMessage.value = response.data.message || 'Photo deleted successfully';
+        setTimeout(() => { successMessage.value = ''; }, 3000);
+        
+        // Update photos from API response
+        if (response.data.photos) {
+            updatePhotoArray(response.data.photos);
+        } else {
+            // Reset this photo slot if no response
+            photos.value[index] = { id: null, url: null, is_primary: false };
+        }
+    }).catch(error => {
+        errorMessage.value = error.response?.data?.message || 'Failed to delete photo';
+        setTimeout(() => { errorMessage.value = ''; }, 3000);
+        console.error('Delete error:', error);
     });
 }
 
@@ -110,27 +119,44 @@ function deletePhoto(index) {
 function setPrimaryPhoto(index) {
     if (!photos.value[index].id) return;
     
-    router.patch(route('me.photos.primary', { id: photos.value[index].id }), {}, {
-        preserveScroll: true,
-        onSuccess: (page) => {
-            successMessage.value = 'Primary photo updated';
-            setTimeout(() => { successMessage.value = ''; }, 3000);
-            
-            // Update all photos from server response
-            if (page.props.photos) {
-                photos.value = page.props.photos;
-            } else {
-                // Update locally
-                photos.value.forEach((photo, i) => {
-                    photo.is_primary = i === index;
-                });
-            }
-        },
-        onError: () => {
-            errorMessage.value = 'Failed to set primary photo';
-            setTimeout(() => { errorMessage.value = ''; }, 3000);
+    axios.put(route('me.photos.primary', { id: photos.value[index].id }), {}, {
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
+    }).then(response => {
+        successMessage.value = response.data.message || 'Primary photo updated';
+        setTimeout(() => { successMessage.value = ''; }, 3000);
+        
+        // Update photos from API response
+        if (response.data.photos) {
+            updatePhotoArray(response.data.photos);
+        } else {
+            // Update locally
+            photos.value.forEach((photo, i) => {
+                photo.is_primary = i === index;
+            });
+        }
+    }).catch(error => {
+        errorMessage.value = error.response?.data?.message || 'Failed to set primary photo';
+        setTimeout(() => { errorMessage.value = ''; }, 3000);
+        console.error('Set primary error:', error);
     });
+}
+
+// Helper function to update photo array
+function updatePhotoArray(newPhotos) {
+    console.log('Updating photos with:', newPhotos);
+    const maxPhotos = 8;
+    
+    // Update existing photos
+    photos.value = [...newPhotos];
+    
+    // Add empty slots if needed
+    while (photos.value.length < maxPhotos) {
+        photos.value.push({ id: null, url: null, is_primary: false });
+    }
+    
+    console.log('Updated photos array:', photos.value);
 }
 </script>
 

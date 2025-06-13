@@ -19,8 +19,15 @@ class PhotosController extends Controller
     {
         $user = Auth::user();
         
-        // Load user photos
-        $photos = $user->photos()->get();
+        // Load user photos with URLs
+        $photos = $user->photos()->get()->map(function($photo) {
+            return [
+                'id' => $photo->id,
+                'url' => $photo->url, // This uses the getUrlAttribute accessor
+                'is_primary' => $photo->is_primary,
+                'display_order' => $photo->display_order
+            ];
+        });
         
         // Format profile photo URL if it exists
         if ($user->profile_photo) {
@@ -45,7 +52,6 @@ class PhotosController extends Controller
             $request->validate([
                 'photo' => 'required|image|max:5120', // 5MB max
                 'index' => 'required|integer|min:0',
-                'is_primary' => 'sometimes|boolean',
             ]);
             
             // Handle the file upload
@@ -55,14 +61,7 @@ class PhotosController extends Controller
                 
                 // Get the index and primary flag
                 $index = $request->input('index', 0);
-                $isPrimary = $request->boolean('is_primary', false);
-                
-                // If this is the primary photo, remove primary flag from other photos
-                if ($isPrimary) {
-                    UserPhoto::where('user_id', $user->id)
-                        ->where('is_primary', true)
-                        ->update(['is_primary' => false]);
-                }
+                $isPrimary = false; // Default to false
                 
                 // Create the photo record
                 $photo = new UserPhoto([
@@ -74,6 +73,13 @@ class PhotosController extends Controller
                 
                 $photo->save();
                 
+                // If this is the first photo, make it primary
+                $photoCount = UserPhoto::where('user_id', $user->id)->count();
+                if ($photoCount === 1) {
+                    $photo->is_primary = true;
+                    $photo->save();
+                }
+                
                 // If this is the first photo and no profile photo is set, use this as the profile photo
                 if (!$user->profile_photo) {
                     $user->profile_photo = $path;
@@ -81,7 +87,14 @@ class PhotosController extends Controller
                 }
                 
                 // Get all photos for the response
-                $photos = $user->photos()->get();
+                $photos = $user->photos()->get()->map(function($photo) {
+                    return [
+                        'id' => $photo->id,
+                        'url' => $photo->url,
+                        'is_primary' => $photo->is_primary,
+                        'display_order' => $photo->display_order
+                    ];
+                });
                 
                 return response()->json([
                     'success' => true,
@@ -144,11 +157,27 @@ class PhotosController extends Controller
                 }
             }
             
+            // If this was the primary photo, set another photo as primary
+            if ($photo->is_primary) {
+                $nextPhoto = $user->photos()->where('id', '!=', $photo->id)->first();
+                if ($nextPhoto) {
+                    $nextPhoto->is_primary = true;
+                    $nextPhoto->save();
+                }
+            }
+            
             // Delete the record
             $photo->delete();
             
             // Get all photos for the response
-            $photos = $user->photos()->get();
+            $photos = $user->photos()->get()->map(function($photo) {
+                return [
+                    'id' => $photo->id,
+                    'url' => $photo->url,
+                    'is_primary' => $photo->is_primary,
+                    'display_order' => $photo->display_order
+                ];
+            });
             
             return response()->json([
                 'success' => true,
@@ -202,7 +231,14 @@ class PhotosController extends Controller
             $user->save();
             
             // Get all photos for the response
-            $photos = $user->photos()->get();
+            $photos = $user->photos()->get()->map(function($photo) {
+                return [
+                    'id' => $photo->id,
+                    'url' => $photo->url,
+                    'is_primary' => $photo->is_primary,
+                    'display_order' => $photo->display_order
+                ];
+            });
             
             return response()->json([
                 'success' => true,
