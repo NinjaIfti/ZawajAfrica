@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use App\Models\UserAppearance;
+use App\Models\UserLifestyle;
+use App\Models\UserBackground;
+use App\Models\UserAbout;
 
 class User extends Authenticatable
 {
@@ -32,6 +37,8 @@ class User extends Authenticatable
         'city',
         'is_verified',
         'verification_type',
+        'location',
+        'profile_photo',
     ];
 
     /**
@@ -101,5 +108,37 @@ class User extends Authenticatable
     public function verification(): HasOne
     {
         return $this->hasOne(Verification::class);
+    }
+
+    /**
+     * Get the appearance data associated with the user.
+     */
+    public function appearance()
+    {
+        return $this->hasOne(UserAppearance::class);
+    }
+    
+    /**
+     * Get the lifestyle data associated with the user.
+     */
+    public function lifestyle()
+    {
+        return $this->hasOne(UserLifestyle::class);
+    }
+    
+    /**
+     * Get the background data associated with the user.
+     */
+    public function background()
+    {
+        return $this->hasOne(UserBackground::class);
+    }
+    
+    /**
+     * Get the about data associated with the user.
+     */
+    public function about()
+    {
+        return $this->hasOne(UserAbout::class);
     }
 }

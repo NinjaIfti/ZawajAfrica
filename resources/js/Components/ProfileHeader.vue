@@ -34,11 +34,11 @@ const props = defineProps({
                 </div>
                 
                 <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-primary mb-3">
-                    <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover">
+                    <img :src="user.profile_photo || '/images/placeholder.jpg'" :alt="user.name" class="h-full w-full object-cover">
                 </div>
                 
-                <h2 class="text-xl font-bold mb-1">Anila Anzah</h2>
-                <p class="text-gray-500 text-sm">ID: 34564</p>
+                <h2 class="text-xl font-bold mb-1">{{ user.name }}</h2>
+                <p class="text-gray-500 text-sm">{{ user.location || 'Location not set' }}</p>
             </div>
         </div>
 

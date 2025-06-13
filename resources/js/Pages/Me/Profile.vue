@@ -26,37 +26,23 @@ const editingSections = ref({
 const successMessage = ref('');
 const errorMessage = ref('');
 
-// Create a reactive copy of the user data that we can modify
-const userData = ref({
-    ...props.user,
-    // Fallback values if props.user doesn't have these properties
-    profile_photo: props.user?.profile_photo || '/images/placeholder.jpg',
-    location: props.user?.location || '',
-    appearance: props.user?.appearance || {
-        hair_color: '',
-        eye_color: '',
-        height: '',
-        weight: ''
-    },
-    lifestyle: props.user?.lifestyle || {
-        drinks: '',
-        smokes: '',
-        has_children: '',
-        number_of_children: '',
-        occupation: ''
-    },
-    background: props.user?.background || {
-        nationality: '',
-        education: '',
-        language_spoken: '',
-        born_reverted: '',
-        read_quran: ''
-    },
-    about: props.user?.about || {
-        heading: '',
-        about_me: '',
-        looking_for: ''
-    }
+// Initialize userData with user data from props (with fallbacks for missing data)
+const userData = ref(props.user ? {
+    name: props.user.name || '',
+    location: props.user.location || '',
+    profile_photo: props.user.profile_photo || '/images/placeholder.jpg',
+    appearance: props.user.appearance || {},
+    lifestyle: props.user.lifestyle || {},
+    background: props.user.background || {},
+    about: props.user.about || {},
+} : {
+    name: '',
+    location: '',
+    profile_photo: '/images/placeholder.jpg',
+    appearance: {},
+    lifestyle: {},
+    background: {},
+    about: {},
 });
 
 // Function to change active tab

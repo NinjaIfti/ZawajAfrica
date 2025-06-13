@@ -44,6 +44,18 @@ class RegisteredUserController extends Controller
             'city' => 'nullable|string|max:255',
         ]);
 
+        // Combine location components into a single location string
+        $location = '';
+        if ($request->city) {
+            $location .= $request->city;
+        }
+        if ($request->state) {
+            $location .= $location ? ', ' . $request->state : $request->state;
+        }
+        if ($request->country) {
+            $location .= $location ? ', ' . $request->country : $request->country;
+        }
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -56,6 +68,7 @@ class RegisteredUserController extends Controller
             'country' => $request->country,
             'state' => $request->state,
             'city' => $request->city,
+            'location' => $location, // Set the combined location value
             'is_verified' => false,
         ]);
         

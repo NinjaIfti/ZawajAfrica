@@ -62,11 +62,14 @@ onUnmounted(() => {
             <!-- Profile Dropdown -->
             <div class="relative profile-dropdown">
                 <div @click.stop="profileDropdownOpen = !profileDropdownOpen" class="h-10 w-10 overflow-hidden rounded-full bg-gray-300 cursor-pointer">
-                    <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover" />
+                    <img :src="user.profile_photo || '/images/placeholder.jpg'" :alt="user.name" class="h-full w-full object-cover" />
                 </div>
                 
                 <!-- Dropdown Menu -->
                 <div v-if="profileDropdownOpen" class="absolute right-0 mt-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                    <div class="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
+                        {{ user.name }}
+                    </div>
                     <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         Your Profile
                     </Link>

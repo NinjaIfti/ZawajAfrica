@@ -16,7 +16,12 @@ class ProfileController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
+        $user = Auth::user()->load(['appearance', 'lifestyle', 'background', 'about']);
+        
+        // Ensure the profile photo URL is fully qualified
+        if ($user->profile_photo) {
+            $user->profile_photo = asset('storage/' . $user->profile_photo);
+        }
         
         return Inertia::render('Me/Profile', [
             'user' => $user
@@ -57,8 +62,6 @@ class ProfileController extends Controller
         
         // Update appearance data
         if (isset($validated['appearance'])) {
-            // Assuming you have a proper relationship set up
-            // If not, you might need to create a new model for this
             $user->appearance()->updateOrCreate(
                 ['user_id' => $user->id],
                 $validated['appearance']
@@ -92,10 +95,18 @@ class ProfileController extends Controller
         // Save the user
         $user->save();
         
+        // Reload the user with relationships
+        $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
+        
+        // Format profile photo URL if it exists
+        if ($user->profile_photo) {
+            $user->profile_photo = asset('storage/' . $user->profile_photo);
+        }
+        
         // Return the updated user data
         return back()->with([
             'message' => 'Profile updated successfully',
-            'user' => $user->fresh()
+            'user' => $user
         ]);
     }
 
@@ -115,8 +126,8 @@ class ProfileController extends Controller
             $file = $request->file('profile_photo');
             
             // Delete old profile photo if it exists
-            if ($user->profile_photo && Storage::exists($user->profile_photo)) {
-                Storage::delete($user->profile_photo);
+            if ($user->profile_photo && Storage::exists('public/' . $user->profile_photo)) {
+                Storage::delete('public/' . $user->profile_photo);
             }
             
             // Store the new photo
@@ -126,9 +137,13 @@ class ProfileController extends Controller
             $user->profile_photo = $path;
             $user->save();
             
+            // Reload user and format photo URL
+            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
+            $user->profile_photo = asset('storage/' . $path);
+            
             return back()->with([
                 'message' => 'Profile photo updated successfully',
-                'user' => $user->fresh()
+                'user' => $user
             ]);
         }
         
