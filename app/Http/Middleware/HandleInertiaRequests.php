@@ -31,8 +31,9 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         
-        // Ensure location is set for the user data
-        if ($user && empty($user->location)) {
+        // Generate a virtual location property for the user from city, state, country
+        if ($user) {
+            // Don't modify the actual user model, just add a property for the view
             $location = '';
             if ($user->city && trim($user->city) !== '') {
                 $location .= trim($user->city);
@@ -43,7 +44,8 @@ class HandleInertiaRequests extends Middleware
             if ($user->country && trim($user->country) !== '') {
                 $location .= ($location ? ', ' : '') . trim($user->country);
             }
-            $user->location = !empty($location) ? $location : 'Location not set';
+            // Add as a virtual property, not actually saving to database
+            $user->setAttribute('location', !empty($location) ? $location : 'Location not set');
         }
         
         return [

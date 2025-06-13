@@ -37,7 +37,6 @@ class User extends Authenticatable
         'city',
         'is_verified',
         'verification_type',
-        'location',
         'profile_photo',
     ];
 

@@ -94,30 +94,41 @@ const saveSection = (section) => {
             break;
     }
     
-    // Use Inertia's router for direct POST rather than using named routes
-    router.post('/profile/update', dataToUpdate, {
-        onSuccess: (page) => {
-            // Close edit mode for this section
-            editingSections.value[section] = false;
-            
-            // Show success message
-            successMessage.value = 'Changes saved successfully';
-            setTimeout(() => { successMessage.value = ''; }, 3000);
-            
-            // Update the user data from response if provided
-            if (page.props.user) {
-                Object.assign(userData.value, page.props.user);
-            }
-            
-            console.log("Server response:", page.props); // Debug log
+    // Immediately set edit mode to false
+    editingSections.value[section] = false;
+    
+    // Show a saving message
+    successMessage.value = 'Saving changes...';
+    
+    // Use Fetch API directly for more control
+    fetch('/profile/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
         },
-        onError: (errors) => {
-            // Show error message
-            errorMessage.value = 'Failed to save changes: ' + (Object.values(errors)[0] || 'Unknown error');
-            console.error("Save errors:", errors); // Debug log
-            setTimeout(() => { errorMessage.value = ''; }, 3000);
-        },
-        preserveScroll: true
+        body: JSON.stringify(dataToUpdate)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Save response:", data);
+        
+        // Set success message
+        successMessage.value = 'Changes saved successfully!';
+        
+        // Give time for the user to see the success message, then reload
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    })
+    .catch(error => {
+        console.error("Save error:", error);
+        errorMessage.value = 'Failed to save changes: ' + error.message;
+        setTimeout(() => { errorMessage.value = ''; }, 3000);
+        
+        // If there's an error, allow editing again
+        editingSections.value[section] = true;
     });
 };
 
@@ -130,7 +141,6 @@ const cancelEdit = (section) => {
             userData.value.city = props.user?.city || '';
             userData.value.state = props.user?.state || '';
             userData.value.country = props.user?.country || '';
-            userData.value.location = props.user?.location || '';
             break;
         case 'appearance':
             userData.value.appearance = { ...props.user?.appearance || {} };
@@ -376,10 +386,7 @@ const updateProfilePhoto = (event) => {
                                 
                                 <div>
                                     <label class="text-sm text-gray-500">Weight (in kg)</label>
-                                    <select v-model="userData.appearance.weight" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
-                                        <option value="">Select Weight</option>
-                                        <option v-for="w in Array.from({length: 91}, (_, i) => (40 + i) + ' kg')" :key="w" :value="w">{{ w }}</option>
-                                    </select>
+                                    <input type="text" v-model="userData.appearance.weight" placeholder="Enter weight in kg" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
                                 </div>
                                 
                                 <div class="flex space-x-3">

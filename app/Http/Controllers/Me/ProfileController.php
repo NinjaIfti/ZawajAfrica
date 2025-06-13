@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
 {
@@ -33,35 +34,44 @@ class ProfileController extends Controller
      */
     public function update(Request $request)
     {
-        $user = Auth::user();
-        
-        // Validate request
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'location' => ['sometimes', 'string', 'nullable', 'max:255'],
-            'country' => ['sometimes', 'string', 'nullable', 'max:255'],
-            'state' => ['sometimes', 'string', 'nullable', 'max:255'],
-            'city' => ['sometimes', 'string', 'nullable', 'max:255'],
-            'appearance' => ['sometimes', 'array'],
-            'lifestyle' => ['sometimes', 'array'],
-            'background' => ['sometimes', 'array'],
-            'about' => ['sometimes', 'array'],
-        ]);
-        
-        // Log the request data for debugging
-        Log::info('Profile update request', [
-            'user_id' => $user->id,
-            'data' => $validated
-        ]);
-
-        // Update user's basic info
-        if (isset($validated['name'])) {
-            $user->name = $validated['name'];
-        }
-        
-        // Format location if country/state/city are provided
-        if (isset($validated['country']) || isset($validated['state']) || isset($validated['city'])) {
-            // Update individual fields if provided
+        try {
+            $user = Auth::user();
+            
+            // Log ALL request data for debugging
+            Log::info('Profile update request - ALL DATA', [
+                'user_id' => $user->id,
+                'all_data' => $request->all(),
+                'is_ajax' => $request->ajax(),
+                'wants_json' => $request->wantsJson()
+            ]);
+            
+            // Explicitly remove location if it's somehow in the request
+            $requestData = $request->except(['location']);
+            
+            // Validate request using standard validation
+            $validated = Validator::make($requestData, [
+                'name' => ['sometimes', 'string', 'max:255'],
+                'country' => ['sometimes', 'string', 'nullable', 'max:255'],
+                'state' => ['sometimes', 'string', 'nullable', 'max:255'],
+                'city' => ['sometimes', 'string', 'nullable', 'max:255'],
+                'appearance' => ['sometimes', 'array'],
+                'lifestyle' => ['sometimes', 'array'],
+                'background' => ['sometimes', 'array'],
+                'about' => ['sometimes', 'array'],
+            ])->validate();
+            
+            // Log the validated data for debugging
+            Log::info('Profile update request - VALIDATED DATA', [
+                'user_id' => $user->id,
+                'validated_data' => $validated
+            ]);
+    
+            // Update user's basic info
+            if (isset($validated['name'])) {
+                $user->name = $validated['name'];
+            }
+            
+            // Update location components if provided
             if (isset($validated['country'])) {
                 $user->country = $validated['country'];
             }
@@ -74,73 +84,69 @@ class ProfileController extends Controller
                 $user->city = $validated['city'];
             }
             
-            // Create formatted location string
-            $location = '';
-            if ($user->city && trim($user->city) !== '') {
-                $location .= trim($user->city);
-            }
-            if ($user->state && trim($user->state) !== '') {
-                $location .= ($location ? ', ' : '') . trim($user->state);
-            }
-            if ($user->country && trim($user->country) !== '') {
-                $location .= ($location ? ', ' : '') . trim($user->country);
+            // Update appearance data
+            if (isset($validated['appearance'])) {
+                $user->appearance()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $validated['appearance']
+                );
             }
             
-            // Set default location if empty
-            $location = !empty($location) ? $location : 'Location not set';
-            $user->location = $location;
-        } else if (isset($validated['location'])) {
-            $user->location = $validated['location'];
+            // Update lifestyle data
+            if (isset($validated['lifestyle'])) {
+                $user->lifestyle()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $validated['lifestyle']
+                );
+            }
+            
+            // Update background data
+            if (isset($validated['background'])) {
+                $user->background()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $validated['background']
+                );
+            }
+            
+            // Update about data
+            if (isset($validated['about'])) {
+                $user->about()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $validated['about']
+                );
+            }
+            
+            // Save the user
+            $user->save();
+            
+            // Reload the user with relationships
+            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
+            
+            // Format profile photo URL if it exists
+            if ($user->profile_photo) {
+                $user->profile_photo = asset('storage/' . $user->profile_photo);
+            }
+            
+            // For all requests, return JSON response
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully',
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            // Log the error
+            Log::error('Error updating profile', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return error as JSON
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update profile: ' . $e->getMessage()
+            ], 500);
         }
-        
-        // Update appearance data
-        if (isset($validated['appearance'])) {
-            $user->appearance()->updateOrCreate(
-                ['user_id' => $user->id],
-                $validated['appearance']
-            );
-        }
-        
-        // Update lifestyle data
-        if (isset($validated['lifestyle'])) {
-            $user->lifestyle()->updateOrCreate(
-                ['user_id' => $user->id],
-                $validated['lifestyle']
-            );
-        }
-        
-        // Update background data
-        if (isset($validated['background'])) {
-            $user->background()->updateOrCreate(
-                ['user_id' => $user->id],
-                $validated['background']
-            );
-        }
-        
-        // Update about data
-        if (isset($validated['about'])) {
-            $user->about()->updateOrCreate(
-                ['user_id' => $user->id],
-                $validated['about']
-            );
-        }
-        
-        // Save the user
-        $user->save();
-        
-        // Reload the user with relationships
-        $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
-        
-        // Format profile photo URL if it exists
-        if ($user->profile_photo) {
-            $user->profile_photo = asset('storage/' . $user->profile_photo);
-        }
-        
-        // Return the updated user data
-        return back()->with([
-            'message' => 'Profile updated successfully',
-            'user' => $user
-        ]);
     }
 
     /**

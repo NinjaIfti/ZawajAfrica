@@ -95,21 +95,19 @@ Route::middleware('auth')->group(function () {
     // New Me profile routes
     Route::get('/me/profile', [App\Http\Controllers\Me\ProfileController::class, 'index'])->name('me.profile');
     
-    Route::get('/me/photos', function() {
-        return Inertia::render('Me/Photos');
-    })->name('me.photos');
+    Route::get('/me/photos', [App\Http\Controllers\Me\PhotosController::class, 'index'])->name('me.photos');
+    Route::post('/me/photos/upload', [App\Http\Controllers\Me\PhotosController::class, 'upload'])->name('me.photos.upload');
+    Route::delete('/me/photos/delete/{id}', [App\Http\Controllers\Me\PhotosController::class, 'delete'])->name('me.photos.delete');
+    Route::patch('/me/photos/primary/{id}', [App\Http\Controllers\Me\PhotosController::class, 'setPrimary'])->name('me.photos.primary');
     
-    Route::get('/me/hobbies', function() {
-        return Inertia::render('Me/Hobbies');
-    })->name('me.hobbies');
+    Route::get('/me/hobbies', [App\Http\Controllers\Me\HobbiesController::class, 'index'])->name('me.hobbies');
+    Route::post('/me/hobbies/update', [App\Http\Controllers\Me\HobbiesController::class, 'update'])->name('me.hobbies.update');
     
-    Route::get('/me/personality', function() {
-        return Inertia::render('Me/Personality');
-    })->name('me.personality');
+    Route::get('/me/personality', [App\Http\Controllers\Me\PersonalityController::class, 'index'])->name('me.personality');
+    Route::post('/me/personality/update', [App\Http\Controllers\Me\PersonalityController::class, 'update'])->name('me.personality.update');
     
-    Route::get('/me/faqs', function() {
-        return Inertia::render('Me/FAQs');
-    })->name('me.faqs');
+    Route::get('/me/faqs', [App\Http\Controllers\Me\FAQsController::class, 'index'])->name('me.faqs');
+    Route::post('/me/faqs/update', [App\Http\Controllers\Me\FAQsController::class, 'update'])->name('me.faqs.update');
     
     // Matches routes (placeholder until we create a controller)
     Route::get('/matches', function() {
