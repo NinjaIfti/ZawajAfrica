@@ -93,9 +93,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/details', [ProfileController::class, 'updateDetails'])->name('profile.update.details');
     
     // New Me profile routes
-    Route::get('/me/profile', function() {
-        return Inertia::render('Me/Profile');
-    })->name('me.profile');
+    Route::get('/me/profile', [App\Http\Controllers\Me\ProfileController::class, 'index'])->name('me.profile');
     
     Route::get('/me/photos', function() {
         return Inertia::render('Me/Photos');
@@ -122,6 +120,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages', function() {
         return Inertia::render('Messages/Index');
     })->name('messages');
+    
+    // Add new routes for profile updates
+    Route::post('/profile/update', [App\Http\Controllers\Me\ProfileController::class, 'update']);
+    Route::post('/profile/photo-update', [App\Http\Controllers\Me\ProfileController::class, 'updatePhoto']);
 });
 
 // Verification routes

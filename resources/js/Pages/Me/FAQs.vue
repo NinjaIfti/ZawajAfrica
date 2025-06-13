@@ -1,16 +1,18 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { router } from '@inertiajs/vue3';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
 
 const props = defineProps({
     auth: Object,
     user: Object,
+    faqs: Object, // FAQs data passed from the backend
 });
 
-// Sample FAQs
-const generalFaqs = ref([
+// Initialize FAQ categories from props or use defaults
+const generalFaqs = ref(props.faqs?.general || [
     {
         id: 1,
         question: 'What is ZawajAfrica?',
@@ -23,7 +25,7 @@ const generalFaqs = ref([
     }
 ]);
 
-const subscriptionFaqs = ref([
+const subscriptionFaqs = ref(props.faqs?.subscription || [
     {
         id: 1,
         question: 'What are the subscription plans available?',
@@ -35,6 +37,25 @@ const subscriptionFaqs = ref([
         answer: 'You can pay with any acceptable credit card.'
     }
 ]);
+
+// Function to request or refresh FAQ data
+function refreshFaqs() {
+    router.get(route('me.faqs.index'), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['faqs'],
+        onSuccess: (page) => {
+            if (page.props.faqs) {
+                if (page.props.faqs.general) {
+                    generalFaqs.value = page.props.faqs.general;
+                }
+                if (page.props.faqs.subscription) {
+                    subscriptionFaqs.value = page.props.faqs.subscription;
+                }
+            }
+        }
+    });
+}
 </script>
 
 <template>
@@ -48,11 +69,24 @@ const subscriptionFaqs = ref([
         <div class="flex-1 p-4 md:p-8">
             <div class="container mx-auto max-w-6xl">
                 <!-- Profile Header Component -->
-                <ProfileHeader :user="user" activeTab="faqs" />
+                <ProfileHeader :user="props.user" activeTab="faqs" />
 
                 <!-- FAQs Content -->
                 <div>
-                    <h2 class="text-2xl font-bold mb-2">FAQs</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">FAQs</h2>
+                        
+                        <!-- Refresh button -->
+                        <button 
+                            @click="refreshFaqs"
+                            class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Refresh FAQs
+                        </button>
+                    </div>
                     
                     <!-- General Questions Section -->
                     <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -84,5 +118,7 @@ const subscriptionFaqs = ref([
 </template>
 
 <style scoped>
-/* Add any component-specific styles here */
+button {
+    transition: all 0.2s;
+}
 </style> 

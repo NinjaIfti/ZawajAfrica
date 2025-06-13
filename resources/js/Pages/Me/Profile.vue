@@ -22,6 +22,10 @@ const editingSections = ref({
     about: false
 });
 
+// Add success/error message state
+const successMessage = ref('');
+const errorMessage = ref('');
+
 // Create a reactive copy of the user data that we can modify
 const userData = ref({
     ...props.user,
@@ -79,6 +83,7 @@ const saveSection = (section) => {
         case 'basicInfo':
             dataToUpdate.name = userData.value.name;
             dataToUpdate.location = userData.value.location;
+            console.log("Saving name:", userData.value.name); // Debug log
             break;
         case 'appearance':
             dataToUpdate.appearance = userData.value.appearance;
@@ -94,11 +99,28 @@ const saveSection = (section) => {
             break;
     }
     
-    // Use Inertia's router to patch the update
-    router.patch(route('me.profile.update'), dataToUpdate, {
-        onSuccess: () => {
+    // Use Inertia's router for direct POST rather than using named routes
+    router.post('/profile/update', dataToUpdate, {
+        onSuccess: (page) => {
             // Close edit mode for this section
             editingSections.value[section] = false;
+            
+            // Show success message
+            successMessage.value = 'Changes saved successfully';
+            setTimeout(() => { successMessage.value = ''; }, 3000);
+            
+            // Update the user data from response if provided
+            if (page.props.user) {
+                Object.assign(userData.value, page.props.user);
+            }
+            
+            console.log("Server response:", page.props); // Debug log
+        },
+        onError: (errors) => {
+            // Show error message
+            errorMessage.value = 'Failed to save changes: ' + (Object.values(errors)[0] || 'Unknown error');
+            console.error("Save errors:", errors); // Debug log
+            setTimeout(() => { errorMessage.value = ''; }, 3000);
         },
         preserveScroll: true
     });
@@ -109,20 +131,20 @@ const cancelEdit = (section) => {
     // Reset to original values from props
     switch(section) {
         case 'basicInfo':
-            userData.value.name = props.user.name;
-            userData.value.location = props.user.location;
+            userData.value.name = props.user?.name || '';
+            userData.value.location = props.user?.location || '';
             break;
         case 'appearance':
-            userData.value.appearance = { ...props.user.appearance };
+            userData.value.appearance = { ...props.user?.appearance || {} };
             break;
         case 'lifestyle':
-            userData.value.lifestyle = { ...props.user.lifestyle };
+            userData.value.lifestyle = { ...props.user?.lifestyle || {} };
             break;
         case 'background':
-            userData.value.background = { ...props.user.background };
+            userData.value.background = { ...props.user?.background || {} };
             break;
         case 'about':
-            userData.value.about = { ...props.user.about };
+            userData.value.about = { ...props.user?.about || {} };
             break;
     }
     
@@ -138,11 +160,17 @@ const updateProfilePhoto = (event) => {
     const formData = new FormData();
     formData.append('profile_photo', file);
     
-    router.patch(route('me.profile.photo.update'), formData, {
+    // Use direct URL instead of named route
+    router.post('/profile/photo-update', formData, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            // Photo update was successful
+            successMessage.value = 'Photo updated successfully';
+            setTimeout(() => { successMessage.value = ''; }, 3000);
+        },
+        onError: (errors) => {
+            errorMessage.value = 'Failed to update photo: ' + (Object.values(errors)[0] || 'Unknown error');
+            setTimeout(() => { errorMessage.value = ''; }, 3000);
         }
     });
 };
@@ -160,6 +188,37 @@ const updateProfilePhoto = (event) => {
             <div class="container mx-auto max-w-6xl">
                 <!-- Profile Header Component -->
                 <ProfileHeader :user="userData" activeTab="profile" />
+
+                <!-- Success/Error Messages -->
+                <div class="mb-4">
+                    <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ successMessage }}
+                        </div>
+                        <button @click="successMessage = ''" class="text-green-700">
+                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div v-if="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ errorMessage }}
+                        </div>
+                        <button @click="errorMessage = ''" class="text-red-700">
+                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Profile Content Section -->
                 <div v-if="activeTab === 'profile'">
@@ -199,7 +258,13 @@ const updateProfilePhoto = (event) => {
                                 <div v-else class="space-y-4">
                                     <div>
                                         <label class="text-sm text-gray-500">Full Name</label>
-                                        <input type="text" v-model="userData.name" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <input 
+                                            type="text" 
+                                            id="nameField"
+                                            v-model="userData.name" 
+                                            class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200"
+                                            @input="e => userData.name = e.target.value"
+                                        >
                                     </div>
                                     
                                     <div>
@@ -208,8 +273,18 @@ const updateProfilePhoto = (event) => {
                                     </div>
                                     
                                     <div class="flex space-x-3">
-                                        <button @click="saveSection('basicInfo')" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                                        <button 
+                                            @click="saveSection('basicInfo')" 
+                                            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                                        >
+                                            Save
+                                        </button>
                                         <button @click="cancelEdit('basicInfo')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                                    </div>
+                                    
+                                    <!-- Debug info -->
+                                    <div class="text-xs text-gray-500 mt-2">
+                                        Current name value: "{{ userData.name }}"
                                     </div>
                                 </div>
                                 
