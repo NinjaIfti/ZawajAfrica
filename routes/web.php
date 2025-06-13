@@ -5,6 +5,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Include admin routes
+require __DIR__.'/admin.php';
+
 // Redirect root to login page
 Route::get('/', function () {
     return redirect()->route('login');
@@ -14,13 +17,10 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
     
-    // If user is not verified and has no verification record, redirect to verification intro
-    if (!$user->is_verified && !$user->verification) {
-        return redirect()->route('verification.intro');
+    // Check if user is admin (based on email)
+    if ($user->email === 'admin@zawagafrica.com') {
+        return redirect()->route('admin.dashboard');
     }
-    
-    // Remove redirect to verification status for pending verifications
-    // Users will now go directly to dashboard after completing verification
     
     // Calculate profile completion percentage
     $profileCompletion = 0;
@@ -44,7 +44,56 @@ Route::get('/dashboard', function () {
         'profile' => $user->profile,
         'profileCompletion' => $profileCompletion,
     ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth', 'verified', 'verified.user'])->name('dashboard');
+
+// Admin routes
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    // Only allow access to admin@zawagafrica.com
+    Route::get('/dashboard', function () {
+        if (auth()->user()->email !== 'admin@zawagafrica.com') {
+            return redirect()->route('dashboard');
+        }
+        
+        // Get some basic stats for the admin dashboard
+        $totalUsers = \App\Models\User::count();
+        $recentUsers = \App\Models\User::latest()->take(5)->get();
+        
+        return Inertia::render('Admin/Dashboard', [
+            'stats' => [
+                'totalUsers' => $totalUsers,
+            ],
+            'recentUsers' => $recentUsers,
+        ]);
+    })->name('dashboard');
+    
+    // Users management
+    Route::get('/users', function () {
+        if (auth()->user()->email !== 'admin@zawagafrica.com') {
+            return redirect()->route('dashboard');
+        }
+        
+        $users = \App\Models\User::latest()->paginate(15);
+        
+        return Inertia::render('Admin/Users/Index', [
+            'users' => $users,
+        ]);
+    })->name('users');
+    
+    // Verifications management
+    Route::get('/verifications', function () {
+        if (auth()->user()->email !== 'admin@zawagafrica.com') {
+            return redirect()->route('dashboard');
+        }
+        
+        $pendingVerifications = \App\Models\User::whereHas('verification', function($query) {
+            $query->where('status', 'pending');
+        })->with('verification')->paginate(15);
+        
+        return Inertia::render('Admin/Verifications/Index', [
+            'pendingVerifications' => $pendingVerifications,
+        ]);
+    })->name('verifications');
+});
 
 Route::middleware('auth')->group(function () {
     // Basic profile routes
@@ -74,6 +123,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/verification/document-upload', [App\Http\Controllers\VerificationController::class, 'documentUpload'])->name('verification.document-upload');
     Route::post('/verification', [App\Http\Controllers\VerificationController::class, 'store'])->name('verification.store');
     Route::get('/verification/complete', [App\Http\Controllers\VerificationController::class, 'complete'])->name('verification.complete');
+    Route::get('/verification/pending', [App\Http\Controllers\VerificationController::class, 'pending'])->name('verification.pending');
 });
 
 // Public profile viewing

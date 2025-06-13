@@ -119,4 +119,24 @@ class VerificationController extends Controller
     {
         return Inertia::render('Verification/Complete');
     }
+
+    /**
+     * Display verification pending page.
+     */
+    public function pending(): Response
+    {
+        $user = auth()->user();
+        
+        // If user is verified, redirect to dashboard
+        if ($user->is_verified) {
+            return redirect()->route('dashboard');
+        }
+        
+        // If user doesn't have a pending verification, redirect to intro
+        if (!$user->verification || $user->verification->status !== 'pending') {
+            return redirect()->route('verification.intro');
+        }
+        
+        return Inertia::render('Verification/Pending');
+    }
 } 
