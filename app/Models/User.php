@@ -12,6 +12,7 @@ use App\Models\UserAppearance;
 use App\Models\UserLifestyle;
 use App\Models\UserBackground;
 use App\Models\UserAbout;
+use App\Models\UserPhoto;
 
 class User extends Authenticatable
 {
@@ -139,5 +140,21 @@ class User extends Authenticatable
     public function about()
     {
         return $this->hasOne(UserAbout::class);
+    }
+    
+    /**
+     * Get the photos associated with the user.
+     */
+    public function photos()
+    {
+        return $this->hasMany(UserPhoto::class)->orderBy('display_order');
+    }
+    
+    /**
+     * Get the primary photo associated with the user.
+     */
+    public function primaryPhoto()
+    {
+        return $this->hasOne(UserPhoto::class)->where('is_primary', true);
     }
 }
