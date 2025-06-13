@@ -46,15 +46,18 @@ class RegisteredUserController extends Controller
 
         // Combine location components into a single location string
         $location = '';
-        if ($request->city) {
-            $location .= $request->city;
+        if ($request->city && trim($request->city) !== '') {
+            $location .= trim($request->city);
         }
-        if ($request->state) {
-            $location .= $location ? ', ' . $request->state : $request->state;
+        if ($request->state && trim($request->state) !== '') {
+            $location .= ($location ? ', ' : '') . trim($request->state);
         }
-        if ($request->country) {
-            $location .= $location ? ', ' . $request->country : $request->country;
+        if ($request->country && trim($request->country) !== '') {
+            $location .= ($location ? ', ' : '') . trim($request->country);
         }
+
+        // Set default location if empty
+        $location = !empty($location) ? $location : 'Location not set';
 
         $user = User::create([
             'name' => $request->name,
@@ -68,7 +71,7 @@ class RegisteredUserController extends Controller
             'country' => $request->country,
             'state' => $request->state,
             'city' => $request->city,
-            'location' => $location, // Set the combined location value
+            'location' => $location,
             'is_verified' => false,
         ]);
         

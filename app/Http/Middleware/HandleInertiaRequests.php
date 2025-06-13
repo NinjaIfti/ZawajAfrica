@@ -29,10 +29,27 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        
+        // Ensure location is set for the user data
+        if ($user && empty($user->location)) {
+            $location = '';
+            if ($user->city && trim($user->city) !== '') {
+                $location .= trim($user->city);
+            }
+            if ($user->state && trim($user->state) !== '') {
+                $location .= ($location ? ', ' : '') . trim($user->state);
+            }
+            if ($user->country && trim($user->country) !== '') {
+                $location .= ($location ? ', ' : '') . trim($user->country);
+            }
+            $user->location = !empty($location) ? $location : 'Location not set';
+        }
+        
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
         ];
     }

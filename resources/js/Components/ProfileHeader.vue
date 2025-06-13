@@ -38,7 +38,7 @@ const props = defineProps({
                 </div>
                 
                 <h2 class="text-xl font-bold mb-1">{{ user.name }}</h2>
-                <p class="text-gray-500 text-sm">{{ user.location || 'Location not set' }}</p>
+                <p class="text-gray-500 text-sm">{{ user.location !== 'Location not set' ? user.location : (user.country || 'Location not set') }}</p>
             </div>
         </div>
 

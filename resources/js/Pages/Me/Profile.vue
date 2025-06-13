@@ -30,6 +30,9 @@ const errorMessage = ref('');
 const userData = ref(props.user ? {
     name: props.user.name || '',
     location: props.user.location || '',
+    country: props.user.country || '',
+    state: props.user.state || '',
+    city: props.user.city || '',
     profile_photo: props.user.profile_photo || '/images/placeholder.jpg',
     appearance: props.user.appearance || {},
     lifestyle: props.user.lifestyle || {},
@@ -38,6 +41,9 @@ const userData = ref(props.user ? {
 } : {
     name: '',
     location: '',
+    country: '',
+    state: '',
+    city: '',
     profile_photo: '/images/placeholder.jpg',
     appearance: {},
     lifestyle: {},
@@ -68,8 +74,11 @@ const saveSection = (section) => {
     switch(section) {
         case 'basicInfo':
             dataToUpdate.name = userData.value.name;
-            dataToUpdate.location = userData.value.location;
+            dataToUpdate.city = userData.value.city;
+            dataToUpdate.state = userData.value.state;
+            dataToUpdate.country = userData.value.country;
             console.log("Saving name:", userData.value.name); // Debug log
+            console.log("Saving location details:", userData.value.city, userData.value.state, userData.value.country);
             break;
         case 'appearance':
             dataToUpdate.appearance = userData.value.appearance;
@@ -118,6 +127,9 @@ const cancelEdit = (section) => {
     switch(section) {
         case 'basicInfo':
             userData.value.name = props.user?.name || '';
+            userData.value.city = props.user?.city || '';
+            userData.value.state = props.user?.state || '';
+            userData.value.country = props.user?.country || '';
             userData.value.location = props.user?.location || '';
             break;
         case 'appearance':
@@ -254,8 +266,18 @@ const updateProfilePhoto = (event) => {
                                     </div>
                                     
                                     <div>
-                                        <label class="text-sm text-gray-500">Location</label>
-                                        <input type="text" v-model="userData.location" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <label class="text-sm text-gray-500">City</label>
+                                        <input type="text" v-model="userData.city" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm text-gray-500">State/Province</label>
+                                        <input type="text" v-model="userData.state" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm text-gray-500">Country</label>
+                                        <input type="text" v-model="userData.country" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
                                     </div>
                                     
                                     <div class="flex space-x-3">
@@ -314,22 +336,50 @@ const updateProfilePhoto = (event) => {
                             <div v-else class="space-y-4">
                                 <div>
                                     <label class="text-sm text-gray-500">Hair Color</label>
-                                    <input type="text" v-model="userData.appearance.hair_color" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    <select v-model="userData.appearance.hair_color" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Hair Color</option>
+                                        <option value="Black">Black</option>
+                                        <option value="Dark Brown">Dark Brown</option>
+                                        <option value="Brown">Brown</option>
+                                        <option value="Light Brown">Light Brown</option>
+                                        <option value="Blonde">Blonde</option>
+                                        <option value="Red">Red</option>
+                                        <option value="Gray">Gray</option>
+                                        <option value="White">White</option>
+                                        <option value="Other">Other</option>
+                                    </select>
                                 </div>
                                 
                                 <div>
                                     <label class="text-sm text-gray-500">Eye Color</label>
-                                    <input type="text" v-model="userData.appearance.eye_color" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    <select v-model="userData.appearance.eye_color" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Eye Color</option>
+                                        <option value="Brown">Brown</option>
+                                        <option value="Dark Brown">Dark Brown</option>
+                                        <option value="Black">Black</option>
+                                        <option value="Blue">Blue</option>
+                                        <option value="Green">Green</option>
+                                        <option value="Gray">Gray</option>
+                                        <option value="Hazel">Hazel</option>
+                                        <option value="Amber">Amber</option>
+                                        <option value="Other">Other</option>
+                                    </select>
                                 </div>
                                 
                                 <div>
-                                    <label class="text-sm text-gray-500">Height</label>
-                                    <input type="text" v-model="userData.appearance.height" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    <label class="text-sm text-gray-500">Height (in cm)</label>
+                                    <select v-model="userData.appearance.height" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Height</option>
+                                        <option v-for="h in Array.from({length: 73}, (_, i) => (140 + i) + ' cm')" :key="h" :value="h">{{ h }}</option>
+                                    </select>
                                 </div>
                                 
                                 <div>
-                                    <label class="text-sm text-gray-500">Weight</label>
-                                    <input type="text" v-model="userData.appearance.weight" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    <label class="text-sm text-gray-500">Weight (in kg)</label>
+                                    <select v-model="userData.appearance.weight" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Weight</option>
+                                        <option v-for="w in Array.from({length: 91}, (_, i) => (40 + i) + ' kg')" :key="w" :value="w">{{ w }}</option>
+                                    </select>
                                 </div>
                                 
                                 <div class="flex space-x-3">

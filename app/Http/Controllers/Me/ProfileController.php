@@ -39,6 +39,9 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'location' => ['sometimes', 'string', 'nullable', 'max:255'],
+            'country' => ['sometimes', 'string', 'nullable', 'max:255'],
+            'state' => ['sometimes', 'string', 'nullable', 'max:255'],
+            'city' => ['sometimes', 'string', 'nullable', 'max:255'],
             'appearance' => ['sometimes', 'array'],
             'lifestyle' => ['sometimes', 'array'],
             'background' => ['sometimes', 'array'],
@@ -56,7 +59,37 @@ class ProfileController extends Controller
             $user->name = $validated['name'];
         }
         
-        if (isset($validated['location'])) {
+        // Format location if country/state/city are provided
+        if (isset($validated['country']) || isset($validated['state']) || isset($validated['city'])) {
+            // Update individual fields if provided
+            if (isset($validated['country'])) {
+                $user->country = $validated['country'];
+            }
+            
+            if (isset($validated['state'])) {
+                $user->state = $validated['state'];
+            }
+            
+            if (isset($validated['city'])) {
+                $user->city = $validated['city'];
+            }
+            
+            // Create formatted location string
+            $location = '';
+            if ($user->city && trim($user->city) !== '') {
+                $location .= trim($user->city);
+            }
+            if ($user->state && trim($user->state) !== '') {
+                $location .= ($location ? ', ' : '') . trim($user->state);
+            }
+            if ($user->country && trim($user->country) !== '') {
+                $location .= ($location ? ', ' : '') . trim($user->country);
+            }
+            
+            // Set default location if empty
+            $location = !empty($location) ? $location : 'Location not set';
+            $user->location = $location;
+        } else if (isset($validated['location'])) {
             $user->location = $validated['location'];
         }
         
