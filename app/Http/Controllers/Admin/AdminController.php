@@ -69,9 +69,18 @@ class AdminController extends Controller
             return redirect()->route('admin.verifications')->with('error', 'User has no verification record');
         }
         
+        // Modify the verification object to include full URLs for images
+        $verification = $user->verification;
+        if ($verification->front_image) {
+            $verification->front_image = asset('storage/' . $verification->front_image);
+        }
+        if ($verification->back_image) {
+            $verification->back_image = asset('storage/' . $verification->back_image);
+        }
+        
         return Inertia::render('Admin/Verifications/View', [
             'user' => $user,
-            'verification' => $user->verification,
+            'verification' => $verification,
         ]);
     }
     

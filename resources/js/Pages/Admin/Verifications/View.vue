@@ -155,7 +155,7 @@ const rejectVerification = () => {
                                     <p class="mb-2 text-sm font-medium">Front Side</p>
                                     <div class="overflow-hidden rounded-lg border border-gray-200">
                                         <img 
-                                            :src="`/storage/${props.verification.front_image}`" 
+                                            :src="props.verification.front_image" 
                                             alt="Front Document" 
                                             class="w-full object-contain"
                                             style="max-height: 400px;"
@@ -168,7 +168,7 @@ const rejectVerification = () => {
                                     <p class="mb-2 text-sm font-medium">Back Side</p>
                                     <div class="overflow-hidden rounded-lg border border-gray-200">
                                         <img 
-                                            :src="`/storage/${props.verification.back_image}`" 
+                                            :src="props.verification.back_image" 
                                             alt="Back Document" 
                                             class="w-full object-contain"
                                             style="max-height: 400px;"
