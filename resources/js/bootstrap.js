@@ -11,8 +11,6 @@ if (token) {
     
     // Also set it as a cookie for non-axios requests
     document.cookie = `XSRF-TOKEN=${token.content}; path=/`;
-    
-    console.log('CSRF token set successfully');
 } else {
     console.error('CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token');
 }

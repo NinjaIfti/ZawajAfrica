@@ -20,9 +20,7 @@ const errorMessage = ref('');
 
 // Initialize photos from user data or create empty slots
 onMounted(() => {
-    console.log('Props photos:', props.photos);
     initializePhotos();
-    console.log('Initialized photos:', photos.value);
 });
 
 function initializePhotos() {
@@ -75,7 +73,6 @@ function handleFileSelect(event, index) {
         }
     }).then(response => {
         isUploading.value = false;
-        console.log('Upload response:', response.data);
         successMessage.value = response.data.message || 'Photo uploaded successfully';
         setTimeout(() => { successMessage.value = ''; }, 3000);
         
@@ -85,7 +82,6 @@ function handleFileSelect(event, index) {
         }
     }).catch(error => {
         isUploading.value = false;
-        console.error('Upload error details:', error.response?.data || error.message);
         errorMessage.value = error.response?.data?.message || 'Failed to upload photo';
         setTimeout(() => { errorMessage.value = ''; }, 3000);
     });
@@ -97,7 +93,6 @@ function deletePhoto(index) {
     
     axios.delete(route('me.photos.delete', { id: photos.value[index].id }))
         .then(response => {
-        console.log('Delete response:', response.data);
         successMessage.value = response.data.message || 'Photo deleted successfully';
         setTimeout(() => { successMessage.value = ''; }, 3000);
         
@@ -109,7 +104,6 @@ function deletePhoto(index) {
             photos.value[index] = { id: null, url: null, is_primary: false };
         }
     }).catch(error => {
-        console.error('Delete error details:', error.response?.data || error.message);
         errorMessage.value = error.response?.data?.message || 'Failed to delete photo';
         setTimeout(() => { errorMessage.value = ''; }, 3000);
     });
@@ -121,7 +115,6 @@ function setPrimaryPhoto(index) {
     
     axios.put(route('me.photos.primary', { id: photos.value[index].id }))
         .then(response => {
-        console.log('Set primary response:', response.data);
         successMessage.value = response.data.message || 'Primary photo updated';
         setTimeout(() => { successMessage.value = ''; }, 3000);
         
@@ -135,7 +128,6 @@ function setPrimaryPhoto(index) {
             });
         }
     }).catch(error => {
-        console.error('Set primary error details:', error.response?.data || error.message);
         errorMessage.value = error.response?.data?.message || 'Failed to set primary photo';
         setTimeout(() => { errorMessage.value = ''; }, 3000);
     });
@@ -143,7 +135,6 @@ function setPrimaryPhoto(index) {
 
 // Helper function to update photo array
 function updatePhotoArray(newPhotos) {
-    console.log('Updating photos with:', newPhotos);
     const maxPhotos = 8;
     
     // Update existing photos
@@ -153,8 +144,6 @@ function updatePhotoArray(newPhotos) {
     while (photos.value.length < maxPhotos) {
         photos.value.push({ id: null, url: null, is_primary: false });
     }
-    
-    console.log('Updated photos array:', photos.value);
 }
 </script>
 
