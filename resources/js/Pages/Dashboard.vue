@@ -11,6 +11,13 @@ const isMobileMenuOpen = ref(false);
 // Toggle mobile menu
 const toggleMobileMenu = () => {
     isMobileMenuOpen.value = !isMobileMenuOpen.value;
+    
+    // Prevent body scrolling when menu is open
+    if (isMobileMenuOpen.value) {
+        document.body.classList.add('overflow-hidden');
+    } else {
+        document.body.classList.remove('overflow-hidden');
+    }
 };
 
 // State for right sidebar visibility
@@ -154,6 +161,7 @@ const closeMobileMenu = (e) => {
     if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && 
         !e.target.closest('.mobile-menu-toggle')) {
         isMobileMenuOpen.value = false;
+        document.body.classList.remove('overflow-hidden');
     }
 };
 
@@ -167,6 +175,7 @@ onMounted(() => {
 onUnmounted(() => {
     document.removeEventListener('click', closeDropdown);
     document.removeEventListener('click', closeMobileMenu);
+    document.body.classList.remove('overflow-hidden');
 });
 </script>
 
@@ -178,6 +187,7 @@ onUnmounted(() => {
         <button 
             @click="toggleMobileMenu" 
             class="mobile-menu-toggle fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md md:hidden"
+            aria-label="Toggle menu"
         >
             <svg 
                 class="h-6 w-6 text-gray-700" 
@@ -203,16 +213,16 @@ onUnmounted(() => {
         <div 
             v-if="isMobileMenuOpen" 
             class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-            @click="isMobileMenuOpen = false"
+            @click="toggleMobileMenu"
         ></div>
 
-        <!-- Left Sidebar Component - Hidden on mobile, toggled with menu button -->
-        <div 
-            class="mobile-menu fixed inset-y-0 left-0 transform transition-all duration-300 z-40 md:relative md:translate-x-0"
+        <!-- Left Sidebar Component - Slides in from left on mobile -->
+        <aside 
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
             :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
         >
             <Sidebar :user="$page.props.auth.user" />
-        </div>
+        </aside>
         
         <!-- Main Content -->
         <div class="flex-1 px-4 py-4 md:p-8 mt-12 md:mt-0">
@@ -259,5 +269,10 @@ onUnmounted(() => {
     .min-h-screen {
         padding-top: 1rem;
     }
+}
+
+/* Prevent scrolling when mobile menu is open */
+:global(.overflow-hidden) {
+    overflow: hidden;
 }
 </style>

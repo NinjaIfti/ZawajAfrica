@@ -1,80 +1,14 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue';
 
 defineProps({
     user: Object
 });
-
-// Add state for mobile sidebar toggle
-const isMobileMenuOpen = ref(false);
-
-// Function to toggle mobile menu
-const toggleMobileMenu = () => {
-    isMobileMenuOpen.value = !isMobileMenuOpen.value;
-};
-
-// Close the mobile menu when clicking outside
-const handleClickOutside = (event) => {
-    const sidebar = document.getElementById('mobile-sidebar');
-    if (isMobileMenuOpen.value && sidebar && !sidebar.contains(event.target) && 
-        !event.target.classList.contains('hamburger-button')) {
-        isMobileMenuOpen.value = false;
-    }
-};
-
-// Add and remove event listeners
-onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
-});
 </script>
 
 <template>
-    <!-- Mobile hamburger menu button - only visible on small screens -->
-    <div class="md:hidden fixed top-4 left-4 z-30">
-        <button 
-            @click="toggleMobileMenu" 
-            class="hamburger-button bg-white p-2 rounded-md shadow-md focus:outline-none"
-            aria-label="Toggle menu"
-        >
-            <svg 
-                class="h-6 w-6 text-gray-700" 
-                :class="{ 'hidden': isMobileMenuOpen }" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-            >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <svg 
-                class="h-6 w-6 text-gray-700" 
-                :class="{ 'hidden': !isMobileMenuOpen }" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-            >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
-    </div>
-
-    <!-- Overlay for mobile - only visible when mobile menu is open -->
-    <div 
-        v-if="isMobileMenuOpen" 
-        class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-        @click="isMobileMenuOpen = false"
-    ></div>
-
     <!-- Left Sidebar -->
-    <div 
-        id="mobile-sidebar"
-        class="w-64 bg-white shadow-md h-full fixed md:relative z-20 transition-all duration-300"
-        :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen, 'md:translate-x-0': true}"
-    >
+    <div class="w-64 bg-white shadow-md h-full overflow-y-auto flex flex-col">
         <!-- Logo -->
         <div class="p-4 mb-6">
             <div>
@@ -83,7 +17,7 @@ onUnmounted(() => {
         </div>
         
         <!-- Navigation -->
-        <nav class="space-y-2 px-3">
+        <nav class="space-y-2 px-3 flex-grow">
             <Link :href="route('dashboard')" class="flex items-center rounded-lg px-4 py-3 text-base font-medium" :class="route().current('dashboard') ? 'bg-purple-600 text-white' : 'text-gray-700 hover:bg-gray-50'">
                 <svg class="mr-3 h-6 w-6" :class="route().current('dashboard') ? 'text-white' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -135,7 +69,7 @@ onUnmounted(() => {
         </nav>
         
         <!-- Upgrade Membership -->
-        <div class="mt-12 p-4 w-full">
+        <div class="p-4 w-full">
             <div class="rounded-lg bg-purple-700 p-4 text-center text-white relative overflow-hidden">
                 <!-- Diagonal gradient strips -->
                 <div class="absolute -top-8 right-10 w-6 h-48 bg-gradient-to-b from-purple-700 via-purple-500 to-purple-700 transform rotate-45"></div>
