@@ -1,6 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
@@ -22,6 +22,41 @@ const questions = ref({
 const isEditing = ref(false);
 const isSaving = ref(false);
 const showSuccess = ref(false);
+
+// Mobile menu state
+const isMobileMenuOpen = ref(false);
+
+// Toggle mobile menu
+const toggleMobileMenu = () => {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value;
+    
+    // Prevent body scrolling when menu is open
+    if (isMobileMenuOpen.value) {
+        document.body.classList.add('overflow-hidden');
+    } else {
+        document.body.classList.remove('overflow-hidden');
+    }
+};
+
+// Close mobile menu when clicking outside
+const closeMobileMenu = (e) => {
+    if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && 
+        !e.target.closest('.mobile-menu-toggle')) {
+        isMobileMenuOpen.value = false;
+        document.body.classList.remove('overflow-hidden');
+    }
+};
+
+// Add click event listener when component is mounted
+onMounted(() => {
+    document.addEventListener('click', closeMobileMenu);
+});
+
+// Remove event listener when component is unmounted
+onUnmounted(() => {
+    document.removeEventListener('click', closeMobileMenu);
+    document.body.classList.remove('overflow-hidden');
+});
 
 // Update question answer
 const updateAnswer = (field, value) => {
@@ -55,15 +90,58 @@ const saveChanges = () => {
 <template>
     <Head title="My Personality" />
 
-    <div class="flex min-h-screen bg-gray-100">
-        <!-- Left Sidebar Component -->
-        <Sidebar :user="$page.props.auth.user" />
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
+        <!-- Mobile header with hamburger menu - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+            <button 
+                @click="toggleMobileMenu" 
+                class="mobile-menu-toggle p-1 mr-3"
+                aria-label="Toggle menu"
+            >
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': !isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <!-- Page title on mobile -->
+            <h1 class="text-lg font-bold">My Personality</h1>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div 
+            v-if="isMobileMenuOpen" 
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="toggleMobileMenu"
+        ></div>
+
+        <!-- Left Sidebar Component - Slides in from left on mobile -->
+        <aside 
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
+            :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
+        >
+            <Sidebar :user="$page.props.auth.user" />
+        </aside>
         
         <!-- Main Content -->
-        <div class="flex-1 p-4 md:p-8">
+        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
             <div class="container mx-auto max-w-6xl">
-                <!-- Profile Header Component -->
-                <ProfileHeader :user="props.user" activeTab="personality" />
+                <!-- Profile Header Component - Only visible on desktop -->
+                <ProfileHeader :user="props.user" activeTab="personality" class="hidden md:block" />
 
                 <!-- Personality Content -->
                 <div>
@@ -174,6 +252,18 @@ const saveChanges = () => {
 </template>
 
 <style scoped>
+/* Ensure proper stacking on mobile */
+@media (max-width: 768px) {
+    .min-h-screen {
+        padding-top: 1rem;
+    }
+}
+
+/* Prevent scrolling when mobile menu is open */
+:global(.overflow-hidden) {
+    overflow: hidden;
+}
+
 /* Form styling */
 input:disabled {
     background-color: #f9fafb;

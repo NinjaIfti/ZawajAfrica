@@ -1,6 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
@@ -8,6 +8,41 @@ import ProfileHeader from '@/Components/ProfileHeader.vue';
 const props = defineProps({
     auth: Object,
     user: Object,
+});
+
+// Mobile menu state
+const isMobileMenuOpen = ref(false);
+
+// Toggle mobile menu
+const toggleMobileMenu = () => {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value;
+    
+    // Prevent body scrolling when menu is open
+    if (isMobileMenuOpen.value) {
+        document.body.classList.add('overflow-hidden');
+    } else {
+        document.body.classList.remove('overflow-hidden');
+    }
+};
+
+// Close mobile menu when clicking outside
+const closeMobileMenu = (e) => {
+    if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && 
+        !e.target.closest('.mobile-menu-toggle')) {
+        isMobileMenuOpen.value = false;
+        document.body.classList.remove('overflow-hidden');
+    }
+};
+
+// Add click event listener when component is mounted
+onMounted(() => {
+    document.addEventListener('click', closeMobileMenu);
+});
+
+// Remove event listener when component is unmounted
+onUnmounted(() => {
+    document.removeEventListener('click', closeMobileMenu);
+    document.body.classList.remove('overflow-hidden');
 });
 
 // Active tab state
@@ -187,45 +222,65 @@ const updateProfilePhoto = (event) => {
 <template>
     <Head title="My Profile" />
 
-    <div class="flex min-h-screen bg-gray-100">
-        <!-- Left Sidebar Component -->
-        <Sidebar :user="$page.props.auth.user" />
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
+        <!-- Mobile header with hamburger menu - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+            <button 
+                @click="toggleMobileMenu" 
+                class="mobile-menu-toggle p-1 mr-3"
+                aria-label="Toggle menu"
+            >
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': !isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <!-- Page title on mobile -->
+            <h1 class="text-lg font-bold">My Profile</h1>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div 
+            v-if="isMobileMenuOpen" 
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="toggleMobileMenu"
+        ></div>
+
+        <!-- Left Sidebar Component - Slides in from left on mobile -->
+        <aside 
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
+            :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
+        >
+            <Sidebar :user="$page.props.auth.user" />
+        </aside>
         
         <!-- Main Content -->
-        <div class="flex-1 p-4 md:p-8">
+        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
             <div class="container mx-auto max-w-6xl">
                 <!-- Profile Header Component -->
-                <ProfileHeader :user="userData" activeTab="profile" />
+                <ProfileHeader :user="userData" activeTab="profile" class="hidden md:block" />
 
                 <!-- Success/Error Messages -->
-                <div class="mb-4">
-                    <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
-                        <div class="flex items-center">
-                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                            {{ successMessage }}
-                        </div>
-                        <button @click="successMessage = ''" class="text-green-700">
-                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    <div v-if="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
-                        <div class="flex items-center">
-                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                            {{ errorMessage }}
-                        </div>
-                        <button @click="errorMessage = ''" class="text-red-700">
-                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-                    </div>
+                <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {{ successMessage }}
+                </div>
+                <div v-if="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {{ errorMessage }}
                 </div>
 
                 <!-- Profile Content Section -->
@@ -638,6 +693,18 @@ const updateProfilePhoto = (event) => {
 </template>
 
 <style scoped>
+/* Ensure proper stacking on mobile */
+@media (max-width: 768px) {
+    .min-h-screen {
+        padding-top: 1rem;
+    }
+}
+
+/* Prevent scrolling when mobile menu is open */
+:global(.overflow-hidden) {
+    overflow: hidden;
+}
+
 /* Form element styling */
 input[type="file"] {
     display: none;

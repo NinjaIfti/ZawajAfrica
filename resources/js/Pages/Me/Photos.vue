@@ -1,6 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
@@ -11,6 +11,42 @@ const props = defineProps({
     photos: Array,
 });
 
+// Mobile menu state
+const isMobileMenuOpen = ref(false);
+
+// Toggle mobile menu
+const toggleMobileMenu = () => {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value;
+    
+    // Prevent body scrolling when menu is open
+    if (isMobileMenuOpen.value) {
+        document.body.classList.add('overflow-hidden');
+    } else {
+        document.body.classList.remove('overflow-hidden');
+    }
+};
+
+// Close mobile menu when clicking outside
+const closeMobileMenu = (e) => {
+    if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && 
+        !e.target.closest('.mobile-menu-toggle')) {
+        isMobileMenuOpen.value = false;
+        document.body.classList.remove('overflow-hidden');
+    }
+};
+
+// Add click event listener when component is mounted
+onMounted(() => {
+    document.addEventListener('click', closeMobileMenu);
+    initializePhotos();
+});
+
+// Remove event listener when component is unmounted
+onUnmounted(() => {
+    document.removeEventListener('click', closeMobileMenu);
+    document.body.classList.remove('overflow-hidden');
+});
+
 // State for photos
 const photos = ref([]);
 const isUploading = ref(false);
@@ -19,10 +55,6 @@ const successMessage = ref('');
 const errorMessage = ref('');
 
 // Initialize photos from user data or create empty slots
-onMounted(() => {
-    initializePhotos();
-});
-
 function initializePhotos() {
     const maxPhotos = 8;
     
@@ -150,15 +182,58 @@ function updatePhotoArray(newPhotos) {
 <template>
     <Head title="My Photos" />
 
-    <div class="flex min-h-screen bg-gray-100">
-        <!-- Left Sidebar Component -->
-        <Sidebar :user="$page.props.auth.user" />
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
+        <!-- Mobile header with hamburger menu - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+            <button 
+                @click="toggleMobileMenu" 
+                class="mobile-menu-toggle p-1 mr-3"
+                aria-label="Toggle menu"
+            >
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': !isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <!-- Page title on mobile -->
+            <h1 class="text-lg font-bold">My Photos</h1>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div 
+            v-if="isMobileMenuOpen" 
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="toggleMobileMenu"
+        ></div>
+
+        <!-- Left Sidebar Component - Slides in from left on mobile -->
+        <aside 
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
+            :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
+        >
+            <Sidebar :user="$page.props.auth.user" />
+        </aside>
         
         <!-- Main Content -->
-        <div class="flex-1 p-4 md:p-8">
+        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
             <div class="container mx-auto max-w-6xl">
-                <!-- Profile Header Component -->
-                <ProfileHeader :user="props.user" activeTab="photos" />
+                <!-- Profile Header Component - Only visible on desktop -->
+                <ProfileHeader :user="props.user" activeTab="photos" class="hidden md:block" />
 
                 <!-- Photos Content -->
                 <div>
@@ -170,14 +245,14 @@ function updatePhotoArray(newPhotos) {
                             <div v-if="successMessage" class="text-green-600 text-sm flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                        </svg>
+                                </svg>
                                 {{ successMessage }}
-                        </div>
+                            </div>
                         
                             <div v-if="errorMessage" class="text-red-600 text-sm flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
+                                </svg>
                                 {{ errorMessage }}
                             </div>
                         </div>
@@ -194,7 +269,7 @@ function updatePhotoArray(newPhotos) {
                         <p class="text-sm text-gray-600 mt-1">Uploading: {{ Math.round(uploadProgress) }}%</p>
                     </div>
                     
-                    <!-- Photo Grid -->
+                    <!-- Photo Grid - Responsive for mobile -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <!-- For each photo slot -->
                         <div 
@@ -283,11 +358,15 @@ function updatePhotoArray(newPhotos) {
 </template>
 
 <style scoped>
-input[type="file"] {
-    display: none;
+/* Ensure proper stacking on mobile */
+@media (max-width: 768px) {
+    .min-h-screen {
+        padding-top: 1rem;
+    }
 }
 
-button {
-    transition: all 0.2s;
+/* Prevent scrolling when mobile menu is open */
+:global(.overflow-hidden) {
+    overflow: hidden;
 }
 </style>

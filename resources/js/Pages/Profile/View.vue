@@ -85,33 +85,27 @@ const toggleSection = (sectionId) => {
         
         <!-- Main Content -->
         <div class="flex-1 p-8">
-            <!-- Welcome and Search -->
-            <div class="mb-8">
-                <div class="flex items-center justify-between mb-4">
-                    <h1 class="text-2xl font-bold">Welcome Ayofemi!</h1>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-sm">English</span>
-                        <div class="h-10 w-10 overflow-hidden rounded-full bg-gray-300">
-                            <img src="/images/placeholder.jpg" alt="Profile" class="h-full w-full object-cover" />
-                        </div>
-                    </div>
+            <!-- Welcome and Search - Only visible on desktop -->
+            <div class="mb-6 md:mb-8 hidden md:block">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                    <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+                    
+                    
                 </div>
                 
-                <div class="flex items-center space-x-4">
-                    <div class="relative flex-1">
-                        <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2">
-                            <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
-                        </div>
+                <!-- Search bar with integrated filter button - desktop -->
+                <div class="flex items-center rounded-lg border border-gray-300 bg-white">
+                    <div class="flex-1 flex items-center px-4 py-2">
+                        <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
                     </div>
-                    
-                    <button class="rounded-lg border border-gray-300 bg-white p-2">
+                    <div class="border-l border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-50">
                         <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
-                    </button>
+                    </div>
                 </div>
             </div>
             
