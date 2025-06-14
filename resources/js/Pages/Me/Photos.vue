@@ -170,14 +170,14 @@ function updatePhotoArray(newPhotos) {
                             <div v-if="successMessage" class="text-green-600 text-sm flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
+                                        </svg>
                                 {{ successMessage }}
-                            </div>
-                            
+                        </div>
+                        
                             <div v-if="errorMessage" class="text-red-600 text-sm flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                        </svg>
                                 {{ errorMessage }}
                             </div>
                         </div>
@@ -217,11 +217,11 @@ function updatePhotoArray(newPhotos) {
                                 
                                 <!-- Upload placeholder if no photo -->
                                 <div v-else class="w-full h-full flex items-center justify-center">
-                                    <div class="absolute inset-0 opacity-5">
+                                <div class="absolute inset-0 opacity-5">
                                         <div class="absolute top-0 left-0 w-full h-full bg-indigo-200 transform -rotate-45"></div>
-                                    </div>
-                                </div>
-                                
+                            </div>
+                        </div>
+                        
                                 <!-- Primary badge -->
                                 <div 
                                     v-if="photo.is_primary && photo.url" 
