@@ -10,8 +10,8 @@ defineProps({
 </script>
 
 <template>
-    <!-- Recent Messages -->
-    <div class="bg-white rounded-lg shadow">
+    <!-- Recent Messages - Hidden on mobile and tablet, visible on large screens -->
+    <div class="hidden lg:block bg-white rounded-lg shadow">
         <div class="p-4">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-bold">Recent Messages</h2>

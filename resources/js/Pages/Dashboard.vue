@@ -5,6 +5,14 @@ import Sidebar from '@/Components/Sidebar.vue';
 import DashboardSidebar from '@/Components/DashboardSidebar.vue';
 import MatchCard from '@/Components/MatchCard.vue';
 
+// Mobile menu state
+const isMobileMenuOpen = ref(false);
+
+// Toggle mobile menu
+const toggleMobileMenu = () => {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value;
+};
+
 // State for right sidebar visibility
 const isRightSidebarVisible = ref(true);
 
@@ -141,33 +149,80 @@ const closeDropdown = (e) => {
     }
 };
 
+// Close mobile menu when clicking outside
+const closeMobileMenu = (e) => {
+    if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && 
+        !e.target.closest('.mobile-menu-toggle')) {
+        isMobileMenuOpen.value = false;
+    }
+};
+
 // Add click event listener when component is mounted
 onMounted(() => {
     document.addEventListener('click', closeDropdown);
+    document.addEventListener('click', closeMobileMenu);
 });
 
 // Remove event listener when component is unmounted
 onUnmounted(() => {
     document.removeEventListener('click', closeDropdown);
+    document.removeEventListener('click', closeMobileMenu);
 });
 </script>
 
 <template>
     <Head title="Dashboard" />
 
-    <div class="flex min-h-screen bg-gray-100">
-        <!-- Left Sidebar Component -->
-        <Sidebar :user="$page.props.auth.user" />
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
+        <!-- Mobile Menu Toggle Button - Only visible on mobile -->
+        <button 
+            @click="toggleMobileMenu" 
+            class="mobile-menu-toggle fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md md:hidden"
+        >
+            <svg 
+                class="h-6 w-6 text-gray-700" 
+                :class="{ 'hidden': isMobileMenuOpen }"
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+            >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <svg 
+                class="h-6 w-6 text-gray-700" 
+                :class="{ 'hidden': !isMobileMenuOpen }"
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+            >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+
+        <!-- Mobile Menu Overlay -->
+        <div 
+            v-if="isMobileMenuOpen" 
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="isMobileMenuOpen = false"
+        ></div>
+
+        <!-- Left Sidebar Component - Hidden on mobile, toggled with menu button -->
+        <div 
+            class="mobile-menu fixed inset-y-0 left-0 transform transition-all duration-300 z-40 md:relative md:translate-x-0"
+            :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
+        >
+            <Sidebar :user="$page.props.auth.user" />
+        </div>
         
         <!-- Main Content -->
-        <div class="flex-1 p-8">
+        <div class="flex-1 px-4 py-4 md:p-8 mt-12 md:mt-0">
             <!-- Welcome and Search -->
-            <div class="mb-8">
+            <div class="mb-6 md:mb-8">
                 <h1 class="text-2xl font-bold mb-4">Welcome {{ $page.props.auth.user.name }}!</h1>
                 
-                <div class="flex items-center space-x-4">
+                <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
                     <div class="relative flex-1">
-                        <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2">
+                        <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3">
                             <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
@@ -175,7 +230,7 @@ onUnmounted(() => {
                         </div>
                     </div>
                     
-                    <button class="rounded-lg border border-gray-300 bg-white p-2">
+                    <button class="rounded-lg border border-gray-300 bg-white p-3 flex items-center justify-center">
                         <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
@@ -188,14 +243,21 @@ onUnmounted(() => {
         </div>
         
         <!-- Right Sidebar Component -->
-        <DashboardSidebar 
-            :user="$page.props.auth.user"
-            :therapists="therapists"
-            :messages="recentMessages"
-        />
+        <div class="hidden lg:block lg:sticky lg:top-0 lg:h-screen">
+            <DashboardSidebar 
+                :user="$page.props.auth.user"
+                :therapists="therapists"
+                :messages="recentMessages"
+            />
+        </div>
     </div>
 </template>
 
 <style scoped>
-/* Add custom styles if needed */
+/* Ensure proper stacking on mobile */
+@media (max-width: 768px) {
+    .min-h-screen {
+        padding-top: 1rem;
+    }
+}
 </style>

@@ -10,8 +10,8 @@ defineProps({
 </script>
 
 <template>
-    <!-- Therapists Section -->
-    <div class="bg-white rounded-lg shadow mb-6">
+    <!-- Therapists Section - Hidden on mobile and tablet, visible on large screens -->
+    <div class="hidden lg:block bg-white rounded-lg shadow mb-6">
         <div class="p-4">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-bold">Therapists</h2>
