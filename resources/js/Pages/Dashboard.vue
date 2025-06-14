@@ -1,9 +1,17 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import DashboardSidebar from '@/Components/DashboardSidebar.vue';
 import MatchCard from '@/Components/MatchCard.vue';
+
+const props = defineProps({
+    user: Object,
+    profile: Object,
+    profileCompletion: Number,
+    auth: Object,
+    potentialMatches: Array,
+});
 
 // Mobile menu state
 const isMobileMenuOpen = ref(false);
@@ -42,29 +50,95 @@ const changeLanguage = (language) => {
     profileDropdownOpen.value = false;
 };
 
-// Sample data for matches
-const matches = ref([
-    {
-        id: 1,
-        name: 'Salihu G',
-        age: 31,
-        location: 'Garki, Abuja, Nigeria',
-        online: true,
-        image: '/images/placeholder.jpg',
-        compatibility: 85,
-        timestamp: '10 min ago'
-    },
-    {
-        id: 2,
-        name: 'Abdullahi S',
-        age: 31,
-        location: 'Garki, Abuja, Nigeria',
-        online: true,
-        image: '/images/placeholder.jpg',
-        compatibility: 85,
-        timestamp: '15 min ago'
+// Prepare user data for matches
+const processUserData = (user) => {
+    // Calculate age from date of birth if available
+    let age = '';
+    if (user.dob_day && user.dob_month && user.dob_year) {
+        // Convert month name to month number
+        const monthMap = {
+            'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3,
+            'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7,
+            'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        
+        const month = monthMap[user.dob_month] || 0;
+        const birthDate = new Date(user.dob_year, month, user.dob_day);
+        const today = new Date();
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
     }
-]);
+
+    // Format location from city, state, country
+    let location = '';
+    if (user.city) location += user.city;
+    if (user.state) {
+        if (location) location += ', ';
+        location += user.state;
+    }
+    if (user.country) {
+        if (location) location += ', ';
+        location += user.country;
+    }
+
+    // Get profile photo - check if user has photos and a primary photo
+    let image = '/images/placeholder.jpg';
+    if (user.photos && user.photos.length > 0) {
+        // Find primary photo if exists
+        const primaryPhoto = user.photos.find(photo => photo.is_primary);
+        if (primaryPhoto) {
+            image = primaryPhoto.url;
+        } else if (user.photos[0]) {
+            // Otherwise use the first photo
+            image = user.photos[0].url;
+        }
+    } else if (user.profile_photo) {
+        // If profile_photo is a full URL, use it directly
+        if (user.profile_photo.startsWith('http')) {
+            image = user.profile_photo;
+        } else {
+            // Otherwise, assume it's a path and construct the URL
+            image = `/storage/${user.profile_photo}`;
+        }
+    }
+    
+    // Mock compatibility score (to be replaced with real algorithm later)
+    const compatibility = Math.floor(Math.random() * 30) + 70; // Random between 70-99%
+    
+    return {
+        id: user.id,
+        name: user.name || 'Anonymous',
+        age: age || '?',
+        location: location || 'Location not specified',
+        online: true, // This would be dynamic in a real app
+        image: image,
+        compatibility: compatibility,
+        timestamp: 'Active recently' // This would be dynamic in a real app
+    };
+};
+
+// Process potential matches from the server
+const matches = computed(() => {
+    if (props.potentialMatches && props.potentialMatches.length > 0) {
+        return props.potentialMatches.map(user => processUserData(user));
+    }
+    // Fallback to sample data if no matches are available
+    return [
+        {
+            id: 1,
+            name: 'Sample User',
+            age: '?',
+            location: 'Location not specified',
+            online: true,
+            image: '/images/placeholder.jpg',
+            compatibility: 85,
+            timestamp: 'Active recently'
+        }
+    ];
+});
 
 // Sample data for therapists
 const therapists = ref([

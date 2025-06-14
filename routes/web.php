@@ -39,10 +39,18 @@ Route::get('/dashboard', function () {
         }
     }
     
+    // Get all users except the current user as potential matches
+    $potentialMatches = \App\Models\User::where('id', '!=', $user->id)
+        ->where('email', '!=', 'admin@zawagafrica.com') // Exclude admin user
+        ->with('photos') // Include photos relationship if available
+        ->take(10) // Limit to 10 matches for now
+        ->get();
+    
     return Inertia::render('Dashboard', [
         'user' => $user,
         'profile' => $user->profile,
         'profileCompletion' => $profileCompletion,
+        'potentialMatches' => $potentialMatches,
     ]);
 })->middleware(['auth', 'verified', 'verified.user'])->name('dashboard');
 

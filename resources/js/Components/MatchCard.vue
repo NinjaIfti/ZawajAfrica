@@ -20,7 +20,7 @@ const props = defineProps({
                 <Link :href="route('profile.view', { id: match.id })" class="block">
                     <!-- Match Image -->
                     <div class="h-48 sm:h-56 md:h-64 w-full bg-gray-700 relative">
-                        <img :src="match.image" :alt="match.name" class="h-full w-full object-cover opacity-0" />
+                        <img :src="match.image" :alt="match.name" class="h-full w-full object-cover" />
                     
                         <!-- Online Status -->
                         <div class="absolute left-3 top-3 flex items-center rounded-full bg-black bg-opacity-70 px-2.5 py-1 text-xs text-white">
