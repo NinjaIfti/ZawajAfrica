@@ -157,4 +157,20 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserPhoto::class)->where('is_primary', true);
     }
+    
+    /**
+     * Get the interests data associated with the user.
+     */
+    public function interests()
+    {
+        return $this->hasOne(\App\Models\UserInterest::class);
+    }
+    
+    /**
+     * Get the personality data associated with the user.
+     */
+    public function personality()
+    {
+        return $this->hasOne(\App\Models\UserPersonality::class);
+    }
 }

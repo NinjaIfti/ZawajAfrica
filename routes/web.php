@@ -147,8 +147,37 @@ Route::get('/profile/{id}', [ProfileController::class, 'show'])->name('profile.s
 
 // Profile view for matches
 Route::get('/matches/profile/{id}', function($id) {
+    // Get the user by ID with all related data
+    $user = \App\Models\User::with([
+        'photos', 
+        'profile', 
+        'appearance', 
+        'lifestyle', 
+        'background', 
+        'about',
+        'interests',
+        'personality'
+    ])->findOrFail($id);
+    
+    // Calculate compatibility (mock for now)
+    $compatibility = rand(70, 99);
+    
+    // Format profile photo URL if it exists
+    if ($user->profile_photo) {
+        $user->profile_photo = asset('storage/' . $user->profile_photo);
+    }
+    
+    // Format photos URLs
+    if ($user->photos) {
+        foreach ($user->photos as $photo) {
+            $photo->url = asset('storage/' . $photo->photo_path);
+        }
+    }
+    
     return Inertia::render('Profile/View', [
-        'id' => $id
+        'id' => $id,
+        'userData' => $user,
+        'compatibility' => $compatibility
     ]);
 })->middleware(['auth'])->name('profile.view');
 

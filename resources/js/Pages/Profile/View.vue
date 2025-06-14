@@ -1,64 +1,156 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 
-// Sample profile data (will be replaced with backend data later)
-const profile = ref({
-    id: 1,
-    name: 'Salihu Gomal',
-    age: 31,
-    verified: true,
-    location: 'Garki, Abuja, Nigeria',
-    online: true,
-    image: '/images/placeholder.jpg',
-    compatibility: 85,
-    seeking: 'Seeking a female 20-23',
-    aboutMe: "I'm looking for a partner who is kind, ambitious, and shares similar values for building a happy, balanced life together.",
-    education: {
-        level: 'Masters'
-    },
-    employment: {
-        status: 'Employed'
-    },
-    religion: {
-        name: 'Islam-Sunni'
-    },
-    income: {
-        range: '$20k-100k'
-    },
-    drink: {
-        preference: "Don't Drink"
-    },
-    maritalStatus: {
-        status: 'Single'
-    },
-    appearance: {
-        hairColor: 'Blond',
-        eyeColor: 'Unmarried',
-        height: "5'5\" (167 cm)",
-        weight: '54 (119 lb)',
-        bodyStyle: 'Slim',
-        ethnicity: 'Caucasian',
-        style: 'N/A'
-    },
-    lifestyle: {
-        smoke: "Don't Smoke",
-        eatingHabits: 'Halal Foods Always',
-        haveChildren: 'Yes',
-        numberOfChildren: 3,
-        wantMoreChildren: 'No',
-        relocate: 'Open to Relocate',
-        livingSituation: 'N/A'
-    },
-    hobbies: [
-        'Library', 'Movies/Cinema', 'Pets', 'Photography', 
-        'Traveling', 'Reading', 'Writing', 'Volunteering', 'Cooking/Food'
-    ],
-    sports: [
-        'Cycling', 'Jogging/Running', 'Swimming', 'Walking', 'Yoga'
-    ],
-    favoriteMovies: ['Inception', 'Joker']
+const props = defineProps({
+    id: Number,
+    userData: Object,
+    compatibility: Number,
+    auth: Object
+});
+
+// Process user data to match the expected format in the template
+const profile = computed(() => {
+    const user = props.userData;
+    if (!user) return {};
+    
+    // Calculate age from date of birth if available
+    let age = '';
+    if (user.dob_day && user.dob_month && user.dob_year) {
+        // Convert month name to month number
+        const monthMap = {
+            'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3,
+            'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7,
+            'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        
+        const month = monthMap[user.dob_month] || 0;
+        const birthDate = new Date(user.dob_year, month, user.dob_day);
+        const today = new Date();
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+    }
+    
+    // Format location from city, state, country
+    let location = '';
+    if (user.city) location += user.city;
+    if (user.state) {
+        if (location) location += ', ';
+        location += user.state;
+    }
+    if (user.country) {
+        if (location) location += ', ';
+        location += user.country;
+    }
+    
+    // Get profile photo - check if user has photos and a primary photo
+    let image = '/images/placeholder.jpg';
+    if (user.photos && user.photos.length > 0) {
+        // Find primary photo if exists
+        const primaryPhoto = user.photos.find(photo => photo.is_primary);
+        if (primaryPhoto) {
+            image = primaryPhoto.url;
+        } else if (user.photos[0]) {
+            // Otherwise use the first photo
+            image = user.photos[0].url;
+        }
+    } else if (user.profile_photo) {
+        image = user.profile_photo;
+    }
+    
+    // Format seeking text based on interested_in and profile data
+    let seeking = '';
+    if (user.interested_in) {
+        seeking = `Seeking a ${user.interested_in === 'Male' ? 'male' : 'female'}`;
+        
+        // Add age range if available in profile
+        if (user.profile && user.profile.age_preference_min && user.profile.age_preference_max) {
+            seeking += ` ${user.profile.age_preference_min}-${user.profile.age_preference_max}`;
+        }
+    }
+    
+    // Extract appearance data
+    const appearance = {
+        hairColor: user.appearance?.hair_color || 'Not specified',
+        eyeColor: user.appearance?.eye_color || 'Not specified',
+        height: user.appearance?.height || 'Not specified',
+        weight: user.appearance?.weight || 'Not specified',
+        bodyStyle: user.appearance?.body_type || 'Not specified',
+        ethnicity: user.appearance?.ethnicity || 'Not specified',
+        style: user.appearance?.style || 'Not specified'
+    };
+    
+    // Extract lifestyle data
+    const lifestyle = {
+        smoke: user.lifestyle?.smoking || "Not specified",
+        eatingHabits: user.lifestyle?.eating_habits || 'Not specified',
+        haveChildren: user.lifestyle?.have_children ? 'Yes' : 'No',
+        numberOfChildren: user.lifestyle?.number_of_children || 0,
+        wantMoreChildren: user.lifestyle?.want_more_children || 'Not specified',
+        relocate: user.lifestyle?.willing_to_relocate || 'Not specified',
+        livingSituation: user.lifestyle?.living_situation || 'Not specified'
+    };
+    
+    // Extract hobbies and interests
+    const hobbies = [];
+    const sports = [];
+    
+    if (user.interests && user.interests.entertainment) {
+        hobbies.push(...user.interests.entertainment.split(',').map(item => item.trim()));
+    }
+    
+    if (user.interests && user.interests.sports) {
+        sports.push(...user.interests.sports.split(',').map(item => item.trim()));
+    }
+    
+    // Extract favorite movies from personality
+    const favoriteMovies = [];
+    if (user.personality && user.personality.favoriteMovie1) {
+        favoriteMovies.push(user.personality.favoriteMovie1);
+    }
+    if (user.personality && user.personality.favoriteMovie2) {
+        favoriteMovies.push(user.personality.favoriteMovie2);
+    }
+    
+    return {
+        id: user.id,
+        name: user.name || 'Anonymous',
+        age: age || '?',
+        verified: user.is_verified || false,
+        location: location || 'Location not specified',
+        online: true, // This would be dynamic in a real app
+        image: image,
+        compatibility: props.compatibility || 85,
+        seeking: seeking || 'Seeking a partner',
+        aboutMe: user.about?.about_me || "No information provided.",
+        education: {
+            level: user.background?.education_level || 'Not specified'
+        },
+        employment: {
+            status: user.background?.employment_status || 'Not specified'
+        },
+        religion: {
+            name: user.background?.religion || 'Not specified'
+        },
+        income: {
+            range: user.background?.income_range || 'Not specified'
+        },
+        drink: {
+            preference: user.lifestyle?.drinking || "Not specified"
+        },
+        maritalStatus: {
+            status: user.background?.marital_status || 'Not specified'
+        },
+        appearance: appearance,
+        lifestyle: lifestyle,
+        hobbies: hobbies.length > 0 ? hobbies : ['No hobbies specified'],
+        sports: sports.length > 0 ? sports : ['No sports specified'],
+        favoriteMovies: favoriteMovies.length > 0 ? favoriteMovies : ['No favorite movies specified']
+    };
 });
 
 // State for active tab
