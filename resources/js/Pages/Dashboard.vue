@@ -31,6 +31,17 @@ const toggleRightSidebar = () => {
 // State for profile dropdown visibility
 const profileDropdownOpen = ref(false);
 
+// Add state for language selection
+const currentLanguage = ref('English');
+const languages = ref(['English', 'Arabic', 'French', 'Swahili']);
+
+// Function to change language
+const changeLanguage = (language) => {
+    currentLanguage.value = language;
+    // Here you would add logic to actually change the app language
+    profileDropdownOpen.value = false;
+};
+
 // Sample data for matches
 const matches = ref([
     {
@@ -183,31 +194,85 @@ onUnmounted(() => {
     <Head title="Dashboard" />
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
-        <!-- Mobile Menu Toggle Button - Only visible on mobile -->
-        <button 
-            @click="toggleMobileMenu" 
-            class="mobile-menu-toggle fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md md:hidden"
-            aria-label="Toggle menu"
-        >
-            <svg 
-                class="h-6 w-6 text-gray-700" 
-                :class="{ 'hidden': isMobileMenuOpen }"
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
+        <!-- Mobile header with hamburger menu and welcome text - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+            <button 
+                @click="toggleMobileMenu" 
+                class="mobile-menu-toggle p-1 mr-3"
+                aria-label="Toggle menu"
             >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <svg 
-                class="h-6 w-6 text-gray-700" 
-                :class="{ 'hidden': !isMobileMenuOpen }"
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-            >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': !isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <!-- Welcome text beside hamburger on mobile -->
+            <h1 class="text-lg font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+            
+            <!-- Profile dropdown on mobile - right aligned -->
+            <div class="profile-dropdown relative ml-auto">
+                <button 
+                    @click="profileDropdownOpen = !profileDropdownOpen" 
+                    class="flex items-center"
+                >
+                    <img 
+                        :src="$page.props.auth.user.profile_photo_url || '/images/placeholder.jpg'" 
+                        alt="Profile" 
+                        class="h-8 w-8 rounded-full object-cover"
+                    >
+                </button>
+                
+                <!-- Dropdown Menu -->
+                <div 
+                    v-if="profileDropdownOpen" 
+                    class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                >
+                    <div class="px-4 py-2 border-b border-gray-100">
+                        <p class="text-sm text-gray-500">Signed in as</p>
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $page.props.auth.user.email }}</p>
+                    </div>
+                    
+                    <!-- Language Selector -->
+                    <div class="px-4 py-2 border-b border-gray-100">
+                        <p class="text-sm text-gray-500 mb-1">Language</p>
+                        <div class="flex flex-wrap gap-1">
+                            <button 
+                                v-for="language in languages" 
+                                :key="language"
+                                @click="changeLanguage(language)"
+                                class="text-xs px-2 py-1 rounded-full"
+                                :class="language === currentLanguage ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            >
+                                {{ language }}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <Link :href="route('me.profile')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Settings
+                    </Link>
+                    
+                    <Link :href="route('logout')" method="post" as="button" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Logout
+                    </Link>
+                </div>
+            </div>
+        </div>
 
         <!-- Mobile Menu Overlay -->
         <div 
@@ -225,12 +290,37 @@ onUnmounted(() => {
         </aside>
         
         <!-- Main Content -->
-        <div class="flex-1 px-4 py-4 md:p-8 mt-12 md:mt-0">
-            <!-- Welcome and Search -->
-            <div class="mb-6 md:mb-8">
-                <h1 class="text-2xl font-bold mb-4">Welcome {{ $page.props.auth.user.name }}!</h1>
+        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
+            <!-- Welcome and Search - Only visible on desktop -->
+            <div class="mb-6 md:mb-8 hidden md:block">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                    <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+                    
+                    
+                </div>
                 
+                <!-- Search bar - visible on both mobile and desktop -->
                 <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+                    <div class="relative flex-1">
+                        <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3">
+                            <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
+                        </div>
+                    </div>
+                    
+                    <button class="rounded-lg border border-gray-300 bg-white p-3 flex items-center justify-center">
+                        <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Search bar - Only visible on mobile -->
+            <div class="mb-6 md:hidden">
+                <div class="flex flex-col gap-3">
                     <div class="relative flex-1">
                         <div class="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3">
                             <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
