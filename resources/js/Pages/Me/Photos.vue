@@ -55,17 +55,19 @@ function handleFileSelect(event, index) {
     isUploading.value = true;
     uploadProgress.value = 0;
     
+    // Ensure we have the latest CSRF token
+    const token = document.head.querySelector('meta[name="csrf-token"]');
+    if (token) {
+        axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
+    }
+    
     const formData = new FormData();
     formData.append('photo', file);
     formData.append('index', index);
     
-    // Add CSRF token
-    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    
     axios.post(route('me.photos.upload'), formData, {
         headers: {
-            'Content-Type': 'multipart/form-data',
-            'X-CSRF-TOKEN': token
+            'Content-Type': 'multipart/form-data'
         },
         onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -93,11 +95,8 @@ function handleFileSelect(event, index) {
 function deletePhoto(index) {
     if (!photos.value[index].id) return;
     
-    axios.delete(route('me.photos.delete', { id: photos.value[index].id }), {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    }).then(response => {
+    axios.delete(route('me.photos.delete', { id: photos.value[index].id }))
+        .then(response => {
         console.log('Delete response:', response.data);
         successMessage.value = response.data.message || 'Photo deleted successfully';
         setTimeout(() => { successMessage.value = ''; }, 3000);
@@ -120,11 +119,8 @@ function deletePhoto(index) {
 function setPrimaryPhoto(index) {
     if (!photos.value[index].id) return;
     
-    axios.put(route('me.photos.primary', { id: photos.value[index].id }), {}, {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    }).then(response => {
+    axios.put(route('me.photos.primary', { id: photos.value[index].id }))
+        .then(response => {
         console.log('Set primary response:', response.data);
         successMessage.value = response.data.message || 'Primary photo updated';
         setTimeout(() => { successMessage.value = ''; }, 3000);

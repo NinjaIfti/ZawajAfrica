@@ -57,7 +57,10 @@ class PhotosController extends Controller
             // Handle the file upload
             if ($request->hasFile('photo')) {
                 $file = $request->file('photo');
-                $path = $file->store('user-photos/' . $user->id, 'public');
+                
+                // Create user-specific directory with unique timestamp to prevent collisions
+                $userDir = 'user-photos/' . $user->id . '/' . time();
+                $path = $file->store($userDir, 'public');
                 
                 // Get the index and primary flag
                 $index = $request->input('index', 0);
