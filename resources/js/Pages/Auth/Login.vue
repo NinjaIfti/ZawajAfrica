@@ -19,8 +19,15 @@ const form = useForm({
 });
 
 const submit = () => {
+    // Refresh CSRF token before login attempt
+    window.refreshCSRFToken();
+    
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
+        onSuccess: () => {
+            // Refresh CSRF token after successful login
+            window.refreshCSRFToken();
+        },
     });
 };
 

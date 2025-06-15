@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 
 const props = defineProps({
@@ -49,7 +49,12 @@ const profile = computed(() => {
     
     // Get profile photo - check if user has photos and a primary photo
     let image = '/images/placeholder.jpg';
+    let allPhotos = [];
+    
     if (user.photos && user.photos.length > 0) {
+        // Store all photos for the gallery
+        allPhotos = user.photos.map(photo => photo.url);
+        
         // Find primary photo if exists
         const primaryPhoto = user.photos.find(photo => photo.is_primary);
         if (primaryPhoto) {
@@ -60,6 +65,7 @@ const profile = computed(() => {
         }
     } else if (user.profile_photo) {
         image = user.profile_photo;
+        allPhotos = [image];
     }
     
     // Format seeking text based on interested_in and profile data
@@ -124,6 +130,7 @@ const profile = computed(() => {
         location: location || 'Location not specified',
         online: true, // This would be dynamic in a real app
         image: image,
+        photos: allPhotos,
         compatibility: props.compatibility || 85,
         seeking: seeking || 'Seeking a partner',
         aboutMe: user.about?.about_me || "No information provided.",
@@ -159,11 +166,73 @@ const setActiveTab = (tab) => {
     activeTab.value = tab;
 };
 
-// Toggle sections
+// Photo gallery state
+const showPhotoGallery = ref(false);
+const currentPhotoIndex = ref(0);
+
+// Open photo gallery with specific photo
+const openPhotoGallery = (index) => {
+    currentPhotoIndex.value = index;
+    showPhotoGallery.value = true;
+    document.body.classList.add('overflow-hidden'); // Prevent scrolling when gallery is open
+};
+
+// Close photo gallery
+const closePhotoGallery = () => {
+    showPhotoGallery.value = false;
+    document.body.classList.remove('overflow-hidden');
+};
+
+// Navigate to next photo
+const nextPhoto = () => {
+    if (profile.value.photos && profile.value.photos.length > 0) {
+        currentPhotoIndex.value = (currentPhotoIndex.value + 1) % profile.value.photos.length;
+    }
+};
+
+// Navigate to previous photo
+const prevPhoto = () => {
+    if (profile.value.photos && profile.value.photos.length > 0) {
+        currentPhotoIndex.value = (currentPhotoIndex.value - 1 + profile.value.photos.length) % profile.value.photos.length;
+    }
+};
+
+// Handle keyboard navigation in gallery
+const handleKeyDown = (e) => {
+    if (!showPhotoGallery.value) return;
+    
+    if (e.key === 'ArrowRight') {
+        nextPhoto();
+    } else if (e.key === 'ArrowLeft') {
+        prevPhoto();
+    } else if (e.key === 'Escape') {
+        closePhotoGallery();
+    }
+};
+
+// Toggle sections - only apply on mobile/tablet
 const toggleSection = (sectionId) => {
+    // Only apply toggle behavior on mobile/tablet screens
+    if (window.innerWidth < 1024) { // 1024px is the lg breakpoint in Tailwind
     const section = document.getElementById(sectionId);
     if (section) {
+            // Toggle the open class for animation
         section.classList.toggle('open');
+            
+            // Toggle aria-expanded attribute for accessibility
+            const button = section.previousElementSibling;
+            if (button) {
+                const isExpanded = section.classList.contains('open');
+                button.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                
+                // Rotate the arrow icon
+                const arrow = button.querySelector('svg');
+                if (arrow) {
+                    arrow.style.transform = isExpanded ? 'rotate(180deg)' : '';
+                    arrow.style.transition = 'transform 0.3s';
+                }
+            }
+        }
     }
 };
 
@@ -174,6 +243,66 @@ const isMobileMenuOpen = ref(false);
 const toggleMobileMenu = () => {
     isMobileMenuOpen.value = !isMobileMenuOpen.value;
 };
+
+// Handle window resize to adjust section visibility based on screen size
+const handleResize = () => {
+    // If resized to desktop, expand all sections
+    if (window.innerWidth >= 1024) {
+        const sections = ['overview', 'appearance', 'lifestyle', 'hobbies', 'sports'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.add('open');
+                const button = section.previousElementSibling;
+                if (button) {
+                    button.setAttribute('aria-expanded', 'true');
+                }
+            }
+        });
+    }
+};
+
+// Clean up event listeners when component is unmounted
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+});
+
+// Initialize sections on page load
+onMounted(() => {
+    // If on desktop, make sure all sections are expanded
+    if (window.innerWidth >= 1024) {
+        const sections = ['overview', 'appearance', 'lifestyle', 'hobbies', 'sports'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.add('open');
+                const button = section.previousElementSibling;
+                if (button) {
+                    button.setAttribute('aria-expanded', 'true');
+                }
+            }
+        });
+    } else {
+        // On mobile, ensure all sections start collapsed
+        const sections = ['overview', 'appearance', 'lifestyle', 'hobbies', 'sports'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.remove('open');
+                const button = section.previousElementSibling;
+                if (button) {
+                    button.setAttribute('aria-expanded', 'false');
+                }
+            }
+        });
+    }
+    
+    // Add resize listener to handle desktop/mobile transitions
+    window.addEventListener('resize', handleResize);
+    
+    // Add keyboard event listener for photo gallery navigation
+    window.addEventListener('keydown', handleKeyDown);
+});
 </script>
 
 <template>
@@ -229,7 +358,7 @@ const toggleMobileMenu = () => {
             class="fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
             :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
         >
-            <Sidebar :user="$page.props.auth.user" />
+        <Sidebar :user="$page.props.auth.user" />
         </aside>
         
         <!-- Main Content -->
@@ -275,7 +404,7 @@ const toggleMobileMenu = () => {
                         <!-- Profile Image (Full width on mobile, left side on desktop) -->
                         <div class="relative w-full md:w-1/2">
                             <div class="w-full h-72 md:h-full bg-gray-200 relative">
-                                <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover">
+                                <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover" @click="openPhotoGallery(0)">
                                 
                                 <!-- Online Status -->
                                 <div v-if="profile.online" class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
@@ -287,6 +416,15 @@ const toggleMobileMenu = () => {
                                 <div class="absolute top-4 right-4 bg-amber-500 rounded-full p-2">
                                     <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                
+                                <!-- Photo Gallery Button - if user has multiple photos -->
+                                <div v-if="profile.photos && profile.photos.length > 1" 
+                                     class="absolute bottom-4 right-4 bg-white bg-opacity-80 rounded-full p-2 cursor-pointer"
+                                     @click="openPhotoGallery(0)">
+                                    <svg class="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                 </div>
                             </div>
@@ -366,13 +504,17 @@ const toggleMobileMenu = () => {
                 <div class="p-4" v-if="activeTab === 'about'">
                     <!-- Overview Section -->
                     <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
-                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" @click="toggleSection('overview')">
+                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" 
+                             @click="toggleSection('overview')"
+                             role="button"
+                             aria-expanded="false"
+                             aria-controls="overview">
                             <h3 class="text-lg font-bold">Overview</h3>
                             <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        <div id="overview" class="p-4 bg-white border-t border-gray-200">
+                        <div id="overview" class="bg-white section-content">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
                                     <p class="text-gray-500">Education</p>
@@ -404,13 +546,17 @@ const toggleMobileMenu = () => {
                     
                     <!-- Appearance Section -->
                     <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
-                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" @click="toggleSection('appearance')">
+                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" 
+                             @click="toggleSection('appearance')"
+                             role="button"
+                             aria-expanded="false"
+                             aria-controls="appearance">
                             <h3 class="text-lg font-bold">Appearance</h3>
                             <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        <div id="appearance" class="p-4 bg-white border-t border-gray-200">
+                        <div id="appearance" class="bg-white section-content">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
                                     <p class="text-gray-500">Hair Color</p>
@@ -446,13 +592,17 @@ const toggleMobileMenu = () => {
                     
                     <!-- Lifestyle Section -->
                     <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
-                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" @click="toggleSection('lifestyle')">
+                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" 
+                             @click="toggleSection('lifestyle')"
+                             role="button"
+                             aria-expanded="false"
+                             aria-controls="lifestyle">
                             <h3 class="text-lg font-bold">Life Style</h3>
                             <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        <div id="lifestyle" class="p-4 bg-white border-t border-gray-200">
+                        <div id="lifestyle" class="bg-white section-content">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
                                     <p class="text-gray-500">Smoke</p>
@@ -492,13 +642,17 @@ const toggleMobileMenu = () => {
                     
                     <!-- Hobbies Section -->
                     <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
-                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" @click="toggleSection('hobbies')">
+                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer"
+                             @click="toggleSection('hobbies')"
+                             role="button"
+                             aria-expanded="false"
+                             aria-controls="hobbies">
                             <h3 class="text-lg font-bold">Hobbies & Interests</h3>
                             <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        <div id="hobbies" class="p-4 bg-white border-t border-gray-200">
+                        <div id="hobbies" class="bg-white section-content">
                             <div class="flex flex-wrap gap-2">
                                 <span v-for="hobby in profile.hobbies" :key="hobby" class="px-3 py-1 bg-gray-100 rounded-full text-sm">
                                     {{ hobby }}
@@ -509,13 +663,17 @@ const toggleMobileMenu = () => {
                     
                     <!-- Sports Section -->
                     <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
-                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer" @click="toggleSection('sports')">
+                        <div class="flex items-center justify-between p-4 bg-white cursor-pointer"
+                             @click="toggleSection('sports')"
+                             role="button"
+                             aria-expanded="false"
+                             aria-controls="sports">
                             <h3 class="text-lg font-bold">Sports</h3>
                             <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        <div id="sports" class="p-4 bg-white border-t border-gray-200">
+                        <div id="sports" class="bg-white section-content">
                             <div class="flex flex-wrap gap-2">
                                 <span v-for="sport in profile.sports" :key="sport" class="px-3 py-1 bg-gray-100 rounded-full text-sm">
                                     {{ sport }}
@@ -540,6 +698,56 @@ const toggleMobileMenu = () => {
             </div>
         </div>
     </div>
+    
+    <!-- Photo Gallery Modal -->
+    <div v-if="showPhotoGallery" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
+        <!-- Close button -->
+        <button 
+            @click="closePhotoGallery" 
+            class="absolute top-4 right-4 text-white p-2 rounded-full hover:bg-gray-800"
+        >
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        
+        <!-- Previous button -->
+        <button 
+            v-if="profile.photos && profile.photos.length > 1"
+            @click="prevPhoto" 
+            class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white p-2 rounded-full hover:bg-gray-800"
+        >
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+        
+        <!-- Next button -->
+        <button 
+            v-if="profile.photos && profile.photos.length > 1"
+            @click="nextPhoto" 
+            class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white p-2 rounded-full hover:bg-gray-800"
+        >
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+        
+        <!-- Photo display -->
+        <div class="w-full max-w-4xl max-h-full p-4">
+            <img 
+                v-if="profile.photos && profile.photos[currentPhotoIndex]" 
+                :src="profile.photos[currentPhotoIndex]" 
+                alt="Profile Photo" 
+                class="max-h-full max-w-full mx-auto object-contain"
+            >
+            
+            <!-- Photo counter -->
+            <div v-if="profile.photos && profile.photos.length > 1" class="absolute bottom-4 left-0 right-0 text-center text-white">
+                {{ currentPhotoIndex + 1 }} / {{ profile.photos.length }}
+            </div>
+        </div>
+    </div>
 </template>
 
 <style scoped>
@@ -548,7 +756,7 @@ const toggleMobileMenu = () => {
 }
 
 /* Mobile-specific styles */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .min-h-screen {
         padding-top: 1rem;
     }
@@ -557,16 +765,86 @@ const toggleMobileMenu = () => {
     .cursor-pointer {
         padding: 1rem;
     }
+    
+    /* Animation for section toggles - only on mobile/tablet */
+    .section-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        padding: 0;
+        border-top: 0;
+        opacity: 0;
+    }
+    
+    .section-content.open {
+        max-height: 2000px; /* Large enough to show all content */
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb; /* gray-200 */
+        opacity: 1;
+        transition: max-height 0.5s ease-in, opacity 0.3s ease-in;
+    }
+    
+    /* Show toggle arrows only on mobile/tablet */
+    .cursor-pointer svg {
+        display: block;
+    }
 }
 
-/* Animation for section toggles */
-#overview, #appearance, #lifestyle, #hobbies, #sports {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
+/* Desktop-specific styles */
+@media (min-width: 1024px) {
+    /* Hide toggle arrows on desktop */
+    .cursor-pointer svg {
+        display: none;
+    }
+    
+    /* Always show content on desktop */
+    .section-content {
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 1rem !important;
+        border-top: 1px solid #e5e7eb !important; /* gray-200 */
+        opacity: 1 !important;
+    }
+    
+    /* Remove pointer cursor on desktop since sections aren't toggleable */
+    .cursor-pointer {
+        cursor: default;
+    }
+    
+    /* Style section headers as static headings on desktop */
+    .cursor-pointer {
+        background-color: #f9fafb !important; /* gray-50 */
+        border-bottom: 1px solid #e5e7eb; /* gray-200 */
+    }
+    
+    /* Add some spacing between sections on desktop */
+    .border.border-gray-200.rounded-lg.mb-4 {
+        margin-bottom: 2rem;
+    }
 }
 
-#overview.open, #appearance.open, #lifestyle.open, #hobbies.open, #sports.open {
-    max-height: 1000px; /* Large enough to show all content */
+/* Photo Gallery Styles */
+img.object-cover {
+    cursor: pointer;
+}
+
+.fixed.inset-0.z-50 {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Make buttons more visible on hover */
+.fixed.inset-0.z-50 button {
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.fixed.inset-0.z-50 button:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.5);
 }
 </style> 

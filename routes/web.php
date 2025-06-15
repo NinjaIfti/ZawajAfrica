@@ -136,10 +136,10 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Matches/Index');
     })->name('matches');
     
-    // Messages routes (placeholder until we create a controller)
-    Route::get('/messages', function() {
-        return Inertia::render('Messages/Index');
-    })->name('messages');
+    // Messages routes
+    Route::get('/messages', [App\Http\Controllers\MessageController::class, 'index'])->name('messages');
+    Route::get('/messages/{id}', [App\Http\Controllers\MessageController::class, 'show'])->name('messages.show');
+    Route::post('/messages', [App\Http\Controllers\MessageController::class, 'store'])->name('messages.store');
     
     // Add new routes for profile updates
     Route::post('/profile/update', [App\Http\Controllers\Me\ProfileController::class, 'update']);
@@ -199,5 +199,11 @@ Route::get('/matches/profile/{id}', function($id) {
 Route::get('/admin/test-verification', function () {
     return Inertia::render('Admin/TestVerification');
 })->middleware(['auth'])->name('admin.test-verification');
+
+// Subscription routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/subscription', [App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription');
+    Route::post('/subscription/purchase', [App\Http\Controllers\SubscriptionController::class, 'purchase'])->name('subscription.purchase');
+});
 
 require __DIR__.'/auth.php';

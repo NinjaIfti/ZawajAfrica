@@ -1,9 +1,22 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 
 defineProps({
     user: Object
 });
+
+// Custom logout function
+const logout = () => {
+    router.post(route('logout'), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Refresh CSRF token after logout
+            window.refreshCSRFToken();
+            // Redirect to login page
+            window.location.href = route('login');
+        },
+    });
+};
 </script>
 
 <template>
@@ -60,12 +73,19 @@ defineProps({
                 <span>My Profile</span>
             </Link>
             
-            <Link :href="route('dashboard')" class="flex items-center rounded-lg px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50">
-                <svg class="mr-3 h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <Link :href="route('subscription')" class="flex items-center rounded-lg px-4 py-3 text-base font-medium" :class="route().current('subscription') ? 'bg-purple-600 text-white' : 'text-gray-700 hover:bg-gray-50'">
+                <svg class="mr-3 h-6 w-6" :class="route().current('subscription') ? 'text-white' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
                 <span>Subscription Plans</span>
             </Link>
+            
+            <button @click="logout" class="w-full flex items-center rounded-lg px-4 py-3 text-base font-medium text-red-600 hover:bg-gray-50">
+                <svg class="mr-3 h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Logout</span>
+            </button>
         </nav>
         
         <!-- Upgrade Membership -->

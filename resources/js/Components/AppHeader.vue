@@ -1,5 +1,5 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
@@ -29,6 +29,19 @@ const toggleLanguageModal = () => {
 const selectLanguage = (lang) => {
     selectedLanguage.value = lang;
     showLanguageModal.value = false;
+};
+
+// Custom logout function
+const logout = () => {
+    router.post(route('logout'), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Refresh CSRF token after logout
+            window.refreshCSRFToken();
+            // Redirect to login page
+            window.location.href = route('login');
+        },
+    });
 };
 
 // Close dropdown when clicking outside
@@ -88,9 +101,9 @@ onUnmounted(() => {
                         Settings
                     </Link>
                     <div class="border-t border-gray-100"></div>
-                    <Link :href="route('logout')" method="post" as="button" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100">
+                    <button @click="logout" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100">
                         Log Out
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>

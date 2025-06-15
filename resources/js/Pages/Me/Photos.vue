@@ -86,11 +86,8 @@ function handleFileSelect(event, index) {
     isUploading.value = true;
     uploadProgress.value = 0;
     
-    // Ensure we have the latest CSRF token
-    const token = document.head.querySelector('meta[name="csrf-token"]');
-    if (token) {
-        axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
-    }
+    // Refresh CSRF token before upload
+    window.refreshCSRFToken();
     
     const formData = new FormData();
     formData.append('photo', file);
@@ -124,6 +121,9 @@ function handleFileSelect(event, index) {
 function deletePhoto(index) {
     if (!photos.value[index].id) return;
     
+    // Refresh CSRF token before delete
+    window.refreshCSRFToken();
+    
     axios.delete(route('me.photos.delete', { id: photos.value[index].id }))
         .then(response => {
         successMessage.value = response.data.message || 'Photo deleted successfully';
@@ -145,6 +145,9 @@ function deletePhoto(index) {
 // Function to set a photo as primary
 function setPrimaryPhoto(index) {
     if (!photos.value[index].id) return;
+    
+    // Refresh CSRF token before update
+    window.refreshCSRFToken();
     
     axios.put(route('me.photos.primary', { id: photos.value[index].id }))
         .then(response => {
@@ -227,7 +230,7 @@ function updatePhotoArray(newPhotos) {
             class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
             :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
         >
-            <Sidebar :user="$page.props.auth.user" />
+        <Sidebar :user="$page.props.auth.user" />
         </aside>
         
         <!-- Main Content -->
@@ -301,14 +304,14 @@ function updatePhotoArray(newPhotos) {
                             <div v-if="successMessage" class="text-green-600 text-sm flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
+                                        </svg>
                                 {{ successMessage }}
-                            </div>
+                        </div>
                         
                             <div v-if="errorMessage" class="text-red-600 text-sm flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                        </svg>
                                 {{ errorMessage }}
                             </div>
                         </div>

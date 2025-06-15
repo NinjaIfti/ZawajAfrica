@@ -13,6 +13,7 @@ use App\Models\UserLifestyle;
 use App\Models\UserBackground;
 use App\Models\UserAbout;
 use App\Models\UserPhoto;
+use App\Models\Message;
 
 class User extends Authenticatable
 {
@@ -172,5 +173,57 @@ class User extends Authenticatable
     public function personality()
     {
         return $this->hasOne(\App\Models\UserPersonality::class);
+    }
+    
+    /**
+     * Get messages sent by the user.
+     */
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+    
+    /**
+     * Get messages received by the user.
+     */
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
+    
+    /**
+     * Get unread messages received by the user.
+     */
+    public function unreadMessages()
+    {
+        return $this->receivedMessages()->where('is_read', false);
+    }
+    
+    /**
+     * Get all conversations for the user.
+     * 
+     * @return \Illuminate\Support\Collection
+     */
+    public function conversations()
+    {
+        $sentMessages = $this->sentMessages()
+            ->select('sender_id', 'receiver_id')
+            ->distinct()
+            ->get()
+            ->map(function ($message) {
+                return $message->receiver_id;
+            });
+            
+        $receivedMessages = $this->receivedMessages()
+            ->select('sender_id', 'receiver_id')
+            ->distinct()
+            ->get()
+            ->map(function ($message) {
+                return $message->sender_id;
+            });
+            
+        $conversationUserIds = $sentMessages->merge($receivedMessages)->unique();
+        
+        return User::whereIn('id', $conversationUserIds)->get();
     }
 }

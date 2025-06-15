@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import DashboardSidebar from '@/Components/DashboardSidebar.vue';
@@ -11,6 +11,9 @@ const props = defineProps({
     profileCompletion: Number,
     auth: Object,
     potentialMatches: Array,
+    matches: Array,
+    therapists: Array,
+    recentMessages: Array,
 });
 
 // Mobile menu state
@@ -48,6 +51,19 @@ const changeLanguage = (language) => {
     currentLanguage.value = language;
     // Here you would add logic to actually change the app language
     profileDropdownOpen.value = false;
+};
+
+// Custom logout function
+const logout = () => {
+    router.post(route('logout'), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Refresh CSRF token after logout
+            window.refreshCSRFToken();
+            // Redirect to login page
+            window.location.href = route('login');
+        },
+    });
 };
 
 // Prepare user data for matches
@@ -122,43 +138,18 @@ const matches = computed(() => {
     }
     // Fallback to sample data if no matches are available
     return [
-        {
-            id: 1,
+    {
+        id: 1,
             name: 'Sample User',
             age: '?',
             location: 'Location not specified',
-            online: true,
-            image: '/images/placeholder.jpg',
-            compatibility: 85,
+        online: true,
+        image: '/images/placeholder.jpg',
+        compatibility: 85,
             timestamp: 'Active recently'
         }
     ];
 });
-
-// Sample data for therapists
-const therapists = ref([
-    {
-        id: 1,
-        name: 'Dr. Maria Azad',
-        specialty: 'Dermatologist',
-        image: '/images/placeholder.jpg',
-        online: true
-    },
-    {
-        id: 2,
-        name: 'Dr. Maria Azad',
-        specialty: 'Dermatologist',
-        image: '/images/placeholder.jpg',
-        online: true
-    },
-    {
-        id: 3,
-        name: 'Dr. Maria Azad',
-        specialty: 'Dermatologist',
-        image: '/images/placeholder.jpg',
-        online: true
-    }
-]);
 
 // Add state for therapists panel
 const isTherapistsPanelExpanded = ref(true);
@@ -175,58 +166,6 @@ const isMessagesPanelExpanded = ref(true);
 const toggleMessagesPanel = () => {
     isMessagesPanelExpanded.value = !isMessagesPanelExpanded.value;
 };
-
-// Sample data for recent messages
-const recentMessages = ref([
-    {
-        id: 1,
-        name: 'Fatenn Saeed',
-        message: 'Hi, I am here to discuss some...',
-        image: '/images/placeholder.jpg',
-        time: '12:25',
-        unread: true
-    },
-    {
-        id: 2,
-        name: 'Salwa Al-Qwaiz',
-        message: 'Assalamu alaikum.',
-        image: '/images/placeholder.jpg',
-        time: '12:25',
-        unread: true
-    },
-    {
-        id: 3,
-        name: 'Amima Kaleb',
-        message: 'Okay we\'ll have a meetup.',
-        image: '/images/placeholder.jpg',
-        time: '12:25',
-        unread: true
-    },
-    {
-        id: 4,
-        name: 'Hanan Hablas',
-        message: 'How many kids do you have?',
-        image: '/images/placeholder.jpg',
-        time: '12:25',
-        unread: true
-    },
-    {
-        id: 5,
-        name: 'Emma Wilson',
-        message: 'How many kids do you have?',
-        image: '/images/placeholder.jpg',
-        time: '12:25',
-        unread: true
-    },
-    {
-        id: 6,
-        name: 'John Alex',
-        message: 'How many kids do you have?',
-        image: '/images/placeholder.jpg',
-        time: '12:25',
-        unread: true
-    }
-]);
 
 // Close the profile dropdown when clicking outside
 const closeDropdown = (e) => {
@@ -336,9 +275,9 @@ onUnmounted(() => {
                         Settings
                     </Link>
                     
-                    <Link :href="route('logout')" method="post" as="button" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <button @click="logout" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         Logout
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>
@@ -371,19 +310,19 @@ onUnmounted(() => {
                 <!-- Search bar with integrated filter button - desktop -->
                 <div class="flex items-center rounded-lg border border-gray-300 bg-white">
                     <div class="flex-1 flex items-center px-4 py-2">
-                        <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
+                            <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
                     </div>
                     <div class="border-l border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-50">
                         <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
                     </div>
-                </div>
-            </div>
-            
+                        </div>
+                    </div>
+                    
             <!-- Search bar - Only visible on mobile -->
             <div class="mb-6 md:hidden">
                 <!-- Search bar with integrated filter button - mobile -->

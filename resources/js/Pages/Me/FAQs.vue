@@ -140,7 +140,7 @@ function refreshFaqs() {
             class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
             :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
         >
-            <Sidebar :user="$page.props.auth.user" />
+        <Sidebar :user="$page.props.auth.user" />
         </aside>
         
         <!-- Main Content -->
