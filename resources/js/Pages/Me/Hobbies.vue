@@ -182,11 +182,19 @@ const saveSectionChanges = (section) => {
         updateEntertainmentInterests();
     }
     
-    // Create an object with only the section being updated
-    const sectionData = { [section]: interests.value[section] };
+    // Create a complete data object with all interests
+    // This ensures we don't lose other sections when updating just one section
+    const completeData = {
+        entertainment: interests.value.entertainment,
+        food: interests.value.food,
+        music: interests.value.music,
+        sports: interests.value.sports,
+        // Just mark which section was updated
+        updated_section: section
+    };
     
-    // Use Axios to submit just this section
-    axios.post(route('me.hobbies.update'), sectionData)
+    // Use Axios to submit all interests data
+    axios.post(route('me.hobbies.update'), completeData)
         .then(response => {
             isSaving.value = false;
             editingSections.value[section] = false;
@@ -320,7 +328,8 @@ const saveSectionChanges = (section) => {
 
                 <!-- Hobbies Content -->
                 <div class="bg-white shadow-md rounded-lg p-6">
-                                        
+                    <h2 class="text-2xl font-bold mb-6">My Hobbies & Interests</h2>
+                    
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-bold">Hobbies & Interests</h2>
                         
@@ -332,26 +341,6 @@ const saveSectionChanges = (section) => {
                                 </svg>
                                 {{ successMessage }}
                             </div>
-                            
-                            <!-- Save button -->
-                            <button 
-                                v-if="isEditing"
-                                @click="saveChanges" 
-                                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                                :disabled="isSaving"
-                            >
-                                <span v-if="isSaving">Saving...</span>
-                                <span v-else>Save Changes</span>
-                            </button>
-                            
-                            <!-- Edit button -->
-                            <button 
-                                v-else
-                                @click="toggleEditSection('entertainment')" 
-                                class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                            >
-                                Edit Entertainment
-                            </button>
                         </div>
                     </div>
                     <p class="text-gray-600 mb-6">Let others know what your interests are and help us connect you with users that may have similar interests.</p>
@@ -361,14 +350,49 @@ const saveSectionChanges = (section) => {
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <label class="block text-gray-700 font-medium">What do you do for fun/entertainment?</label>
+                                
+                                <!-- Edit/Save buttons for this section -->
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        v-if="editingSections.entertainment"
+                                        @click="saveSectionChanges('entertainment')" 
+                                        class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                                        :disabled="isSaving"
+                                    >
+                                        <span v-if="isSaving">Saving...</span>
+                                        <span v-else>Save</span>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="!editingSections.entertainment"
+                                        @click="toggleEditSection('entertainment')" 
+                                        class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                                        title="Edit entertainment interests"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="editingSections.entertainment"
+                                        @click="toggleEditSection('entertainment')" 
+                                        class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
+                                        title="Cancel editing"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             
                             <!-- Entertainment dropdown -->
                             <div class="relative entertainment-dropdown">
                                 <div 
-                                    @click="isEditing && toggleEntertainmentDropdown()" 
+                                    @click="editingSections.entertainment && toggleEntertainmentDropdown()" 
                                     class="entertainment-toggle w-full border border-gray-300 rounded-md shadow-sm p-2 flex items-center justify-between cursor-pointer"
-                                    :class="{ 'bg-gray-50 cursor-not-allowed': !isEditing, 'hover:bg-gray-50': isEditing }"
+                                    :class="{ 'bg-gray-50 cursor-not-allowed': !editingSections.entertainment, 'hover:bg-gray-50': editingSections.entertainment }"
                                 >
                                     <span v-if="interests.entertainment" class="text-gray-900">{{ interests.entertainment }}</span>
                                     <span v-else class="text-gray-500">Select entertainment options...</span>
@@ -379,7 +403,7 @@ const saveSectionChanges = (section) => {
                                 
                                 <!-- Dropdown content -->
                                 <div 
-                                    v-if="showEntertainmentDropdown && isEditing" 
+                                    v-if="showEntertainmentDropdown && editingSections.entertainment" 
                                     class="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 py-2 max-h-60 overflow-y-auto"
                                 >
                                     <div class="px-4 py-2 border-b border-gray-100">
@@ -425,6 +449,41 @@ const saveSectionChanges = (section) => {
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <label for="food" class="block text-gray-700 font-medium">What sort of food do you like?</label>
+                                
+                                <!-- Edit/Save buttons for this section -->
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        v-if="editingSections.food"
+                                        @click="saveSectionChanges('food')" 
+                                        class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                                        :disabled="isSaving"
+                                    >
+                                        <span v-if="isSaving">Saving...</span>
+                                        <span v-else>Save</span>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="!editingSections.food"
+                                        @click="toggleEditSection('food')" 
+                                        class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                                        title="Edit food preferences"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="editingSections.food"
+                                        @click="toggleEditSection('food')" 
+                                        class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
+                                        title="Cancel editing"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <input 
                                 id="food" 
@@ -432,7 +491,7 @@ const saveSectionChanges = (section) => {
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 v-model="interests.food"
                                 @input="updateInterest('food', $event.target.value)"
-                                :disabled="!isEditing"
+                                :disabled="!editingSections.food"
                                 placeholder="Italian, Indian, Chinese, Halal, Vegetarian, etc."
                             >
                         </div>
@@ -441,6 +500,41 @@ const saveSectionChanges = (section) => {
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <label for="music" class="block text-gray-700 font-medium">What sort of music do you like?</label>
+                                
+                                <!-- Edit/Save buttons for this section -->
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        v-if="editingSections.music"
+                                        @click="saveSectionChanges('music')" 
+                                        class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                                        :disabled="isSaving"
+                                    >
+                                        <span v-if="isSaving">Saving...</span>
+                                        <span v-else>Save</span>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="!editingSections.music"
+                                        @click="toggleEditSection('music')" 
+                                        class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                                        title="Edit music preferences"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="editingSections.music"
+                                        @click="toggleEditSection('music')" 
+                                        class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
+                                        title="Cancel editing"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <input 
                                 id="music" 
@@ -448,7 +542,7 @@ const saveSectionChanges = (section) => {
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 v-model="interests.music"
                                 @input="updateInterest('music', $event.target.value)"
-                                :disabled="!isEditing"
+                                :disabled="!editingSections.music"
                                 placeholder="Pop, Rock, Classical, Jazz, Hip Hop, etc."
                             >
                         </div>
@@ -457,6 +551,41 @@ const saveSectionChanges = (section) => {
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <label for="sports" class="block text-gray-700 font-medium">What sports do you play or like to watch?</label>
+                                
+                                <!-- Edit/Save buttons for this section -->
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        v-if="editingSections.sports"
+                                        @click="saveSectionChanges('sports')" 
+                                        class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                                        :disabled="isSaving"
+                                    >
+                                        <span v-if="isSaving">Saving...</span>
+                                        <span v-else>Save</span>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="!editingSections.sports"
+                                        @click="toggleEditSection('sports')" 
+                                        class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                                        title="Edit sports preferences"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    
+                                    <button 
+                                        v-if="editingSections.sports"
+                                        @click="toggleEditSection('sports')" 
+                                        class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
+                                        title="Cancel editing"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <input 
                                 id="sports" 
@@ -464,7 +593,7 @@ const saveSectionChanges = (section) => {
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 v-model="interests.sports"
                                 @input="updateInterest('sports', $event.target.value)"
-                                :disabled="!isEditing"
+                                :disabled="!editingSections.sports"
                                 placeholder="Football, Basketball, Cricket, Swimming, etc."
                             >
                         </div>

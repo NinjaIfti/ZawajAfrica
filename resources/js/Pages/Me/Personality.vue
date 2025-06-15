@@ -5,10 +5,12 @@ import { router } from '@inertiajs/vue3';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
 import { Link } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const props = defineProps({
     auth: Object,
     user: Object,
+    flash: Object,
 });
 
 // Initialize personality questions from user data or with defaults
@@ -19,10 +21,20 @@ const questions = ref({
     musicPreference: props.user?.personality?.musicPreference || '',
 });
 
+// Show success message if it exists in flash data
+const showSuccess = ref(!!props.flash?.success);
+const successMessage = ref(props.flash?.success || 'Saved successfully');
+
+// Auto-hide success message after 3 seconds if it exists
+if (showSuccess.value) {
+    setTimeout(() => {
+        showSuccess.value = false;
+    }, 3000);
+}
+
 // For tracking editing state
 const isEditing = ref(false);
 const isSaving = ref(false);
-const showSuccess = ref(false);
 
 // Mobile menu state
 const isMobileMenuOpen = ref(false);
@@ -68,23 +80,25 @@ const updateAnswer = (field, value) => {
 const saveChanges = () => {
     isSaving.value = true;
     
-    // Use Inertia to submit the data
-    router.patch(route('me.personality.update'), { personality: questions.value }, {
-        preserveScroll: true,
-        onSuccess: () => {
+    // Use Axios instead of Inertia for better control of the response
+    axios.post(route('me.personality.update'), { personality: questions.value })
+        .then(response => {
             isSaving.value = false;
             isEditing.value = false;
-            showSuccess.value = true;
             
-            // Hide success message after 3 seconds
+            // Show success message
+            showSuccess.value = true;
+            successMessage.value = response.data.message || 'Personality traits updated successfully';
+            
+            // Auto-hide success message after 3 seconds
             setTimeout(() => {
                 showSuccess.value = false;
             }, 3000);
-        },
-        onError: () => {
+        })
+        .catch(error => {
             isSaving.value = false;
-        }
-    });
+            console.error('Error updating personality:', error);
+        });
 };
 </script>
 
@@ -210,7 +224,7 @@ const saveChanges = () => {
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
-                                Saved successfully
+                                {{ successMessage }}
                             </div>
                             
                             <!-- Save button -->

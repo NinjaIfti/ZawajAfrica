@@ -11,7 +11,8 @@ class PersonalityController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        // Load user with personality relationship
+        $user = Auth::user()->load('personality');
         
         // Format profile photo URL if it exists
         if ($user->profile_photo) {
@@ -27,11 +28,21 @@ class PersonalityController extends Controller
     {
         $user = Auth::user();
         
-        // Personality update logic will go here
+        // Update or create personality data
+        $user->personality()->updateOrCreate(
+            ['user_id' => $user->id],
+            $request->personality
+        );
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Personality traits updated successfully'
-        ]);
+        // Check if this is an AJAX request
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Personality traits updated successfully'
+            ]);
+        }
+        
+        // For regular form submissions, return an Inertia redirect
+        return redirect()->route('me.personality')->with('success', 'Personality traits updated successfully');
     }
 }
