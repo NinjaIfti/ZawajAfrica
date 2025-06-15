@@ -4,10 +4,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import Sidebar from '@/Components/Sidebar.vue';
 import ProfileHeader from '@/Components/ProfileHeader.vue';
+import axios from 'axios';
 
 const props = defineProps({
     auth: Object,
     user: Object,
+    flash: Object,
 });
 
 // Load hobbies data from user object or initialize empty values
@@ -17,6 +19,17 @@ const interests = ref({
     music: props.user?.interests?.music || '',
     sports: props.user?.interests?.sports || '',
 });
+
+// Show success message if it exists in flash data
+const showSuccess = ref(!!props.flash?.success);
+const successMessage = ref(props.flash?.success || '');
+
+// Auto-hide success message after 3 seconds if it exists
+if (showSuccess.value) {
+    setTimeout(() => {
+        showSuccess.value = false;
+    }, 3000);
+}
 
 // Entertainment options with checkboxes
 const entertainmentOptions = ref([
@@ -66,10 +79,20 @@ const updateEntertainmentInterests = () => {
     interests.value.entertainment = selected.join(', ');
 };
 
-// For tracking editing state
-const isEditing = ref(false);
+// For tracking editing state for each section
+const editingSections = ref({
+    entertainment: false,
+    food: false,
+    music: false,
+    sports: false
+});
+
+// Global editing state (for backward compatibility)
+const isEditing = computed(() => {
+    return Object.values(editingSections.value).some(value => value);
+});
+
 const isSaving = ref(false);
-const showSuccess = ref(false);
 
 // Mobile menu state
 const isMobileMenuOpen = ref(false);
@@ -108,35 +131,79 @@ onUnmounted(() => {
     document.body.classList.remove('overflow-hidden');
 });
 
+// Toggle editing for a specific section
+const toggleEditSection = (section) => {
+    editingSections.value[section] = !editingSections.value[section];
+};
+
 // Update interest field
 const updateInterest = (field, value) => {
     interests.value[field] = value;
 };
 
-// Save changes
+// Save changes for all sections
 const saveChanges = () => {
     isSaving.value = true;
     
     // Update entertainment field based on checkboxes before saving
     updateEntertainmentInterests();
     
-    // Use Inertia to submit the data
-    router.patch(route('me.hobbies.update'), interests.value, {
-        preserveScroll: true,
-        onSuccess: () => {
+    // Use Axios directly instead of Inertia for better control of the response
+    axios.post(route('me.hobbies.update'), interests.value)
+        .then(response => {
             isSaving.value = false;
-            isEditing.value = false;
-            showSuccess.value = true;
             
-            // Hide success message after 3 seconds
+            // Reset all editing states
+            Object.keys(editingSections.value).forEach(key => {
+                editingSections.value[key] = false;
+            });
+            
+            // Show success message
+            showSuccess.value = true;
+            successMessage.value = response.data.message || 'Hobbies updated successfully';
+            
+            // Auto-hide success message after 3 seconds
             setTimeout(() => {
                 showSuccess.value = false;
             }, 3000);
-        },
-        onError: () => {
+        })
+        .catch(error => {
             isSaving.value = false;
-        }
-    });
+            console.error('Error updating hobbies:', error);
+        });
+};
+
+// Save changes for a specific section
+const saveSectionChanges = (section) => {
+    isSaving.value = true;
+    
+    // If saving entertainment section, update based on checkboxes
+    if (section === 'entertainment') {
+        updateEntertainmentInterests();
+    }
+    
+    // Create an object with only the section being updated
+    const sectionData = { [section]: interests.value[section] };
+    
+    // Use Axios to submit just this section
+    axios.post(route('me.hobbies.update'), sectionData)
+        .then(response => {
+            isSaving.value = false;
+            editingSections.value[section] = false;
+            
+            // Show success message
+            showSuccess.value = true;
+            successMessage.value = response.data.message || 'Section updated successfully';
+            
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                showSuccess.value = false;
+            }, 3000);
+        })
+        .catch(error => {
+            isSaving.value = false;
+            console.error(`Error updating ${section}:`, error);
+        });
 };
 </script>
 
@@ -253,8 +320,7 @@ const saveChanges = () => {
 
                 <!-- Hobbies Content -->
                 <div class="bg-white shadow-md rounded-lg p-6">
-                    <h2 class="text-2xl font-bold mb-6">My Hobbies & Interests</h2>
-                    
+                                        
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-bold">Hobbies & Interests</h2>
                         
@@ -264,7 +330,7 @@ const saveChanges = () => {
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
-                                Saved successfully
+                                {{ successMessage }}
                             </div>
                             
                             <!-- Save button -->
@@ -281,10 +347,10 @@ const saveChanges = () => {
                             <!-- Edit button -->
                             <button 
                                 v-else
-                                @click="isEditing = true" 
+                                @click="toggleEditSection('entertainment')" 
                                 class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                             >
-                                Edit Interests
+                                Edit Entertainment
                             </button>
                         </div>
                     </div>

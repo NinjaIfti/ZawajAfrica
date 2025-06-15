@@ -11,7 +11,8 @@ class HobbiesController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        // Load user with interests relationship
+        $user = Auth::user()->load('interests');
         
         // Format profile photo URL if it exists
         if ($user->profile_photo) {
@@ -27,11 +28,26 @@ class HobbiesController extends Controller
     {
         $user = Auth::user();
         
-        // Hobbies update logic will go here
+        // Create or update user interests using the UserInterest model
+        $interests = $user->interests()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'entertainment' => $request->entertainment ?? '',
+                'food' => $request->food ?? '',
+                'music' => $request->music ?? '',
+                'sports' => $request->sports ?? ''
+            ]
+        );
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Hobbies updated successfully'
-        ]);
+        // Check if this is an AJAX request
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Hobbies updated successfully'
+            ]);
+        }
+        
+        // For regular form submissions, redirect back to the hobbies page
+        return redirect()->route('me.hobbies')->with('success', 'Hobbies updated successfully');
     }
 }
