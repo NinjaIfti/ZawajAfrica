@@ -172,20 +172,26 @@ class ProfileController extends Controller
             // Store the new photo
             $path = $file->store('profile-photos', 'public');
             
-            // Update user record with new photo path ONLY - no location
-            $user->profile_photo = $path;
-            $user->save();
+            // Update only the profile_photo field using direct query - no location field
+            \App\Models\User::where('id', $user->id)
+                ->update(['profile_photo' => $path]);
             
             // Reload user and format photo URL
             $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
             $user->profile_photo = asset('storage/' . $path);
             
-            return back()->with([
+            // Return JSON response with user data for frontend to update
+            return response()->json([
+                'success' => true,
                 'message' => 'Profile photo updated successfully',
                 'user' => $user
             ]);
         }
         
-        return back()->with('error', 'Failed to upload profile photo');
+        // Return error as JSON
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to upload profile photo'
+        ], 422);
     }
 }

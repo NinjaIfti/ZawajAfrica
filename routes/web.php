@@ -39,6 +39,11 @@ Route::get('/dashboard', function () {
         }
     }
     
+    // Format the user's profile photo URL if it exists
+    if ($user->profile_photo) {
+        $user->profile_photo = asset('storage/' . $user->profile_photo);
+    }
+    
     // Get all users except the current user as potential matches
     $potentialMatches = \App\Models\User::where('id', '!=', $user->id)
         ->where('email', '!=', 'admin@zawagafrica.com') // Exclude admin user

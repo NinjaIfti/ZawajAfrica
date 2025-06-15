@@ -112,7 +112,6 @@ const saveSection = (section) => {
             dataToUpdate.state = userData.value.state;
             dataToUpdate.country = userData.value.country;
             console.log("Saving name:", userData.value.name); // Debug log
-            console.log("Saving location details:", userData.value.city, userData.value.state, userData.value.country);
             break;
         case 'appearance':
             dataToUpdate.appearance = userData.value.appearance;
@@ -206,7 +205,14 @@ const updateProfilePhoto = (event) => {
     router.post('/profile/photo-update', formData, {
         forceFormData: true,
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (response) => {
+            // Update the profile photo in the UI immediately
+            if (response.user && response.user.profile_photo) {
+                userData.value.profile_photo = response.user.profile_photo;
+            } else {
+                // Create a temporary URL for the uploaded file to display immediately
+                userData.value.profile_photo = URL.createObjectURL(file);
+            }
             successMessage.value = 'Photo updated successfully';
             setTimeout(() => { successMessage.value = ''; }, 3000);
         },

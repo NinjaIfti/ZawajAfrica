@@ -229,7 +229,7 @@ class PhotosController extends Controller
             $photo->is_primary = true;
             $photo->save();
             
-            // Also set as profile photo
+            // Also set as profile photo - only update profile_photo field
             $user->profile_photo = $photo->photo_path;
             $user->save();
             

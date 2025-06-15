@@ -239,7 +239,7 @@ onUnmounted(() => {
                     class="flex items-center"
                 >
                     <img 
-                        :src="$page.props.auth.user.profile_photo_url || '/images/placeholder.jpg'" 
+                        :src="$page.props.auth.user.profile_photo || '/images/placeholder.jpg'" 
                         alt="Profile" 
                         class="h-8 w-8 rounded-full object-cover"
                     >

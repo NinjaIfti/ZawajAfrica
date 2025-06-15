@@ -18,6 +18,54 @@ const interests = ref({
     sports: props.user?.interests?.sports || '',
 });
 
+// Entertainment options with checkboxes
+const entertainmentOptions = ref([
+    { id: 'antiques', label: 'Antiques', checked: false },
+    { id: 'art_painting', label: 'Art / Painting', checked: false },
+    { id: 'astrology', label: 'Astrology', checked: false },
+    { id: 'ballet', label: 'Ballet', checked: false },
+    { id: 'bars_pubs', label: 'Bars / Pubs / Nightclubs', checked: false },
+    { id: 'collecting', label: 'Collecting', checked: false },
+    { id: 'dancing', label: 'Dancing', checked: false },
+    { id: 'dining_out', label: 'Dining Out', checked: false },
+    { id: 'dinner', label: 'Dinner', checked: false },
+]);
+
+// Initialize entertainment checkboxes based on existing value
+onMounted(() => {
+    if (interests.value.entertainment) {
+        const selectedEntertainment = interests.value.entertainment.split(',').map(item => item.trim());
+        entertainmentOptions.value.forEach(option => {
+            option.checked = selectedEntertainment.includes(option.label);
+        });
+    }
+});
+
+// Show/hide entertainment dropdown
+const showEntertainmentDropdown = ref(false);
+
+// Toggle entertainment dropdown
+const toggleEntertainmentDropdown = () => {
+    showEntertainmentDropdown.value = !showEntertainmentDropdown.value;
+};
+
+// Close entertainment dropdown when clicking outside
+const closeEntertainmentDropdown = (e) => {
+    if (showEntertainmentDropdown.value && !e.target.closest('.entertainment-dropdown') && 
+        !e.target.closest('.entertainment-toggle')) {
+        showEntertainmentDropdown.value = false;
+    }
+};
+
+// Update entertainment interests based on checkboxes
+const updateEntertainmentInterests = () => {
+    const selected = entertainmentOptions.value
+        .filter(option => option.checked)
+        .map(option => option.label);
+    
+    interests.value.entertainment = selected.join(', ');
+};
+
 // For tracking editing state
 const isEditing = ref(false);
 const isSaving = ref(false);
@@ -50,11 +98,13 @@ const closeMobileMenu = (e) => {
 // Add click event listener when component is mounted
 onMounted(() => {
     document.addEventListener('click', closeMobileMenu);
+    document.addEventListener('click', closeEntertainmentDropdown);
 });
 
 // Remove event listener when component is unmounted
 onUnmounted(() => {
     document.removeEventListener('click', closeMobileMenu);
+    document.removeEventListener('click', closeEntertainmentDropdown);
     document.body.classList.remove('overflow-hidden');
 });
 
@@ -66,6 +116,9 @@ const updateInterest = (field, value) => {
 // Save changes
 const saveChanges = () => {
     isSaving.value = true;
+    
+    // Update entertainment field based on checkboxes before saving
+    updateEntertainmentInterests();
     
     // Use Inertia to submit the data
     router.patch(route('me.hobbies.update'), interests.value, {
@@ -241,17 +294,65 @@ const saveChanges = () => {
                         <!-- Entertainment -->
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <label for="entertainment" class="block text-gray-700 font-medium">What do you do for fun/entertainment?</label>
+                                <label class="block text-gray-700 font-medium">What do you do for fun/entertainment?</label>
                             </div>
-                            <input 
-                                id="entertainment" 
-                                type="text" 
-                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                v-model="interests.entertainment"
-                                @input="updateInterest('entertainment', $event.target.value)"
-                                :disabled="!isEditing"
-                                placeholder="Antiques, Astrology, Bars / Pubs / Nightclubs, Collecting, etc."
-                            >
+                            
+                            <!-- Entertainment dropdown -->
+                            <div class="relative entertainment-dropdown">
+                                <div 
+                                    @click="isEditing && toggleEntertainmentDropdown()" 
+                                    class="entertainment-toggle w-full border border-gray-300 rounded-md shadow-sm p-2 flex items-center justify-between cursor-pointer"
+                                    :class="{ 'bg-gray-50 cursor-not-allowed': !isEditing, 'hover:bg-gray-50': isEditing }"
+                                >
+                                    <span v-if="interests.entertainment" class="text-gray-900">{{ interests.entertainment }}</span>
+                                    <span v-else class="text-gray-500">Select entertainment options...</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                
+                                <!-- Dropdown content -->
+                                <div 
+                                    v-if="showEntertainmentDropdown && isEditing" 
+                                    class="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 py-2 max-h-60 overflow-y-auto"
+                                >
+                                    <div class="px-4 py-2 border-b border-gray-100">
+                                        <h3 class="font-medium text-gray-900">What do you do for fun/entertainment?</h3>
+                                    </div>
+                                    
+                                    <div class="p-2 space-y-2">
+                                        <div 
+                                            v-for="option in entertainmentOptions" 
+                                            :key="option.id" 
+                                            class="flex items-center px-2 py-1 hover:bg-gray-50 rounded"
+                                        >
+                                            <input 
+                                                type="checkbox" 
+                                                :id="option.id" 
+                                                v-model="option.checked"
+                                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                                @change="updateEntertainmentInterests"
+                                            >
+                                            <label :for="option.id" class="ml-2 block text-sm text-gray-900 cursor-pointer">{{ option.label }}</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="px-4 py-2 border-t border-gray-100 flex justify-between">
+                                        <button 
+                                            @click="showEntertainmentDropdown = false" 
+                                            class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                                        >
+                                            Save Changes
+                                        </button>
+                                        <button 
+                                            @click="showEntertainmentDropdown = false" 
+                                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Food -->
