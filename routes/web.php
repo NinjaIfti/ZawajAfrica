@@ -46,6 +46,20 @@ Route::get('/dashboard', function () {
         ->take(10) // Limit to 10 matches for now
         ->get();
     
+    // Format photos URLs for potential matches
+    foreach ($potentialMatches as $potentialMatch) {
+        if ($potentialMatch->profile_photo) {
+            $potentialMatch->profile_photo = asset('storage/' . $potentialMatch->profile_photo);
+        }
+        
+        // Format photos URLs
+        if ($potentialMatch->photos) {
+            foreach ($potentialMatch->photos as $photo) {
+                $photo->url = asset('storage/' . $photo->photo_path);
+            }
+        }
+    }
+    
     return Inertia::render('Dashboard', [
         'user' => $user,
         'profile' => $user->profile,

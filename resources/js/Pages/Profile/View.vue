@@ -166,23 +166,78 @@ const toggleSection = (sectionId) => {
         section.classList.toggle('open');
     }
 };
+
+// Mobile menu state
+const isMobileMenuOpen = ref(false);
+
+// Toggle mobile menu
+const toggleMobileMenu = () => {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value;
+};
 </script>
 
 <template>
     <Head title="Profile View" />
 
-    <div class="flex min-h-screen bg-gray-100">
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-100">
         
-        <Sidebar :user="$page.props.auth.user" />
+        <!-- Mobile header with hamburger menu - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center justify-between md:hidden">
+            <button 
+                @click="toggleMobileMenu" 
+                class="p-1"
+                aria-label="Toggle menu"
+            >
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg 
+                    class="h-6 w-6 text-gray-700" 
+                    :class="{ 'hidden': !isMobileMenuOpen }"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <h1 class="text-lg font-bold">Profile View</h1>
+            
+            <Link :href="route('dashboard')" class="flex items-center text-gray-700">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            </Link>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div 
+            v-if="isMobileMenuOpen" 
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="toggleMobileMenu"
+        ></div>
+
+        <!-- Left Sidebar - Hidden on mobile until menu button is clicked -->
+        <aside 
+            class="fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
+            :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
+        >
+            <Sidebar :user="$page.props.auth.user" />
+        </aside>
         
         <!-- Main Content -->
-        <div class="flex-1 p-8">
+        <div class="flex-1 p-4 md:p-8 mt-16 md:mt-0">
             <!-- Welcome and Search - Only visible on desktop -->
             <div class="mb-6 md:mb-8 hidden md:block">
                 <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
                     <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
-                    
-                    
                 </div>
                 
                 <!-- Search bar with integrated filter button - desktop -->
@@ -201,13 +256,13 @@ const toggleSection = (sectionId) => {
                 </div>
             </div>
             
-            <!-- Back Button -->
-            <div class="mb-6">
+            <!-- Back Button - Only visible on desktop -->
+            <div class="mb-6 hidden md:block">
                 <Link :href="route('dashboard')" class="flex items-center text-gray-700">
                     <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    <span class="font-bold">Profile</span>
+                    <span class="font-bold">Back to Matches</span>
                 </Link>
             </div>
             
@@ -215,11 +270,11 @@ const toggleSection = (sectionId) => {
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <!-- Profile Header -->
                 <div class="relative">
-                    <!-- Profile Image and Info Section - Restructured with image on left -->
-                    <div class="flex">
-                        <!-- Profile Image (Left Side) -->
-                        <div class="relative w-1/2">
-                            <div class="w-full h-full bg-gray-200 relative">
+                    <!-- Profile Image and Info Section - Restructured with image on left for desktop, stacked for mobile -->
+                    <div class="flex flex-col md:flex-row">
+                        <!-- Profile Image (Full width on mobile, left side on desktop) -->
+                        <div class="relative w-full md:w-1/2">
+                            <div class="w-full h-72 md:h-full bg-gray-200 relative">
                                 <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover">
                                 
                                 <!-- Online Status -->
@@ -236,8 +291,8 @@ const toggleSection = (sectionId) => {
                                 </div>
                             </div>
                             
-                            <!-- Interaction Buttons -->
-                            <div class="absolute left-4 bottom-4 flex space-x-3">
+                            <!-- Interaction Buttons - Fixed position on mobile, absolute on desktop -->
+                            <div class="flex space-x-3 justify-center p-4 md:p-0 md:absolute md:left-4 md:bottom-4">
                                 <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white">
                                     <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
@@ -251,7 +306,7 @@ const toggleSection = (sectionId) => {
                             </div>
                         </div>
                         
-                        <!-- Profile Information (Right Side) -->
+                        <!-- Profile Information (Right Side on desktop, below image on mobile) -->
                         <div class="flex-1 p-6">
                             <div class="flex items-center mb-1">
                                 <h2 class="text-2xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
@@ -287,8 +342,8 @@ const toggleSection = (sectionId) => {
                     </div>
                 </div>
                 
-                <!-- Profile Tabs -->
-                <div class="border-t border-gray-200">
+                <!-- Profile Tabs - Fixed at the bottom on mobile -->
+                <div class="border-t border-gray-200 sticky top-0 z-10 bg-white">
                     <div class="grid grid-cols-2">
                         <button 
                             @click="setActiveTab('about')" 
@@ -318,7 +373,7 @@ const toggleSection = (sectionId) => {
                             </svg>
                         </div>
                         <div id="overview" class="p-4 bg-white border-t border-gray-200">
-                            <div class="grid grid-cols-2 gap-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
                                     <p class="text-gray-500">Education</p>
                                     <p class="font-medium">{{ profile.education.level }}</p>
@@ -356,7 +411,7 @@ const toggleSection = (sectionId) => {
                             </svg>
                         </div>
                         <div id="appearance" class="p-4 bg-white border-t border-gray-200">
-                            <div class="grid grid-cols-2 gap-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
                                     <p class="text-gray-500">Hair Color</p>
                                     <p class="font-medium">{{ profile.appearance.hairColor }}</p>
@@ -398,7 +453,7 @@ const toggleSection = (sectionId) => {
                             </svg>
                         </div>
                         <div id="lifestyle" class="p-4 bg-white border-t border-gray-200">
-                            <div class="grid grid-cols-2 gap-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
                                     <p class="text-gray-500">Smoke</p>
                                     <p class="font-medium">{{ profile.lifestyle.smoke }}</p>
@@ -490,5 +545,28 @@ const toggleSection = (sectionId) => {
 <style scoped>
 .text-rose-500 {
     color: #f43f5e;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    .min-h-screen {
+        padding-top: 1rem;
+    }
+    
+    /* Make section toggles more touch-friendly */
+    .cursor-pointer {
+        padding: 1rem;
+    }
+}
+
+/* Animation for section toggles */
+#overview, #appearance, #lifestyle, #hobbies, #sports {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+#overview.open, #appearance.open, #lifestyle.open, #hobbies.open, #sports.open {
+    max-height: 1000px; /* Large enough to show all content */
 }
 </style> 

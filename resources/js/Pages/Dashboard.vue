@@ -96,13 +96,8 @@ const processUserData = (user) => {
             image = user.photos[0].url;
         }
     } else if (user.profile_photo) {
-        // If profile_photo is a full URL, use it directly
-        if (user.profile_photo.startsWith('http')) {
-            image = user.profile_photo;
-        } else {
-            // Otherwise, assume it's a path and construct the URL
-            image = `/storage/${user.profile_photo}`;
-        }
+        // The profile_photo is already a full URL path from the backend
+        image = user.profile_photo;
     }
     
     // Mock compatibility score (to be replaced with real algorithm later)

@@ -65,7 +65,6 @@ const errorMessage = ref('');
 // Initialize userData with user data from props (with fallbacks for missing data)
 const userData = ref(props.user ? {
     name: props.user.name || '',
-    location: props.user.location || '',
     country: props.user.country || '',
     state: props.user.state || '',
     city: props.user.city || '',
@@ -76,7 +75,6 @@ const userData = ref(props.user ? {
     about: props.user.about || {},
 } : {
     name: '',
-    location: '',
     country: '',
     state: '',
     city: '',
@@ -370,7 +368,9 @@ const updateProfilePhoto = (event) => {
                                     
                                     <div>
                                         <p class="text-sm text-gray-500">Location</p>
-                                        <p class="font-medium">{{ userData.location }}</p>
+                                        <p class="font-medium">
+                                            {{ [userData.city, userData.state, userData.country].filter(Boolean).join(', ') }}
+                                        </p>
                                     </div>
                                 </div>
                                 

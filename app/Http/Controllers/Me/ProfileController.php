@@ -172,7 +172,7 @@ class ProfileController extends Controller
             // Store the new photo
             $path = $file->store('profile-photos', 'public');
             
-            // Update user record with new photo path
+            // Update user record with new photo path ONLY - no location
             $user->profile_photo = $path;
             $user->save();
             
