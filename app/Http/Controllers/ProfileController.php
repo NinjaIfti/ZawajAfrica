@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\User;
 
 class ProfileController extends Controller
 {
@@ -158,25 +159,29 @@ class ProfileController extends Controller
      */
     public function show($id)
     {
-        $user = \App\Models\User::with('profile')->findOrFail($id);
+        // Find the user by ID
+        $user = User::with(['appearance', 'lifestyle', 'background', 'about', 'overview', 'photos', 'interests', 'personality'])
+            ->findOrFail($id);
         
-        // Calculate age from DOB
-        $age = null;
-        if ($user->dob_day && $user->dob_month && $user->dob_year) {
-            $age = $user->age;
+        // Format profile photo URL if it exists
+        if ($user->profile_photo) {
+            $user->profile_photo = asset('storage/' . $user->profile_photo);
         }
         
-        return Inertia::render('Profile/Show', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'gender' => $user->gender,
-                'age' => $age,
-                'city' => $user->city,
-                'state' => $user->state,
-                'country' => $user->country,
-            ],
-            'profile' => $user->profile,
+        // Format photo URLs
+        if ($user->photos) {
+            $user->photos->each(function ($photo) {
+                $photo->url = asset('storage/' . $photo->photo_path);
+            });
+        }
+        
+        // Calculate compatibility score (placeholder logic)
+        $compatibility = 85; // This would be replaced with actual compatibility algorithm
+        
+        return Inertia::render('Profile/View', [
+            'id' => $id,
+            'userData' => $user,
+            'compatibility' => $compatibility
         ]);
     }
 }

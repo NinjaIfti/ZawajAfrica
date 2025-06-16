@@ -175,7 +175,8 @@ Route::get('/matches/profile/{id}', function($id) {
         'background', 
         'about',
         'interests',
-        'personality'
+        'personality',
+        'overview'
     ])->findOrFail($id);
     
     // Calculate compatibility (mock for now)

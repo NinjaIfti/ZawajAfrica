@@ -17,7 +17,7 @@ class ProfileController extends Controller
      */
     public function index()
     {
-        $user = Auth::user()->load(['appearance', 'lifestyle', 'background', 'about']);
+        $user = Auth::user()->load(['appearance', 'lifestyle', 'background', 'about', 'overview']);
         
         // Ensure the profile photo URL is fully qualified
         if ($user->profile_photo) {
@@ -58,6 +58,7 @@ class ProfileController extends Controller
                 'lifestyle' => ['sometimes', 'array'],
                 'background' => ['sometimes', 'array'],
                 'about' => ['sometimes', 'array'],
+                'overview' => ['sometimes', 'array'],
             ])->validate();
             
             // Log the validated data for debugging
@@ -116,11 +117,19 @@ class ProfileController extends Controller
                 );
             }
             
+            // Update overview data
+            if (isset($validated['overview'])) {
+                $user->overview()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $validated['overview']
+                );
+            }
+            
             // Save the user
             $user->save();
             
             // Reload the user with relationships
-            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
+            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about', 'overview']);
             
             // Format profile photo URL if it exists
             if ($user->profile_photo) {

@@ -10,7 +10,7 @@ const props = defineProps({
     auth: Object
 });
 
-// Process user data to match the expected format in the template
+    // Process user data to match the expected format in the template
 const profile = computed(() => {
     const user = props.userData;
     if (!user) return {};
@@ -90,15 +90,24 @@ const profile = computed(() => {
         style: user.appearance?.style || 'Not specified'
     };
     
+    // Extract overview data
+    const overview = {
+        educationLevel: user.overview?.education_level || 'Not specified',
+        employmentStatus: user.overview?.employment_status || 'Not specified',
+        incomeRange: user.overview?.income_range || 'Not specified',
+        religion: user.overview?.religion || 'Not specified',
+        maritalStatus: user.overview?.marital_status || 'Not specified'
+    };
+    
+
+    
     // Extract lifestyle data
     const lifestyle = {
-        smoke: user.lifestyle?.smoking || "Not specified",
-        eatingHabits: user.lifestyle?.eating_habits || 'Not specified',
-        haveChildren: user.lifestyle?.have_children ? 'Yes' : 'No',
+        smoke: user.lifestyle?.smoking || user.lifestyle?.smokes || "Not specified",
+        drinks: user.lifestyle?.drinks || "Not specified",
+        haveChildren: user.lifestyle?.has_children || "Not specified",
         numberOfChildren: user.lifestyle?.number_of_children || 0,
-        wantMoreChildren: user.lifestyle?.want_more_children || 'Not specified',
-        relocate: user.lifestyle?.willing_to_relocate || 'Not specified',
-        livingSituation: user.lifestyle?.living_situation || 'Not specified'
+        occupation: user.lifestyle?.occupation || "Not specified"
     };
     
     // Extract hobbies and interests
@@ -133,24 +142,25 @@ const profile = computed(() => {
         photos: allPhotos,
         compatibility: props.compatibility || 85,
         seeking: seeking || 'Seeking a partner',
+        profileHeading: user.about?.heading || "",
         aboutMe: user.about?.about_me || "No information provided.",
         education: {
-            level: user.background?.education_level || 'Not specified'
+            level: overview.educationLevel
         },
         employment: {
-            status: user.background?.employment_status || 'Not specified'
+            status: overview.employmentStatus
         },
         religion: {
-            name: user.background?.religion || 'Not specified'
+            name: overview.religion
         },
         income: {
-            range: user.background?.income_range || 'Not specified'
+            range: overview.incomeRange
         },
         drink: {
             preference: user.lifestyle?.drinking || "Not specified"
         },
         maritalStatus: {
-            status: user.background?.marital_status || 'Not specified'
+            status: overview.maritalStatus
         },
         appearance: appearance,
         lifestyle: lifestyle,
@@ -417,7 +427,7 @@ onMounted(() => {
                                     <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
-                                </div>
+                               </div>
                                 
                                 <!-- Photo Gallery Button - if user has multiple photos -->
                                 <div v-if="profile.photos && profile.photos.length > 1" 
@@ -459,9 +469,10 @@ onMounted(() => {
                             </p>
                             
                             <h3 class="text-lg font-bold mb-2">About Me</h3>
+                            <h4 v-if="profile.profileHeading" class="text-md font-semibold mb-2">{{ profile.profileHeading }}</h4>
                             <p class="text-gray-700 mb-6">{{ profile.aboutMe }}</p>
                             
-                            <!-- Profile Actions -->
+                             <!-- Profile Actions -->
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="bg-white rounded-lg flex items-center justify-center py-3">
                                     <svg class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -528,10 +539,7 @@ onMounted(() => {
                                     <p class="text-gray-500">Annual Income</p>
                                     <p class="font-medium">{{ profile.income.range }}</p>
                                 </div>
-                                <div>
-                                    <p class="text-gray-500">Drink</p>
-                                    <p class="font-medium">{{ profile.drink.preference }}</p>
-                                </div>
+                                
                                 <div>
                                     <p class="text-gray-500">Religion</p>
                                     <p class="font-medium">{{ profile.religion.name }}</p>
@@ -570,22 +578,13 @@ onMounted(() => {
                                     <p class="text-gray-500">Weight</p>
                                     <p class="font-medium">{{ profile.appearance.weight }}</p>
                                 </div>
-                                <div>
-                                    <p class="text-gray-500">Body Style</p>
-                                    <p class="font-medium">{{ profile.appearance.bodyStyle }}</p>
-                                </div>
+                               
                                 <div>
                                     <p class="text-gray-500">Height</p>
                                     <p class="font-medium">{{ profile.appearance.height }}</p>
                                 </div>
-                                <div>
-                                    <p class="text-gray-500">Ethnicity</p>
-                                    <p class="font-medium">{{ profile.appearance.ethnicity }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Appearance</p>
-                                    <p class="font-medium">{{ profile.appearance.style }}</p>
-                                </div>
+                               
+                               
                             </div>
                         </div>
                     </div>
@@ -605,36 +604,24 @@ onMounted(() => {
                         <div id="lifestyle" class="bg-white section-content">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
                                 <div>
-                                    <p class="text-gray-500">Smoke</p>
+                                    <p class="text-gray-500">Do you smoke?</p>
                                     <p class="font-medium">{{ profile.lifestyle.smoke }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-500">Eating Habits</p>
-                                    <p class="font-medium">{{ profile.lifestyle.eatingHabits }}</p>
+                                    <p class="text-gray-500">Do you drink?</p>
+                                    <p class="font-medium">{{ profile.lifestyle.drinks }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-500">No. of children</p>
-                                    <p class="font-medium">{{ profile.lifestyle.numberOfChildren }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Want More Children</p>
-                                    <p class="font-medium">{{ profile.lifestyle.wantMoreChildren }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Have Children</p>
+                                    <p class="text-gray-500">Do you have children?</p>
                                     <p class="font-medium">{{ profile.lifestyle.haveChildren }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-500">Ethnicity</p>
-                                    <p class="font-medium">{{ profile.appearance.ethnicity }}</p>
+                                    <p class="text-gray-500">Number of children</p>
+                                    <p class="font-medium">{{ profile.lifestyle.numberOfChildren }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-500">Living Situation</p>
-                                    <p class="font-medium">{{ profile.lifestyle.livingSituation }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Relocate</p>
-                                    <p class="font-medium">{{ profile.lifestyle.relocate }}</p>
+                                    <p class="text-gray-500">Occupation</p>
+                                    <p class="font-medium">{{ profile.lifestyle.occupation }}</p>
                                 </div>
                             </div>
                         </div>
@@ -847,4 +834,4 @@ img.object-cover {
     opacity: 1;
     background-color: rgba(0, 0, 0, 0.5);
 }
-</style> 
+</style>

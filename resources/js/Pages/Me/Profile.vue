@@ -55,7 +55,8 @@ const editingSections = ref({
     appearance: false,
     lifestyle: false,
     background: false,
-    about: false
+    about: false,
+    overview: false
 });
 
 // Add success/error message state
@@ -73,6 +74,7 @@ const userData = ref(props.user ? {
     lifestyle: props.user.lifestyle || {},
     background: props.user.background || {},
     about: props.user.about || {},
+    overview: props.user.overview || {}
 } : {
     name: '',
     country: '',
@@ -83,6 +85,7 @@ const userData = ref(props.user ? {
     lifestyle: {},
     background: {},
     about: {},
+    overview: {}
 });
 
 // Function to change active tab
@@ -124,6 +127,9 @@ const saveSection = (section) => {
             break;
         case 'about':
             dataToUpdate.about = userData.value.about;
+            break;
+        case 'overview':
+            dataToUpdate.overview = userData.value.overview;
             break;
     }
     
@@ -186,6 +192,9 @@ const cancelEdit = (section) => {
             break;
         case 'about':
             userData.value.about = { ...props.user?.about || {} };
+            break;
+        case 'overview':
+            userData.value.overview = { ...props.user?.overview || {} };
             break;
     }
     
@@ -431,7 +440,115 @@ const updateProfilePhoto = (event) => {
                             </div>
                         </div>
                     </div>
-
+ <!-- Overview Section -->
+ <div class="bg-white rounded-lg shadow-sm p-6 relative mb-6">
+                        <h3 class="text-lg font-semibold mb-4">Overview</h3>
+                        
+                        <div v-if="!editingSections.overview" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4">
+                                <div>
+                                    <p class="text-sm text-gray-500">Education</p>
+                                    <p class="font-medium">{{ userData.overview?.education_level }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Employment Status</p>
+                                    <p class="font-medium">{{ userData.overview?.employment_status }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Annual Income</p>
+                                    <p class="font-medium">{{ userData.overview?.income_range }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Religion</p>
+                                    <p class="font-medium">{{ userData.overview?.religion }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Marital Status</p>
+                                    <p class="font-medium">{{ userData.overview?.marital_status }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-else class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm text-gray-500">Education</label>
+                                    <select v-model="userData.overview.education_level" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Education Level</option>
+                                        <option value="High School">High School</option>
+                                        <option value="Some College">Some College</option>
+                                        <option value="Associate's Degree">Associate's Degree</option>
+                                        <option value="Bachelor's Degree">Bachelor's Degree</option>
+                                        <option value="Master's Degree">Master's Degree</option>
+                                        <option value="Doctorate">Doctorate</option>
+                                        <option value="Professional Degree">Professional Degree</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="text-sm text-gray-500">Employment Status</label>
+                                    <select v-model="userData.overview.employment_status" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Employment Status</option>
+                                        <option value="Full-time">Full-time</option>
+                                        <option value="Part-time">Part-time</option>
+                                        <option value="Self-employed">Self-employed</option>
+                                        <option value="Freelance">Freelance</option>
+                                        <option value="Student">Student</option>
+                                        <option value="Retired">Retired</option>
+                                        <option value="Not employed">Not employed</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="text-sm text-gray-500">Annual Income</label>
+                                    <select v-model="userData.overview.income_range" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Income Range</option>
+                                        <option value="Less than $30,000">Less than $30,000</option>
+                                        <option value="$30,000 - $50,000">$30,000 - $50,000</option>
+                                        <option value="$50,000 - $75,000">$50,000 - $75,000</option>
+                                        <option value="$75,000 - $100,000">$75,000 - $100,000</option>
+                                        <option value="$100,000 - $150,000">$100,000 - $150,000</option>
+                                        <option value="More than $150,000">More than $150,000</option>
+                                        <option value="Prefer not to say">Prefer not to say</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="text-sm text-gray-500">Religion</label>
+                                    <select v-model="userData.overview.religion" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Religion</option>
+                                        <option value="Islam">Islam</option>
+                                        <option value="Islam - Sunni">Islam - Sunni</option>
+                                        <option value="Islam - Shia">Islam - Shia</option>
+                                        <option value="Islam - Sufi">Islam - Sufi</option>
+                                        <option value="Islam - Other">Islam - Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="text-sm text-gray-500">Marital Status</label>
+                                    <select v-model="userData.overview.marital_status" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                        <option value="">Select Marital Status</option>
+                                        <option value="Single, never married">Single, never married</option>
+                                        <option value="Divorced">Divorced</option>
+                                        <option value="Widowed">Widowed</option>
+                                        <option value="Separated">Separated</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="flex space-x-3">
+                                <button @click="saveSection('overview')" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                                <button @click="cancelEdit('overview')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                            </div>
+                        </div>
+                        
+                        <button v-if="!editingSections.overview" @click="toggleEditMode('overview')" class="absolute top-6 right-6 text-gray-500 hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </button>
+                    </div>
                     <!-- Three Column Info Section -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <!-- Appearance Section -->
@@ -531,7 +648,7 @@ const updateProfilePhoto = (event) => {
                                 
                                 <div>
                                     <p class="text-sm text-gray-500">Do you smoke?</p>
-                                    <p class="font-medium">{{ userData.lifestyle.smokes }}</p>
+                                    <p class="font-medium">{{ userData.lifestyle.smokes || userData.lifestyle.smoking }}</p>
                                 </div>
                                 
                                 <div>
@@ -562,7 +679,7 @@ const updateProfilePhoto = (event) => {
                                 
                                 <div>
                                     <label class="text-sm text-gray-500">Do you smoke?</label>
-                                    <select v-model="userData.lifestyle.smokes" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                    <select v-model="userData.lifestyle.smoking" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
                                         <option value="Yes">Yes</option>
                                         <option value="No">No</option>
                                         <option value="Occasionally">Occasionally</option>
@@ -677,6 +794,8 @@ const updateProfilePhoto = (event) => {
                             </button>
                         </div>
                     </div>
+                    
+                   
                     
                     <!-- About Me Section -->
                     <div class="bg-white rounded-lg shadow-sm p-6 relative mb-6">

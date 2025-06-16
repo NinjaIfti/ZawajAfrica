@@ -14,6 +14,7 @@ use App\Models\UserBackground;
 use App\Models\UserAbout;
 use App\Models\UserPhoto;
 use App\Models\Message;
+use App\Models\UserOverview;
 
 class User extends Authenticatable
 {
@@ -141,6 +142,14 @@ class User extends Authenticatable
     public function about()
     {
         return $this->hasOne(UserAbout::class);
+    }
+    
+    /**
+     * Get the overview data associated with the user.
+     */
+    public function overview()
+    {
+        return $this->hasOne(UserOverview::class);
     }
     
     /**
