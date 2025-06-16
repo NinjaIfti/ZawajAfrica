@@ -10,7 +10,7 @@ const props = defineProps({
     auth: Object
 });
 
-    // Process user data to match the expected format in the template
+// Process user data to match the expected format in the template
 const profile = computed(() => {
     const user = props.userData;
     if (!user) return {};
@@ -427,7 +427,7 @@ onMounted(() => {
                                     <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
-                               </div>
+                                </div>
                                 
                                 <!-- Photo Gallery Button - if user has multiple photos -->
                                 <div v-if="profile.photos && profile.photos.length > 1" 
@@ -472,7 +472,7 @@ onMounted(() => {
                             <h4 v-if="profile.profileHeading" class="text-md font-semibold mb-2">{{ profile.profileHeading }}</h4>
                             <p class="text-gray-700 mb-6">{{ profile.aboutMe }}</p>
                             
-                             <!-- Profile Actions -->
+                            <!-- Profile Actions -->
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="bg-white rounded-lg flex items-center justify-center py-3">
                                     <svg class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -680,7 +680,41 @@ onMounted(() => {
                 
                 <!-- Searching For Content -->
                 <div class="p-4" v-if="activeTab === 'searching'">
-                    <p class="text-gray-700">Information about what {{ profile.name }} is looking for will be displayed here.</p>
+                    <!-- Partner Preferences Card -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-4">
+                        <h3 class="text-lg font-bold mb-4">Partner Preferences</h3>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4">
+                            <div>
+                                <p class="text-gray-500">Age Range</p>
+                                <p class="font-medium" v-if="props.userData.about?.looking_for_age_min || props.userData.about?.looking_for_age_max">
+                                    {{ props.userData.about?.looking_for_age_min || '?' }} to {{ props.userData.about?.looking_for_age_max || '?' }} years
+                                </p>
+                                <p class="font-medium text-gray-400" v-else>Not specified</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-gray-500">Education Level</p>
+                                <p class="font-medium">{{ props.userData.about?.looking_for_education || 'Any' }}</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-gray-500">Religious Practice</p>
+                                <p class="font-medium">{{ props.userData.about?.looking_for_religious_practice || 'Any' }}</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-gray-500">Marital Status</p>
+                                <p class="font-medium">{{ props.userData.about?.looking_for_marital_status || 'Any' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- What you're looking for in a partner - Separate Card -->
+                    <div class="bg-white rounded-lg shadow-sm p-6" v-if="props.userData.about?.looking_for">
+                        <h3 class="text-lg font-bold mb-4">What I'm Looking For in a Partner</h3>
+                        <p class="font-medium">{{ props.userData.about?.looking_for }}</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -834,4 +868,4 @@ img.object-cover {
     opacity: 1;
     background-color: rgba(0, 0, 0, 0.5);
 }
-</style>
+</style> 

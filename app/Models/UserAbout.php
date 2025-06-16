@@ -19,6 +19,11 @@ class UserAbout extends Model
         'heading',
         'about_me',
         'looking_for',
+        'looking_for_age_min',
+        'looking_for_age_max',
+        'looking_for_education',
+        'looking_for_religious_practice',
+        'looking_for_marital_status',
     ];
     
     /**

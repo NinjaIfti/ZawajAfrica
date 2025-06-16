@@ -831,7 +831,61 @@ const updateProfilePhoto = (event) => {
                             
                             <div>
                                 <label class="text-sm text-gray-500 mb-1">What you're looking for in a partner</label>
-                                <textarea v-model="userData.about.looking_for" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200" rows="4"></textarea>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-sm text-gray-500">Age Range</label>
+                                        <div class="flex items-center space-x-2">
+                                            <select v-model="userData.about.looking_for_age_min" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                                <option value="">Min Age</option>
+                                                <option v-for="age in Array.from({length: 43}, (_, i) => i + 18)" :key="age" :value="age">{{ age }}</option>
+                                            </select>
+                                            <span>to</span>
+                                            <select v-model="userData.about.looking_for_age_max" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                                <option value="">Max Age</option>
+                                                <option v-for="age in Array.from({length: 43}, (_, i) => i + 18)" :key="age" :value="age">{{ age }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm text-gray-500">Education Level</label>
+                                        <select v-model="userData.about.looking_for_education" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                            <option value="">Any</option>
+                                            <option value="High School">High School</option>
+                                            <option value="Some College">Some College</option>
+                                            <option value="Associate's Degree">Associate's Degree</option>
+                                            <option value="Bachelor's Degree">Bachelor's Degree</option>
+                                            <option value="Master's Degree">Master's Degree</option>
+                                            <option value="Doctorate">Doctorate</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm text-gray-500">Religious Practice</label>
+                                        <select v-model="userData.about.looking_for_religious_practice" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                            <option value="">Any</option>
+                                            <option value="Very Religious">Very Religious</option>
+                                            <option value="Religious">Religious</option>
+                                            <option value="Moderately Religious">Moderately Religious</option>
+                                            <option value="Not Very Religious">Not Very Religious</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm text-gray-500">Marital Status</label>
+                                        <select v-model="userData.about.looking_for_marital_status" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
+                                            <option value="">Any</option>
+                                            <option value="Single, never married">Single, never married</option>
+                                            <option value="Divorced">Divorced</option>
+                                            <option value="Widowed">Widowed</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="text-sm text-gray-500">Additional Preferences (optional)</label>
+                                        <textarea v-model="userData.about.looking_for" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200" rows="2" placeholder="Any other preferences you have for a partner..."></textarea>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="flex space-x-3">
