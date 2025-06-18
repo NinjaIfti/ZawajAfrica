@@ -47,7 +47,7 @@ class AdminController extends Controller
             'users' => $users,
         ]);
     }
-
+    
     /**
      * Display a specific user's profile details.
      */

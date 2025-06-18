@@ -10,17 +10,15 @@ const props = defineProps({
 </script>
 
 <template>
-    <div class="bg-white rounded-lg shadow-lg p-6">
-        <div class="flex items-center justify-between mb-4">
+    <div class="bg-white rounded-lg shadow-lg p-8 mb-10">
+            <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-900">Professional Support</h3>
-            <Link :href="route('therapists.index')" class="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
-                View All →
-            </Link>
+           
         </div>
         
-        <div v-if="therapists && therapists.length > 0" class="space-y-4">
+        <div v-if="therapists && therapists.length > 0" class="space-y-6">
             <div v-for="therapist in therapists.slice(0, 2)" :key="therapist.id" 
-                 class="flex items-center p-3 border border-gray-200 rounded-lg hover:border-indigo-300 transition-colors">
+                 class="flex items-center p-5 hover:border-indigo-300 transition-colors">
                 <div class="flex-shrink-0">
                     <img v-if="therapist.photo" :src="therapist.photo_url" :alt="therapist.name" 
                          class="h-12 w-12 rounded-full object-cover">
@@ -38,12 +36,7 @@ const props = defineProps({
                         </span>
                     </div>
                 </div>
-                <div class="ml-2">
-                    <Link :href="route('therapists.show', therapist.id)" 
-                          class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full">
-                        Book
-                    </Link>
-                </div>
+                
             </div>
             
             <div class="text-center pt-2">
@@ -51,14 +44,14 @@ const props = defineProps({
                       class="text-sm text-indigo-600 hover:text-indigo-900 font-medium">
                     Find Your Perfect Therapist →
                 </Link>
-            </div>
-        </div>
-        
+                        </div>
+                    </div>
+                    
         <div v-else class="text-center py-8">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                       d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-            </svg>
+                        </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">Professional Support</h3>
             <p class="mt-1 text-sm text-gray-500">Connect with qualified therapists for guidance and support.</p>
             <div class="mt-4">

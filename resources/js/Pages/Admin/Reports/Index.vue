@@ -154,10 +154,10 @@ const getStatusText = (report) => {
                                             <template v-if="reports.links && reports.links.length > 0">
                                                 <template v-for="(link, i) in reports.links" :key="i">
                                                     <Link v-if="link && link.url" :href="link.url"
-                                                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium"
-                                                        :class="{'text-indigo-600 z-10': link.active, 'text-gray-500': !link.active}">
-                                                        <span v-html="link.label"></span>
-                                                    </Link>
+                                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium"
+                                                    :class="{'text-indigo-600 z-10': link.active, 'text-gray-500': !link.active}">
+                                                    <span v-html="link.label"></span>
+                                                </Link>
                                                     <span v-else-if="link && !link.url"
                                                         class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-gray-200 text-sm font-medium text-gray-400 cursor-not-allowed">
                                                         <span v-html="link.label"></span>
