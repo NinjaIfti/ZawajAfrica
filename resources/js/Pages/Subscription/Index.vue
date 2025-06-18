@@ -3,15 +3,18 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import AppHeader from '@/Components/AppHeader.vue';
+import axios from 'axios';
 
 const props = defineProps({
     user: Object,
     plans: Object,
-    userGender: String
+    userGender: String,
+    paystackPublicKey: String
 });
 
 // Mobile menu state
 const isMobileMenuOpen = ref(false);
+const isProcessingPayment = ref(false);
 
 // Toggle mobile menu
 const toggleMobileMenu = () => {
@@ -31,6 +34,9 @@ const form = useForm({
     agreed_to_terms: false
 });
 
+// Terms agreement state for each plan
+const termsAgreed = ref({});
+
 // Selected gender for plans
 const selectedGender = ref(props.userGender || 'male');
 
@@ -39,12 +45,39 @@ const genderPlans = computed(() => {
     return props.plans[selectedGender.value] || props.plans['male'];
 });
 
-// Function to select a plan
-const selectPlan = (planName) => {
+// Function to select a plan and initiate payment
+const selectPlan = async (planName) => {
+    if (!termsAgreed.value[planName]) {
+        alert('Please agree to the Terms of Use and Privacy Statement before proceeding.');
+        return;
+    }
+
     form.plan = planName;
+    form.agreed_to_terms = termsAgreed.value[planName];
+    isProcessingPayment.value = true;
+
+    try {
+        // Initialize payment with backend
+        const response = await axios.post(route('payment.subscription.initialize'), {
+            plan: planName,
+            agreed_to_terms: form.agreed_to_terms
+        });
+
+        if (response.data.status) {
+            // Redirect to Paystack payment page
+            window.location.href = response.data.authorization_url;
+        } else {
+            alert('Payment initialization failed: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Payment error:', error);
+        alert('An error occurred while initializing payment. Please try again.');
+    } finally {
+        isProcessingPayment.value = false;
+    }
 };
 
-// Function to submit the form
+// Legacy function for non-Paystack flow (kept for fallback)
 const submit = () => {
     form.post(route('subscription.purchase'), {
         onSuccess: () => {
@@ -198,11 +231,11 @@ const submit = () => {
                         <div class="mt-6 flex items-start">
                             <input 
                                 type="checkbox" 
-                                :id="`terms-${index}`" 
-                                v-model="form.agreed_to_terms" 
+                                :id="`terms-${plan.name}-${index}`" 
+                                v-model="termsAgreed[plan.name]" 
                                 class="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                             >
-                            <label :for="`terms-${index}`" class="ml-2 block text-sm text-gray-700">
+                            <label :for="`terms-${plan.name}-${index}`" class="ml-2 block text-sm text-gray-700">
                                 Yes, I agree to the 
                                 <Link href="#" class="text-purple-600 underline">Terms of Use</Link>
                                 and
@@ -213,9 +246,23 @@ const submit = () => {
                         <!-- Subscribe button -->
                         <button 
                             @click="selectPlan(plan.name)"
-                            class="mt-6 w-full bg-purple-600 py-3 px-4 rounded-md text-white font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                            :disabled="isProcessingPayment || !termsAgreed[plan.name]"
+                            class="mt-6 w-full py-3 px-4 rounded-md text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+                            :class="{
+                                'bg-purple-600 hover:bg-purple-700': !isProcessingPayment && termsAgreed[plan.name],
+                                'bg-gray-400 cursor-not-allowed': isProcessingPayment || !termsAgreed[plan.name]
+                            }"
                         >
-                            {{ plan.name }} for ${{ plan.price_usd }} / {{ plan.price_naira }} naira
+                            <span v-if="isProcessingPayment" class="flex items-center justify-center">
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Processing...
+                            </span>
+                            <span v-else>
+                                {{ plan.name }} for ${{ plan.price_usd }} / ₦{{ plan.price_naira }}
+                            </span>
                         </button>
                     </div>
                 </div>

@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'verified.user' => \App\Http\Middleware\VerifiedUserMiddleware::class,
         ]);
+        
+        // Exclude webhook from CSRF protection
+        $middleware->validateCsrfTokens(except: [
+            'paystack/webhook',
+        ]);
 
         //
     })

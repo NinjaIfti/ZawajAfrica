@@ -195,8 +195,37 @@ Route::get('/admin/test-verification', function () {
 
 // Subscription routes
 Route::middleware(['auth'])->group(function () {
-    Route::get('/subscription', [App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription');
+    Route::get('/subscription', [App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription.index');
     Route::post('/subscription/purchase', [App\Http\Controllers\SubscriptionController::class, 'purchase'])->name('subscription.purchase');
 });
+
+// Payment routes
+Route::middleware('auth')->group(function () {
+    Route::post('/payment/subscription/initialize', [App\Http\Controllers\PaymentController::class, 'initializeSubscription'])->name('payment.subscription.initialize');
+    Route::post('/payment/therapist/initialize', [App\Http\Controllers\PaymentController::class, 'initializeTherapistBooking'])->name('payment.therapist.initialize');
+    Route::get('/payment/callback', [App\Http\Controllers\PaymentController::class, 'handleCallback'])->name('payment.callback');
+});
+
+// Test route for debugging therapist booking
+Route::get('/test-therapist-booking', function () {
+    try {
+        $therapist = \App\Models\Therapist::first();
+        if (!$therapist) {
+            return response()->json(['error' => 'No therapist found in database']);
+        }
+        
+        return response()->json([
+            'therapist_id' => $therapist->id,
+            'name' => $therapist->name,
+            'hourly_rate' => $therapist->hourly_rate,
+            'hourly_rate_type' => gettype($therapist->hourly_rate),
+            'all_fields' => $therapist->toArray()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    }
+})->name('test.therapist.booking');
+
+Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook');
 
 require __DIR__.'/auth.php';
