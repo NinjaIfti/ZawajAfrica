@@ -4,6 +4,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import DashboardSidebar from '@/Components/DashboardSidebar.vue';
 import MatchCard from '@/Components/MatchCard.vue';
+import TherapistWidget from '@/Components/TherapistWidget.vue';
 
 const props = defineProps({
     user: Object,

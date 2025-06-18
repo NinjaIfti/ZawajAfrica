@@ -23,10 +23,14 @@ class AdminController extends Controller
         })->count();
         $recentUsers = User::with('verification')->latest()->take(5)->get();
         
+        // Get reports stats
+        $pendingReports = \App\Models\UserReport::where('reviewed', false)->count();
+        
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'totalUsers' => $totalUsers,
                 'pendingVerifications' => $pendingVerifications,
+                'pendingReports' => $pendingReports,
             ],
             'recentUsers' => $recentUsers,
         ]);
@@ -41,6 +45,36 @@ class AdminController extends Controller
         
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
+        ]);
+    }
+
+    /**
+     * Display a specific user's profile details.
+     */
+    public function viewUser($userId)
+    {
+        $user = User::with([
+            'verification',
+            'photos',
+            'appearance',
+            'lifestyle', 
+            'background',
+            'about',
+            'overview',
+            'interests',
+            'personality'
+        ])->findOrFail($userId);
+
+        // Transform photos to include full URLs
+        if ($user->photos) {
+            $user->photos->transform(function ($photo) {
+                $photo->url = asset('storage/' . $photo->path);
+                return $photo;
+            });
+        }
+
+        return Inertia::render('Admin/Users/View', [
+            'user' => $user,
         ]);
     }
     

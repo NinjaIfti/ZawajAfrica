@@ -51,6 +51,15 @@ Route::get('/dashboard', function () {
         ->take(10) // Limit to 10 matches for now
         ->get();
     
+    // Get active therapists for the widget
+    $therapists = \App\Models\Therapist::where('status', 'active')
+        ->take(3)
+        ->get()
+        ->map(function ($therapist) {
+            $therapist->photo_url = $therapist->photo_url;
+            return $therapist;
+        });
+    
     // Format photos URLs for potential matches
     foreach ($potentialMatches as $potentialMatch) {
         if ($potentialMatch->profile_photo) {
@@ -70,44 +79,11 @@ Route::get('/dashboard', function () {
         'profile' => $user->profile,
         'profileCompletion' => $profileCompletion,
         'potentialMatches' => $potentialMatches,
+        'therapists' => $therapists,
     ]);
 })->middleware(['auth', 'verified', 'verified.user'])->name('dashboard');
 
-// Admin routes
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
-    // Only allow access to admin@zawagafrica.com
-    Route::get('/dashboard', function () {
-        if (auth()->user()->email !== 'admin@zawagafrica.com') {
-            return redirect()->route('dashboard');
-        }
-        
-        // Get some basic stats for the admin dashboard
-        $totalUsers = \App\Models\User::count();
-        $recentUsers = \App\Models\User::latest()->take(5)->get();
-        
-        return Inertia::render('Admin/Dashboard', [
-            'stats' => [
-                'totalUsers' => $totalUsers,
-            ],
-            'recentUsers' => $recentUsers,
-        ]);
-    })->name('dashboard');
-    
-    // Users management
-    Route::get('/users', function () {
-        if (auth()->user()->email !== 'admin@zawagafrica.com') {
-            return redirect()->route('dashboard');
-        }
-        
-        $users = \App\Models\User::latest()->paginate(15);
-        
-        return Inertia::render('Admin/Users/Index', [
-            'users' => $users,
-        ]);
-    })->name('users');
-    
-    // Verifications management - removed and using AdminController route instead
-});
+
 
 Route::middleware('auth')->group(function () {
     // Basic profile routes
@@ -118,6 +94,17 @@ Route::middleware('auth')->group(function () {
     // Detailed profile routes
     Route::get('/profile/details', [ProfileController::class, 'editDetails'])->name('profile.edit.details');
     Route::post('/profile/details', [ProfileController::class, 'updateDetails'])->name('profile.update.details');
+    
+    // User reporting routes
+    Route::post('/reports', [App\Http\Controllers\ReportController::class, 'store'])->name('reports.store');
+    Route::post('/reports/block', [App\Http\Controllers\ReportController::class, 'block'])->name('reports.block');
+
+    // Therapist routes
+    Route::get('/therapists', [App\Http\Controllers\TherapistBookingController::class, 'index'])->name('therapists.index');
+    Route::get('/therapists/{id}', [App\Http\Controllers\TherapistBookingController::class, 'show'])->name('therapists.show');
+    Route::post('/therapists/book', [App\Http\Controllers\TherapistBookingController::class, 'store'])->name('therapists.book');
+    Route::get('/my-bookings', [App\Http\Controllers\TherapistBookingController::class, 'userBookings'])->name('therapists.bookings');
+    Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingController::class, 'cancel'])->name('therapists.bookings.cancel');
     
     // New Me profile routes
     Route::get('/me/profile', [App\Http\Controllers\Me\ProfileController::class, 'index'])->name('me.profile');

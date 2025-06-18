@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import AdminLayout from '@/Layouts/Admin/AdminLayout.vue';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
 
 const props = defineProps({
     stats: {
@@ -8,7 +8,8 @@ const props = defineProps({
         required: true,
         default: () => ({
             totalUsers: 0,
-            pendingVerifications: 0
+            pendingVerifications: 0,
+            pendingReports: 0
         })
     },
     recentUsers: {
@@ -41,7 +42,7 @@ const formatDate = (dateString) => {
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <!-- Stats Cards -->
-                <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
                     <!-- Total Users Card -->
                     <div class="rounded-lg bg-white p-6 shadow-md">
                         <div class="flex items-center">
@@ -71,7 +72,22 @@ const formatDate = (dateString) => {
                             </div>
                         </Link>
                     </div>
-
+                    
+                    <!-- User Reports Card -->
+                    <div class="rounded-lg bg-white p-6 shadow-md">
+                        <Link :href="route('admin.reports.index')" class="flex items-center">
+                            <div class="mr-4 rounded-full bg-red-100 p-3 text-red-800">
+                                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Pending Reports</p>
+                                <p class="text-2xl font-semibold">{{ props.stats.pendingReports }}</p>
+                            </div>
+                        </Link>
+                    </div>
+                    
                     <!-- Premium Users Card -->
                     <div class="rounded-lg bg-white p-6 shadow-md">
                         <div class="flex items-center">

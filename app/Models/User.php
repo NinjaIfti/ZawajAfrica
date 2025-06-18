@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -15,6 +16,7 @@ use App\Models\UserAbout;
 use App\Models\UserPhoto;
 use App\Models\Message;
 use App\Models\UserOverview;
+use App\Models\UserReport;
 
 class User extends Authenticatable
 {
@@ -234,5 +236,40 @@ class User extends Authenticatable
         $conversationUserIds = $sentMessages->merge($receivedMessages)->unique();
         
         return User::whereIn('id', $conversationUserIds)->get();
+    }
+
+    /**
+     * Get reports made by this user.
+     */
+    public function reportsMade(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reporter_id');
+    }
+
+    /**
+     * Get reports received against this user.
+     */
+    public function reportsReceived(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reported_user_id');
+    }
+
+    /**
+     * Get reports reviewed by this user (admin).
+     */
+    public function reportsReviewed(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reviewed_by');
+    }
+
+    /**
+     * Check if this user has blocked another user.
+     */
+    public function hasBlocked($userId): bool
+    {
+        return $this->reportsMade()
+            ->where('reported_user_id', $userId)
+            ->where('is_blocked', true)
+            ->exists();
     }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import AdminLayout from '@/Layouts/Admin/AdminLayout.vue';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
 
 const props = defineProps({
     users: Object,
@@ -96,7 +96,13 @@ const formatDate = (dateString) => {
                                             </span>
                                         </td>
                                         <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                            <div class="flex space-x-2">
+                                            <div class="flex space-x-3">
+                                                <Link 
+                                                    :href="route('admin.users.view', { userId: user.id })"
+                                                    class="text-blue-600 hover:text-blue-900 font-medium"
+                                                >
+                                                    View Profile
+                                                </Link>
                                                 <Link 
                                                     v-if="user.verification && user.verification.status === 'pending'"
                                                     :href="route('admin.verifications.view', { userId: user.id })"
@@ -109,7 +115,7 @@ const formatDate = (dateString) => {
                                                     :href="route('admin.verifications.view', { userId: user.id })"
                                                     class="text-indigo-600 hover:text-indigo-900"
                                                 >
-                                                    View Verification
+                                                    Verification
                                                 </Link>
                                             </div>
                                         </td>

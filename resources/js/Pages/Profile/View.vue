@@ -1,7 +1,34 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
+import ReportModal from '@/Components/ReportModal.vue';
+
+// Show report modal state
+const showReportModal = ref(false);
+
+// Functions for block and report
+const blockUser = () => {
+    if (confirm('Are you sure you want to block this user?')) {
+        // Use the ReportController block method
+        router.post(route('reports.block'), {
+            user_id: props.id
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                alert('User blocked successfully');
+            },
+            onError: (errors) => {
+                console.error(errors);
+                alert('Error blocking user');
+            }
+        });
+    }
+};
+
+const openReportModal = () => {
+    showReportModal.value = true;
+};
 
 const props = defineProps({
     id: Number,
@@ -409,12 +436,12 @@ onMounted(() => {
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <!-- Profile Header -->
                 <div class="relative">
-                    <!-- Profile Image and Info Section - Restructured with image on left for desktop, stacked for mobile -->
-                    <div class="flex flex-col md:flex-row">
-                        <!-- Profile Image (Full width on mobile, left side on desktop) -->
-                        <div class="relative w-full md:w-1/2">
-                            <div class="w-full h-72 md:h-full bg-gray-200 relative">
-                                <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover" @click="openPhotoGallery(0)">
+                    <!-- Profile Image and Info Section - Horizontal layout -->
+                    <div class="flex flex-row">
+                        <!-- Profile Image (Left side) -->
+                        <div class="relative w-1/3">
+                            <div class="w-full aspect-square bg-gray-200 relative">
+                                <img :src="profile.image" alt="Profile Image" class="w-full h-full object-cover object-center" @click="openPhotoGallery(0)">
                                 
                                 <!-- Online Status -->
                                 <div v-if="profile.online" class="absolute left-4 top-4 flex items-center rounded-full bg-black bg-opacity-70 px-3 py-1 text-sm text-white">
@@ -439,57 +466,74 @@ onMounted(() => {
                                 </div>
                             </div>
                             
-                            <!-- Interaction Buttons - Fixed position on mobile, absolute on desktop -->
-                            <div class="flex space-x-3 justify-center p-4 md:p-0 md:absolute md:left-4 md:bottom-4">
-                                <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white">
-                                    <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-                                <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white">
-                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                </button>
+                            <!-- Compatibility indicator -->
+                            <div class="p-2 bg-gray-50 flex items-center">
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="bg-amber-500 h-2.5 rounded-full" :style="`width: ${profile.compatibility}%`"></div>
+                                </div>
+                                <span class="ml-2 text-sm font-medium">{{ profile.compatibility }}%</span>
+                                <span class="ml-1 text-sm text-gray-500">Match</span>
                             </div>
                         </div>
                         
-                        <!-- Profile Information (Right Side on desktop, below image on mobile) -->
-                        <div class="flex-1 p-6">
-                            <div class="flex items-center mb-1">
-                                <h2 class="text-2xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
-                                <span v-if="profile.verified" class="ml-2 text-amber-500">✓</span>
+                        <!-- Profile Information (Right Side) -->
+                        <div class="flex-1 p-4">
+                            <div class="flex items-center justify-between mb-1">
+                                <div>
+                                    <h2 class="text-2xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
+                                    <p class="text-gray-600 mb-2">{{ profile.location }}</p>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50">
+                                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50">
+                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
-                            <p class="text-gray-600 mb-4">{{ profile.location }}</p>
-                            <p class="text-rose-500 flex items-center mb-6">
+                            
+                            <p class="text-rose-500 flex items-center mb-4">
                                 <svg class="h-5 w-5 mr-1 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                                 </svg>
                                 {{ profile.seeking }}
                             </p>
-                            
+                                           
                             <h3 class="text-lg font-bold mb-2">About Me</h3>
-                            <h4 v-if="profile.profileHeading" class="text-md font-semibold mb-2">{{ profile.profileHeading }}</h4>
-                            <p class="text-gray-700 mb-6">{{ profile.aboutMe }}</p>
-                            
-                            <!-- Profile Actions -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-white rounded-lg flex items-center justify-center py-3">
-                                    <svg class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <h4 v-if="profile.profileHeading" class="text-md font-semibold mb-1">{{ profile.profileHeading }}</h4>
+                            <p class="text-gray-700 mb-4">{{ profile.aboutMe }}</p>
+                            <div class="flex space-x-4 mt-auto">
+                                <button 
+                                    @click="blockUser"
+                                    class="flex-1 flex items-center justify-center py-2 px-4 border border-red-500 text-red-500 rounded-md hover:bg-red-50"
+                                >
+                                    <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                     </svg>
-                                    <span class="text-red-500 font-medium">Block</span>
-                                </div>
-                                <div class="bg-white rounded-lg flex items-center justify-center py-3">
-                                    <svg class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    Block
+                                </button>
+                                <button 
+                                    @click="openReportModal"
+                                    class="flex-1 flex items-center justify-center py-2 px-4 border border-red-500 text-red-500 rounded-md hover:bg-red-50"
+                                >
+                                    <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
                                     </svg>
-                                    <span class="text-red-500 font-medium">Block and Report</span>
-                                </div>
+                                    Block and Report
+                                </button>
                             </div>
                         </div>
+
+                       
                     </div>
+                    
                 </div>
+                
                 
                 <!-- Profile Tabs - Fixed at the bottom on mobile -->
                 <div class="border-t border-gray-200 sticky top-0 z-10 bg-white">
@@ -720,6 +764,14 @@ onMounted(() => {
         </div>
     </div>
     
+    <!-- Report Modal -->
+    <ReportModal 
+        :show="showReportModal"
+        :userId="id"
+        :userName="profile.name"
+        @close="showReportModal = false"
+    />
+
     <!-- Photo Gallery Modal -->
     <div v-if="showPhotoGallery" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
         <!-- Close button -->
