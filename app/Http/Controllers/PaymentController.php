@@ -249,16 +249,25 @@ class PaymentController extends Controller
                 if ($metadata['type'] === 'subscription') {
                     $this->handleSubscriptionPayment($paymentData, $metadata);
                     DB::commit();
-                    return redirect()->route('subscription.index')->with('success', 'Subscription activated successfully!');
+                    return redirect()->route('subscription.index')->with([
+                        'payment_success' => true,
+                        'payment_type' => 'subscription'
+                    ]);
                     
                 } elseif ($metadata['type'] === 'therapist_booking') {
                     $this->handleTherapistBookingPayment($paymentData, $metadata);
                     DB::commit();
-                    return redirect()->route('therapists.index')->with('success', 'Booking confirmed successfully!');
+                    return redirect()->route('therapists.index')->with([
+                        'payment_success' => true,
+                        'payment_type' => 'therapist_booking'
+                    ]);
                 }
 
                 DB::commit();
-                return redirect()->route('dashboard')->with('success', 'Payment completed successfully!');
+                return redirect()->route('dashboard')->with([
+                    'payment_success' => true,
+                    'payment_type' => 'general'
+                ]);
 
             } catch (\Exception $e) {
                 DB::rollBack();

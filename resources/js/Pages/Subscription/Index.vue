@@ -1,16 +1,21 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import AppHeader from '@/Components/AppHeader.vue';
+import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
 import axios from 'axios';
 
 const props = defineProps({
     user: Object,
     plans: Object,
     userGender: String,
-    paystackPublicKey: String
+    paystackPublicKey: String,
+    currentSubscription: Object
 });
+
+const page = usePage();
+const showPaymentSuccessModal = ref(false);
 
 // Mobile menu state
 const isMobileMenuOpen = ref(false);
@@ -44,6 +49,62 @@ const selectedGender = ref(props.userGender || 'male');
 const genderPlans = computed(() => {
     return props.plans[selectedGender.value] || props.plans['male'];
 });
+
+// Define plan hierarchy for upgrade/downgrade logic
+const planHierarchy = {
+    'Basic': 1,
+    'Economy': 2,
+    'VIP': 3
+};
+
+// Helper function to get plan status
+const getPlanStatus = (planName) => {
+    const currentPlan = props.currentSubscription?.plan;
+    const currentStatus = props.currentSubscription?.status;
+    
+    // If no active subscription, all plans are available for purchase
+    if (!currentPlan || currentStatus !== 'active') {
+        return 'purchase';
+    }
+    
+    // If this is the current plan
+    if (currentPlan === planName) {
+        return 'current';
+    }
+    
+    // Compare plan levels for upgrade/downgrade
+    const currentLevel = planHierarchy[currentPlan] || 0;
+    const targetLevel = planHierarchy[planName] || 0;
+    
+    if (targetLevel > currentLevel) {
+        return 'upgrade';
+    } else {
+        return 'downgrade';
+    }
+};
+
+// Helper function to get button text
+const getButtonText = (planName) => {
+    const status = getPlanStatus(planName);
+    const plan = genderPlans.value.find(p => p.name === planName);
+    
+    switch (status) {
+        case 'current':
+            return 'Current Plan';
+        case 'upgrade':
+            return `Upgrade to ${planName}`;
+        case 'downgrade':
+            return `Switch to ${planName}`;
+        default:
+            return `${planName} for $${plan?.price_usd} / ₦${plan?.price_naira}`;
+    }
+};
+
+// Helper function to check if button should be disabled
+const isButtonDisabled = (planName) => {
+    const status = getPlanStatus(planName);
+    return status === 'current' || isProcessingPayment.value || !termsAgreed.value[planName];
+};
 
 // Function to select a plan and initiate payment
 const selectPlan = async (planName) => {
@@ -84,6 +145,17 @@ const submit = () => {
             form.reset();
         }
     });
+};
+
+// Check for payment success on page load
+onMounted(() => {
+    if (page.props.flash?.payment_success) {
+        showPaymentSuccessModal.value = true;
+    }
+});
+
+const closePaymentSuccessModal = () => {
+    showPaymentSuccessModal.value = false;
 };
 </script>
 
@@ -246,11 +318,12 @@ const submit = () => {
                         <!-- Subscribe button -->
                         <button 
                             @click="selectPlan(plan.name)"
-                            :disabled="isProcessingPayment || !termsAgreed[plan.name]"
-                            class="mt-6 w-full py-3 px-4 rounded-md text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+                            :disabled="isButtonDisabled(plan.name)"
+                            class="mt-6 w-full py-3 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
                             :class="{
-                                'bg-purple-600 hover:bg-purple-700': !isProcessingPayment && termsAgreed[plan.name],
-                                'bg-gray-400 cursor-not-allowed': isProcessingPayment || !termsAgreed[plan.name]
+                                'bg-green-600 text-white cursor-default': getPlanStatus(plan.name) === 'current',
+                                'bg-purple-600 hover:bg-purple-700 text-white': getPlanStatus(plan.name) !== 'current' && !isProcessingPayment && termsAgreed[plan.name],
+                                'bg-gray-400 cursor-not-allowed text-white': isProcessingPayment || (!termsAgreed[plan.name] && getPlanStatus(plan.name) !== 'current')
                             }"
                         >
                             <span v-if="isProcessingPayment" class="flex items-center justify-center">
@@ -260,14 +333,27 @@ const submit = () => {
                                 </svg>
                                 Processing...
                             </span>
+                            <span v-else-if="getPlanStatus(plan.name) === 'current'" class="flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                Current Plan
+                            </span>
                             <span v-else>
-                                {{ plan.name }} for ${{ plan.price_usd }} / ₦{{ plan.price_naira }}
+                                {{ getButtonText(plan.name) }}
                             </span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Payment Success Modal -->
+        <PaymentSuccessModal 
+            :show="showPaymentSuccessModal" 
+            :payment-type="page.props.flash?.payment_type || 'subscription'"
+            @close="closePaymentSuccessModal" 
+        />
     </div>
 </template>
 

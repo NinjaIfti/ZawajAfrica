@@ -228,4 +228,28 @@ Route::get('/test-therapist-booking', function () {
 
 Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook');
 
+// Test route for payment success modal
+Route::get('/test-payment-success', function () {
+    return redirect()->route('dashboard')->with([
+        'payment_success' => true,
+        'payment_type' => 'subscription'
+    ]);
+})->middleware('auth')->name('test.payment.success');
+
+// Test route specifically for subscription payment success
+Route::get('/test-subscription-success', function () {
+    return redirect()->route('subscription.index')->with([
+        'payment_success' => true,
+        'payment_type' => 'subscription'
+    ]);
+})->middleware('auth')->name('test.subscription.success');
+
+// Test route specifically for therapist booking payment success
+Route::get('/test-therapist-success', function () {
+    return redirect()->route('therapists.index')->with([
+        'payment_success' => true,
+        'payment_type' => 'therapist_booking'
+    ]);
+})->middleware('auth')->name('test.therapist.success');
+
 require __DIR__.'/auth.php';

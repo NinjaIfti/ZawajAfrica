@@ -412,15 +412,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Payment Success Modal -->
+        <PaymentSuccessModal 
+            :show="showPaymentSuccessModal" 
+            :payment-type="page.props.flash?.payment_type || 'therapist_booking'"
+            @close="closePaymentSuccessModal" 
+        />
     </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { router, Head } from '@inertiajs/vue3'
+import { ref, computed, watch, onMounted } from 'vue'
+import { router, Head, usePage } from '@inertiajs/vue3'
 import Sidebar from '@/Components/Sidebar.vue'
 import AppHeader from '@/Components/AppHeader.vue'
+import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue'
 import axios from 'axios'
+
+const page = usePage()
+const showPaymentSuccessModal = ref(false)
 
 const props = defineProps({
     therapist: Object,
@@ -604,5 +615,16 @@ const convertToBookingDate = (displayDate) => {
     targetDate.setDate(today.getDate() + dayIndex);
     
     return targetDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+};
+
+// Check for payment success on page load
+onMounted(() => {
+    if (page.props.flash?.payment_success) {
+        showPaymentSuccessModal.value = true;
+    }
+});
+
+const closePaymentSuccessModal = () => {
+    showPaymentSuccessModal.value = false;
 };
 </script> 

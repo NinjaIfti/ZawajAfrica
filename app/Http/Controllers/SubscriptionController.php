@@ -107,7 +107,12 @@ class SubscriptionController extends Controller
             'user' => $user,
             'plans' => $plans,
             'userGender' => $user->gender ?? 'male',
-            'paystackPublicKey' => $this->paystackService->getPublicKey()
+            'paystackPublicKey' => $this->paystackService->getPublicKey(),
+            'currentSubscription' => [
+                'plan' => $user->subscription_plan,
+                'status' => $user->subscription_status,
+                'expires_at' => $user->subscription_expires_at
+            ]
         ]);
     }
     

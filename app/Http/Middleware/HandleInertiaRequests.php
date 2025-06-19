@@ -53,6 +53,12 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
             ],
+            'flash' => [
+                'payment_success' => $request->session()->get('payment_success'),
+                'payment_type' => $request->session()->get('payment_type'),
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ],
         ];
     }
 }

@@ -1,10 +1,14 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import DashboardSidebar from '@/Components/DashboardSidebar.vue';
 import MatchCard from '@/Components/MatchCard.vue';
 import TherapistWidget from '@/Components/TherapistWidget.vue';
+import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
+
+const page = usePage();
+const showPaymentSuccessModal = ref(false);
 
 const props = defineProps({
     user: Object,
@@ -189,7 +193,16 @@ const closeMobileMenu = (e) => {
 onMounted(() => {
     document.addEventListener('click', closeDropdown);
     document.addEventListener('click', closeMobileMenu);
+    
+    // Check for payment success on page load
+    if (page.props.flash?.payment_success) {
+        showPaymentSuccessModal.value = true;
+    }
 });
+
+const closePaymentSuccessModal = () => {
+    showPaymentSuccessModal.value = false;
+};
 
 // Remove event listener when component is unmounted
 onUnmounted(() => {
@@ -354,6 +367,13 @@ onUnmounted(() => {
             :messages="recentMessages"
         />
         </div>
+
+        <!-- Payment Success Modal -->
+        <PaymentSuccessModal 
+            :show="showPaymentSuccessModal" 
+            :payment-type="page.props.flash?.payment_type || 'general'"
+            @close="closePaymentSuccessModal" 
+        />
     </div>
 </template>
 
