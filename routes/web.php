@@ -138,6 +138,16 @@ Route::middleware('auth')->group(function () {
     // Add new routes for profile updates
     Route::post('/profile/update', [App\Http\Controllers\Me\ProfileController::class, 'update']);
     Route::post('/profile/photo-update', [App\Http\Controllers\Me\ProfileController::class, 'updatePhoto']);
+    
+    // AI Chatbot routes
+    Route::get('/chatbot', [App\Http\Controllers\ChatbotController::class, 'index'])->name('chatbot.index');
+    Route::post('/chatbot/chat', [App\Http\Controllers\ChatbotController::class, 'chat'])->name('chatbot.chat');
+    Route::delete('/chatbot/history', [App\Http\Controllers\ChatbotController::class, 'clearHistory'])->name('chatbot.clear');
+    Route::get('/chatbot/history', [App\Http\Controllers\ChatbotController::class, 'getHistory'])->name('chatbot.history');
+    Route::get('/chatbot/starters', [App\Http\Controllers\ChatbotController::class, 'getStarters'])->name('chatbot.starters');
+    Route::post('/chatbot/preferences', [App\Http\Controllers\ChatbotController::class, 'updatePreferences'])->name('chatbot.preferences.update');
+    Route::get('/chatbot/preferences', [App\Http\Controllers\ChatbotController::class, 'getPreferences'])->name('chatbot.preferences');
+    Route::get('/chatbot/status', [App\Http\Controllers\ChatbotController::class, 'status'])->name('chatbot.status');
 });
 
 // Verification routes
@@ -253,5 +263,52 @@ Route::get('/test-therapist-success', function () {
         'payment_type' => 'therapist_booking'
     ]);
 })->middleware('auth')->name('test.therapist.success');
+
+// Test route for OpenAI integration
+Route::get('/test-openai', function () {
+    try {
+        $openAI = app(\App\Services\OpenAIService::class);
+        
+        // Check if service is available
+        if (!$openAI->isAvailable()) {
+            return response()->json([
+                'error' => 'OpenAI service not available',
+                'config' => [
+                    'enabled' => config('services.openai.enabled'),
+                    'api_key_set' => !empty(config('services.openai.api_key')),
+                    'api_key_length' => strlen(config('services.openai.api_key') ?? ''),
+                    'model' => config('services.openai.model'),
+                ]
+            ]);
+        }
+        
+        // Test simple message
+        $messages = [
+            ['role' => 'user', 'content' => 'Hello, can you help me?']
+        ];
+        
+        $response = $openAI->chat($messages, auth()->id());
+        
+        return response()->json([
+            'success' => $response['success'],
+            'response' => $response,
+            'config' => [
+                'model' => config('services.openai.model'),
+                'api_url' => config('services.openai.api_url'),
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'config' => [
+                'enabled' => config('services.openai.enabled'),
+                'api_key_set' => !empty(config('services.openai.api_key')),
+                'model' => config('services.openai.model'),
+            ]
+        ]);
+    }
+})->middleware('auth')->name('test.openai');
 
 require __DIR__.'/auth.php';
