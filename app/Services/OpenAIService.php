@@ -126,6 +126,11 @@ class OpenAIService
     private function buildSystemPrompt(?int $userId = null, array $userPreferences = []): string
     {
         $basePrompt = $this->systemPrompt;
+        
+        // Add current time context for persona switching (Fatima vs Firdaus)
+        $currentHour = now()->format('H');
+        $timeContext = "\n\nCurrent time context: It is currently " . now()->format('g:i A') . " (24-hour format: {$currentHour}:00).";
+        $basePrompt .= $timeContext;
 
         if ($userId) {
             // Get user data for personalization
