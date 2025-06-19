@@ -28,4 +28,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('therapists', \App\Http\Controllers\Admin\TherapistsController::class);
     Route::get('/therapist-bookings', [\App\Http\Controllers\Admin\TherapistsController::class, 'bookings'])->name('therapists.bookings');
     Route::put('/therapist-bookings/{booking}', [\App\Http\Controllers\Admin\TherapistsController::class, 'updateBooking'])->name('therapists.bookings.update');
+    
+    // Subscription Management
+    Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
+    Route::get('/premium-users', [AdminController::class, 'getPremiumUsers'])->name('premium.users');
 }); 

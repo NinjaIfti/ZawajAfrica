@@ -108,6 +108,11 @@ const isButtonDisabled = (planName) => {
 
 // Function to select a plan and initiate payment
 const selectPlan = async (planName) => {
+    // Prevent purchasing the current plan
+    if (getPlanStatus(planName) === 'current') {
+        return;
+    }
+    
     if (!termsAgreed.value[planName]) {
         alert('Please agree to the Terms of Use and Privacy Statement before proceeding.');
         return;

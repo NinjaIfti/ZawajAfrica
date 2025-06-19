@@ -26,11 +26,21 @@ class AdminController extends Controller
         // Get reports stats
         $pendingReports = \App\Models\UserReport::where('reviewed', false)->count();
         
+        // Get premium users count
+        $premiumUsers = User::whereNotNull('subscription_plan')
+            ->where('subscription_status', 'active')
+            ->where(function($query) {
+                $query->whereNull('subscription_expires_at')
+                    ->orWhere('subscription_expires_at', '>', now());
+            })
+            ->count();
+        
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'totalUsers' => $totalUsers,
                 'pendingVerifications' => $pendingVerifications,
                 'pendingReports' => $pendingReports,
+                'premiumUsers' => $premiumUsers,
             ],
             'recentUsers' => $recentUsers,
         ]);
@@ -295,5 +305,63 @@ class AdminController extends Controller
         \Log::info('After rejection:', ['user_id' => $userId, 'verification' => $refreshedUser->verification]);
         
         return redirect()->route('admin.verifications')->with('success', 'Verification rejected successfully');
+    }
+
+    /**
+     * Display subscriptions management page.
+     */
+    public function subscriptions()
+    {
+        $subscriptions = User::whereNotNull('subscription_plan')
+            ->with(['verification'])
+            ->latest('subscription_expires_at')
+            ->paginate(15);
+
+        $stats = [
+            'total' => User::whereNotNull('subscription_plan')->count(),
+            'active' => User::where('subscription_status', 'active')
+                ->where(function($query) {
+                    $query->whereNull('subscription_expires_at')
+                        ->orWhere('subscription_expires_at', '>', now());
+                })
+                ->count(),
+            'expired' => User::where('subscription_status', 'active')
+                ->where('subscription_expires_at', '<=', now())
+                ->count(),
+            'cancelled' => User::where('subscription_status', 'cancelled')->count(),
+        ];
+
+        return Inertia::render('Admin/Subscriptions/Index', [
+            'subscriptions' => $subscriptions,
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
+     * Get premium users for modal display.
+     */
+    public function getPremiumUsers()
+    {
+        $premiumUsers = User::whereNotNull('subscription_plan')
+            ->where('subscription_status', 'active')
+            ->where(function($query) {
+                $query->whereNull('subscription_expires_at')
+                    ->orWhere('subscription_expires_at', '>', now());
+            })
+            ->with(['verification'])
+            ->latest('subscription_expires_at')
+            ->take(10)
+            ->get();
+
+        return response()->json([
+            'users' => $premiumUsers,
+            'total' => User::whereNotNull('subscription_plan')
+                ->where('subscription_status', 'active')
+                ->where(function($query) {
+                    $query->whereNull('subscription_expires_at')
+                        ->orWhere('subscription_expires_at', '>', now());
+                })
+                ->count(),
+        ]);
     }
 } 

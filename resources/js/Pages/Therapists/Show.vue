@@ -18,7 +18,7 @@
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Header with AppHeader component -->
-            <div class="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
+            <div class=" border-b border-gray-200 px-4 lg:px-6 py-4">
                 <AppHeader :user="$page.props.auth.user">
                     <template #title>
                         <div class="flex items-center">

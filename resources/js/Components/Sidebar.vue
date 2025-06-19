@@ -1,9 +1,12 @@
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 defineProps({
     user: Object
 });
+
+const showTherapistDropdown = ref(false);
 
 // Custom logout function
 const logout = () => {
@@ -16,6 +19,10 @@ const logout = () => {
             window.location.href = route('login');
         },
     });
+};
+
+const toggleTherapistDropdown = () => {
+    showTherapistDropdown.value = !showTherapistDropdown.value;
 };
 </script>
 
@@ -38,12 +45,37 @@ const logout = () => {
                 <span>Matches</span>
             </Link>
             
-            <Link :href="route('therapists.index')" class="flex items-center rounded-lg px-4 py-3 text-base font-medium" :class="route().current('therapists.*') ? 'bg-purple-600 text-white' : 'text-gray-700 hover:bg-gray-50'">
-                <svg class="mr-3 h-6 w-6" :class="route().current('therapists.*') ? 'text-white' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Therapists</span>
-            </Link>
+            <!-- Therapist Section with Dropdown -->
+            <div class="relative">
+                <button @click="toggleTherapistDropdown" class="w-full flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium" :class="route().current('therapists.*') ? 'bg-purple-600 text-white' : 'text-gray-700 hover:bg-gray-50'">
+                    <div class="flex items-center">
+                        <svg class="mr-3 h-6 w-6" :class="route().current('therapists.*') ? 'text-white' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Therapists</span>
+                    </div>
+                    <svg class="h-4 w-4 transition-transform duration-200" :class="showTherapistDropdown ? 'rotate-180' : ''" :style="route().current('therapists.*') ? 'color: white' : 'color: #6b7280'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                
+                <!-- Dropdown Menu -->
+                <div v-show="showTherapistDropdown" class="mt-1 ml-6 space-y-1">
+                    <Link :href="route('therapists.index')" class="flex items-center rounded-lg px-4 py-2 text-sm font-medium" :class="route().current('therapists.index') ? 'bg-purple-100 text-purple-600' : 'text-gray-600 hover:bg-gray-50'">
+                        <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span>Find Therapist</span>
+                    </Link>
+                    
+                    <Link :href="route('therapists.bookings')" class="flex items-center rounded-lg px-4 py-2 text-sm font-medium" :class="route().current('therapists.bookings') ? 'bg-purple-100 text-purple-600' : 'text-gray-600 hover:bg-gray-50'">
+                        <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span>Booking Details</span>
+                    </Link>
+                </div>
+            </div>
             
             <Link :href="route('messages')" class="flex items-center rounded-lg px-4 py-3 text-base font-medium" :class="route().current('messages') ? 'bg-purple-600 text-white' : 'text-gray-700 hover:bg-gray-50'">
                 <svg class="mr-3 h-6 w-6" :class="route().current('messages') ? 'text-white' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,9 +121,10 @@ const logout = () => {
             </button>
         </nav>
         
-        <!-- Upgrade Membership -->
-        <div class="p-4 w-full">
-            <div class="rounded-lg bg-purple-700 p-4 text-center text-white relative overflow-hidden">
+        <!-- Upgrade Membership - Only show if user doesn't have active subscription -->
+        <div v-if="!user.subscription_status || user.subscription_status !== 'active'" class="p-4 w-full">
+            <Link :href="route('subscription.index')" class="block">
+                <div class="rounded-lg bg-purple-700 p-4 text-center text-white relative overflow-hidden cursor-pointer hover:bg-purple-800 transition-colors">
                 <!-- Diagonal gradient strips -->
                 <div class="absolute -top-8 right-10 w-6 h-48 bg-gradient-to-b from-purple-700 via-purple-500 to-purple-700 transform rotate-45"></div>
                 <div class="absolute -top-16 -right-2 w-6 h-48 bg-gradient-to-b from-purple-700 via-purple-500 to-purple-700 transform rotate-45"></div>
@@ -121,7 +154,8 @@ const logout = () => {
                         </svg>
                     </div>
                 </div>
-            </div>
+                </div>
+            </Link>
         </div>
     </div>
 </template>

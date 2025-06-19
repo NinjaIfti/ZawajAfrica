@@ -299,19 +299,76 @@ class TherapistBookingController extends Controller
     }
 
     /**
-     * Display user's bookings.
+     * Display user's bookings with filtering.
      */
-    public function userBookings()
+    public function userBookings(Request $request)
     {
-        $bookings = TherapistBooking::where('user_id', Auth::id())
-            ->with('therapist')
-            ->orderBy('appointment_datetime', 'desc')
-            ->paginate(10);
+        $userId = Auth::id();
+        
+        // Get booking statistics for filter badges
+        $stats = [
+            'total' => TherapistBooking::where('user_id', $userId)->count(),
+            'pending' => TherapistBooking::where('user_id', $userId)->where('status', 'pending')->count(),
+            'confirmed' => TherapistBooking::where('user_id', $userId)->where('status', 'confirmed')->count(),
+            'completed' => TherapistBooking::where('user_id', $userId)->where('status', 'completed')->count(),
+            'cancelled' => TherapistBooking::where('user_id', $userId)->where('status', 'cancelled')->count(),
+            'paid' => TherapistBooking::where('user_id', $userId)->where('payment_status', 'paid')->count(),
+        ];
 
-        return Inertia::render('Therapists/UserBookings', [
+        // Build query with filters
+        $query = TherapistBooking::where('user_id', $userId)->with('therapist');
+
+        // Filter by status
+        if ($request->has('status') && !empty($request->status)) {
+            if ($request->status === 'upcoming') {
+                $query->where('status', 'confirmed')
+                      ->where('appointment_datetime', '>', now());
+            } elseif ($request->status === 'past') {
+                $query->whereIn('status', ['completed', 'cancelled']);
+            } elseif ($request->status === 'paid') {
+                $query->where('payment_status', 'paid');
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        // Filter by payment status
+        if ($request->has('payment_status') && !empty($request->payment_status)) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        // Filter by date range
+        if ($request->has('date_from') && !empty($request->date_from)) {
+            $query->whereDate('appointment_datetime', '>=', $request->date_from);
+        }
+        
+        if ($request->has('date_to') && !empty($request->date_to)) {
+            $query->whereDate('appointment_datetime', '<=', $request->date_to);
+        }
+
+        // Search by therapist name
+        if ($request->has('search') && !empty($request->search)) {
+            $query->whereHas('therapist', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $bookings = $query->orderBy('appointment_datetime', 'desc')->paginate(10);
+
+        return Inertia::render('Therapists/BookingDetails', [
             'bookings' => $bookings,
+            'stats' => $stats,
+            'filters' => [
+                'status' => $request->status ?? '',
+                'payment_status' => $request->payment_status ?? '',
+                'date_from' => $request->date_from ?? '',
+                'date_to' => $request->date_to ?? '',
+                'search' => $request->search ?? '',
+            ],
         ]);
     }
+
+
 
     /**
      * Cancel a booking.
