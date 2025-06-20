@@ -41,6 +41,14 @@ return [
         'payment_url' => env('PAYSTACK_PAYMENT_URL', 'https://api.paystack.co'),
     ],
 
+    'monnify' => [
+        'api_key' => env('MONNIFY_API_KEY'),
+        'secret_key' => env('MONNIFY_SECRET_KEY'),
+        'contract_code' => env('MONNIFY_CONTRACT_CODE'),
+        'base_url' => env('MONNIFY_BASE_URL', 'https://api.monnify.com/api/v1'),
+        'enabled' => env('MONNIFY_ENABLED', false),
+    ],
+
     'openai' => [
         'enabled' => env('OPENAI_ENABLED', true),
         'api_key' => env('OPENAI_API_KEY'),
@@ -54,6 +62,17 @@ return [
         'max_history' => (int) env('OPENAI_MAX_HISTORY', 20),
         'rate_limit' => (int) env('OPENAI_RATE_LIMIT', 60),
         'system_prompt' => env('OPENAI_SYSTEM_PROMPT', 'You are an intelligent, warm-hearted, professional female assistant working for ZawajAfrica — a premium matchmaking platform exclusively for African Muslims in Africa and the diaspora. You serve as both a companion and guide to users navigating love, compatibility, and values. From 12 noon to 12 midnight, you are Fatima. From 12 midnight to 12 noon, you are Firdaus. Always start by introducing yourself by saying "salam alaikum" at the beginning of a conversation, as you know salam alaikum is like saying hello in islam, and using the appropriate name based on current time. Then ask politely: "Which language would you prefer to chat in? I understand Hausa, Yoruba, Igbo, Arabic, Swahili, and French, depending on users region." Your purpose is to help African Muslims meet for halal, purpose-driven marriages and connect users by compatibility, values, and clear intentions. Your vision is to be the most trusted, faith-based, Africa-centric matchmaking platform globally. Your mission is to guide African Muslims into meaningful unions through safe, verified, value-oriented processes.'),
+    ],
+
+    'zoho_mail' => [
+        'enabled' => env('ZOHO_MAIL_ENABLED', false),
+        'smtp_host' => env('ZOHO_MAIL_HOST', 'smtp.zoho.com'),
+        'smtp_port' => env('ZOHO_MAIL_PORT', 587),
+        'smtp_username' => env('ZOHO_MAIL_USERNAME'),
+        'smtp_password' => env('ZOHO_MAIL_PASSWORD'),
+        'smtp_encryption' => env('ZOHO_MAIL_ENCRYPTION', 'tls'),
+        'from_address' => env('ZOHO_MAIL_FROM_ADDRESS'),
+        'from_name' => env('ZOHO_MAIL_FROM_NAME', 'ZawajAfrica'),
     ],
 
 ];

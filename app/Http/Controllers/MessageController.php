@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\User;
+use App\Notifications\NewMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -213,12 +214,18 @@ class MessageController extends Controller
             'content' => 'required|string|max:1000'
         ]);
         
+        $sender = Auth::user();
+        $receiver = User::findOrFail($request->receiver_id);
+        
         $message = Message::create([
-            'sender_id' => Auth::id(),
-            'receiver_id' => $request->receiver_id,
+            'sender_id' => $sender->id,
+            'receiver_id' => $receiver->id,
             'content' => $request->content,
             'is_read' => false
         ]);
+        
+        // Send notification to receiver
+        $receiver->notify(new NewMessage($sender, $message));
         
         return back()->with('success', 'Message sent successfully.');
     }

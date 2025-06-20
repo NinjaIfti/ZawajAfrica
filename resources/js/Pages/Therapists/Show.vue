@@ -1,5 +1,6 @@
 <template>
     <Head :title="`${therapist.name} - Therapist Profile`" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <div class="flex h-screen bg-gray-50">
         <!-- Mobile Sidebar Overlay -->
@@ -178,237 +179,369 @@
             </div>
         </div>
 
-        <!-- Booking Time Slot Slider -->
-        <div v-if="showBookingSlider" class="fixed inset-0 z-50 overflow-hidden">
-            <div class="absolute inset-0 bg-black bg-opacity-50" @click="closeBookingSlider"></div>
-            <div class="fixed top-0 left-0 h-full w-full sm:w-96 bg-white shadow-xl transform transition-transform duration-300 overflow-y-auto"
-                 :class="showBookingSlider ? 'translate-x-0' : '-translate-x-full'">
-                
-                <!-- Slider Header -->
-                <div class="flex items-center justify-between p-4 lg:p-6 border-b border-gray-200">
-                    <h3 class="text-base lg:text-lg font-semibold text-gray-900">Select a time slot</h3>
-                    <button @click="closeBookingSlider" class="p-2 hover:bg-gray-100 rounded-full">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Time Slot Selection Slider -->
+        <div v-if="showBookingSlider" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-end z-50">
+            <div class="bg-white w-full max-w-md h-full overflow-y-auto shadow-xl transform transition-transform duration-300 ease-in-out"
+                 :class="showBookingSlider ? 'translate-x-0' : 'translate-x-full'">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h2 class="text-xl font-semibold">Select a time slot</h2>
+                    <button @click="closeBookingSlider" class="p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <div class="p-4 lg:p-6">
-
+                <div class="p-4">
                 <!-- Therapist Info -->
-                <div class="flex items-center mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-full overflow-hidden bg-gray-200 mr-3 relative">
-                        <img 
-                            v-if="therapist.photo_url" 
-                            :src="therapist.photo_url" 
+                    <div class="flex items-center space-x-3 mb-6">
+                        <img :src="therapist.photo_url || '/images/male.png'" 
                             :alt="therapist.name"
-                            class="w-full h-full object-cover"
-                        />
-                        <div v-else class="w-full h-full bg-gray-300 flex items-center justify-center">
-                            <svg class="w-5 h-5 lg:w-6 lg:h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                            </svg>
+                             class="w-12 h-12 rounded-full object-cover">
+                        <div>
+                            <h3 class="font-semibold text-gray-900">{{ therapist.name }}</h3>
+                            <p class="text-sm text-gray-600">{{ therapist.degree }}</p>
+                            <p class="text-sm text-green-600 font-medium">Online Consultation Fee: ₦{{ therapist.hourly_rate?.toLocaleString() }}</p>
+                            <div class="flex items-center mt-1">
+                                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                <span class="text-xs text-gray-500">Available</span>
+                            </div>
                         </div>
-                        <div class="absolute -bottom-1 -right-1 w-3 h-3 lg:w-4 lg:h-4 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
-                    <div class="flex-1">
-                        <h4 class="text-sm lg:text-base font-semibold text-gray-900">{{ therapist.name }}</h4>
-                        <p class="text-xs lg:text-sm text-gray-600">{{ Array.isArray(therapist.specializations) ? therapist.specializations[0] : therapist.specializations }}</p>
+
+                    <!-- Platform Selection -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-900 mb-3">Select Platform</h4>
+                        <div class="space-y-3">
+                            <!-- Google Meet -->
+                            <div @click="selectedPlatform = 'google_meet'" 
+                                 :class="['flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all',
+                                         selectedPlatform === 'google_meet' ? 'border-blue-500 bg-blue-50' : 'border-gray-200']">
+                                <div class="flex items-center space-x-3 flex-1">
+  <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+    <i class="fas fa-video text-white text-sm"></i>
                     </div>
+  <span class="font-medium">Google Meet</span>
                 </div>
 
-                <!-- Consultation Fee -->
-                <div class="text-center mb-4 lg:mb-6 p-3 bg-gray-50 rounded-lg">
-                    <span class="text-xs lg:text-sm text-gray-600">Online Consultation Fee:</span>
-                    <p class="text-base lg:text-lg font-bold text-purple-600">${{ therapist.hourly_rate }}</p>
-                </div>
-
-                <!-- Platform Selection -->
-                <div class="mb-4 lg:mb-6">
-                    <h4 class="text-xs lg:text-sm font-medium text-gray-700 mb-3">Select Platform</h4>
-                    <div class="space-y-2 lg:space-y-3">
-                        <label class="flex items-center justify-between p-2 lg:p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                               :class="selectedPlatform === 'google_meet' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
-                            <div class="flex items-center">
-                                <div class="w-6 h-6 lg:w-8 lg:h-8 bg-red-500 rounded-lg flex items-center justify-center mr-2 lg:mr-3">
-                                    <svg class="w-3 h-3 lg:w-5 lg:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                    </svg>
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                                    <div v-if="selectedPlatform === 'google_meet'" class="w-3 h-3 bg-green-500 rounded-full"></div>
                                 </div>
-                                <span class="text-sm lg:text-base font-medium text-gray-900">Google Meet</span>
                             </div>
-                            <input type="radio" v-model="selectedPlatform" value="google_meet" class="text-purple-600">
-                        </label>
 
-                        <label class="flex items-center justify-between p-2 lg:p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                               :class="selectedPlatform === 'whatsapp' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
-                            <div class="flex items-center">
-                                <div class="w-6 h-6 lg:w-8 lg:h-8 bg-green-500 rounded-lg flex items-center justify-center mr-2 lg:mr-3">
-                                    <svg class="w-3 h-3 lg:w-5 lg:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
-                                    </svg>
-                                </div>
-                                <span class="text-sm lg:text-base font-medium text-gray-900">Whatsapp</span>
-                            </div>
-                            <input type="radio" v-model="selectedPlatform" value="whatsapp" class="text-purple-600">
-                        </label>
+                            <!-- WhatsApp -->
+                            <div @click="selectedPlatform = 'whatsapp'" 
+                                 :class="['flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all',
+                                         selectedPlatform === 'whatsapp' ? 'border-green-500 bg-green-50' : 'border-gray-200']">
+                                <div class="flex items-center space-x-3 flex-1">
+  <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+    <i class="fab fa-whatsapp text-white text-lg"></i>
+  </div>
+  <span class="font-medium text-gray-800">Whatsapp</span>
+</div>
 
-                        <label class="flex items-center justify-between p-2 lg:p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                               :class="selectedPlatform === 'zoom' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
-                            <div class="flex items-center">
-                                <div class="w-6 h-6 lg:w-8 lg:h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-2 lg:mr-3">
-                                    <svg class="w-3 h-3 lg:w-5 lg:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M24 12c0 6.627-5.373 12-12 12S0 18.627 0 12 5.373 0 12 0s12 5.373 12 12zm-6.343-3.343a1.5 1.5 0 010 2.121L14.12 14.12a1.5 1.5 0 01-2.12 0l-3.538-3.537a1.5 1.5 0 010-2.121l3.537-3.538a1.5 1.5 0 012.121 0l3.537 3.538z"/>
-                                    </svg>
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                                    <div v-if="selectedPlatform === 'whatsapp'" class="w-3 h-3 bg-green-500 rounded-full"></div>
                                 </div>
-                                <span class="text-sm lg:text-base font-medium text-gray-900">Zoom</span>
                             </div>
-                            <input type="radio" v-model="selectedPlatform" value="zoom" class="text-purple-600">
-                        </label>
-                    </div>
+
+                            <!-- Zoom -->
+                            <div @click="selectedPlatform = 'zoom'" 
+                                 :class="['flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all',
+                                         selectedPlatform === 'zoom' ? 'border-blue-600 bg-blue-50' : 'border-gray-200']">
+                                <div class="flex items-center space-x-3 flex-1">
+                                    <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                                        <i class="fas fa-video text-white text-sm"></i>
+                                    </div>
+                                    <span class="font-medium">Zoom</span>
+                                </div>
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                                    <div v-if="selectedPlatform === 'zoom'" class="w-3 h-3 bg-blue-600 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
                 </div>
 
                 <!-- Date Selection -->
-                <div class="mb-4 lg:mb-6">
-                    <h4 class="text-xs lg:text-sm font-medium text-gray-700 mb-3">Select date and time</h4>
-                    <div class="flex space-x-2 mb-4 overflow-x-auto">
-                        <button v-for="date in availableDates" :key="date.value" 
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-900 mb-3">Select date and time</h4>
+                        <div class="grid grid-cols-7 gap-2 mb-4">
+                            <div v-for="date in availableDates" :key="date.value"
                                 @click="selectedDate = date.value"
-                                class="flex-shrink-0 px-3 py-2 lg:px-4 lg:py-3 rounded-lg text-center min-w-[50px] lg:min-w-[60px] transition-colors"
-                                :class="selectedDate === date.value ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
-                            <div class="text-xs">{{ date.day }}</div>
-                            <div class="text-sm lg:text-base font-semibold">{{ date.date }}</div>
-                        </button>
+                                 :class="['text-center p-3 rounded-lg cursor-pointer transition-all border',
+                                         selectedDate === date.value ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 hover:border-gray-300']">
+                                <div class="text-xs font-medium">{{ date.day }}</div>
+                                <div class="text-lg font-bold">{{ date.date }}</div>
                     </div>
                 </div>
-
-                <!-- Time Slots -->
-                <div class="mb-4 lg:mb-6" v-if="selectedDate">
-                    <div v-if="getSlotsForSelectedDate.length === 0" class="text-center py-6 lg:py-8">
-                        <p class="text-gray-500 text-sm lg:text-base">No available slots for this date</p>
-                        <p class="text-xs lg:text-sm text-gray-400 mt-1">Please select a different date</p>
                     </div>
                     
-                    <div v-else>
+                    <!-- Time Slots -->
+                    <div v-if="selectedDate" class="mb-6">
+                        <!-- Afternoon Slots -->
                         <div v-if="afternoonSlots.length > 0" class="mb-4">
-                            <h5 class="text-xs lg:text-sm font-medium text-gray-700 mb-3">Afternoon Slots</h5>
-                            <div class="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                                <button v-for="slot in afternoonSlots" :key="slot"
+                            <h5 class="font-medium text-gray-700 mb-2">Afternoon Slots</h5>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button v-for="slot in afternoonSlots" :key="'afternoon-' + slot"
                                         @click="selectedTimeSlot = slot"
-                                        class="py-2 px-2 lg:px-3 text-xs lg:text-sm rounded-lg border transition-colors"
-                                        :class="selectedTimeSlot === slot ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300'">
+                                        :class="['p-2 text-sm rounded-lg border transition-all',
+                                               selectedTimeSlot === slot ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 hover:border-gray-300']">
                                     {{ slot }}
                                 </button>
                             </div>
                         </div>
 
+                        <!-- Evening Slots -->
                         <div v-if="eveningSlots.length > 0">
-                            <h5 class="text-xs lg:text-sm font-medium text-gray-700 mb-3">Evening Slots</h5>
-                            <div class="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                                <button v-for="slot in eveningSlots" :key="slot"
+                            <h5 class="font-medium text-gray-700 mb-2">Evening Slots</h5>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button v-for="slot in eveningSlots" :key="'evening-' + slot"
                                         @click="selectedTimeSlot = slot"
-                                        class="py-2 px-2 lg:px-3 text-xs lg:text-sm rounded-lg border transition-colors"
-                                        :class="selectedTimeSlot === slot ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300'">
+                                        :class="['p-2 text-sm rounded-lg border transition-all',
+                                               selectedTimeSlot === slot ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 hover:border-gray-300']">
                                     {{ slot }}
                                 </button>
-                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div v-else class="mb-4 lg:mb-6 text-center py-6 lg:py-8">
-                    <p class="text-gray-500 text-sm lg:text-base">Please select a date to see available time slots</p>
                 </div>
 
                 <!-- Confirm Button -->
                 <button @click="proceedToPayment" 
                         :disabled="!selectedPlatform || !selectedDate || !selectedTimeSlot"
-                        class="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium py-3 lg:py-4 rounded-xl transition-colors text-sm lg:text-base">
+                            :class="['w-full py-4 rounded-lg font-medium text-white transition-all mt-6',
+                                   selectedPlatform && selectedDate && selectedTimeSlot 
+                                     ? 'bg-purple-600 hover:bg-purple-700' 
+                                     : 'bg-gray-300 cursor-not-allowed']">
                     Confirm Booking
                 </button>
                 </div>
             </div>
         </div>
 
-        <!-- Payment Process Slider -->
-        <div v-if="showPaymentSlider" class="fixed inset-0 z-50 overflow-hidden">
-            <div class="absolute inset-0 bg-black bg-opacity-50" @click="closePaymentSlider"></div>
-            <div class="fixed top-0 left-0 h-full w-full sm:w-96 bg-white shadow-xl transform transition-transform duration-300 overflow-y-auto"
-                 :class="showPaymentSlider ? 'translate-x-0' : '-translate-x-full'">
-                
-                <!-- Slider Header -->
-                <div class="flex items-center justify-between p-4 lg:p-6 border-b border-gray-200">
-                    <h3 class="text-base lg:text-lg font-semibold text-gray-900">Select Payment Process</h3>
-                    <button @click="closePaymentSlider" class="p-2 hover:bg-gray-100 rounded-full">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Payment Gateway Selection Slider -->
+        <div v-if="showPaymentSlider" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-end z-50">
+            <div class="bg-white w-full max-w-md h-full overflow-y-auto shadow-xl transform transition-transform duration-300 ease-in-out"
+                 :class="showPaymentSlider ? 'translate-x-0' : 'translate-x-full'">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h2 class="text-xl font-semibold">Select Payment Process</h2>
+                    <button @click="closePaymentSlider" class="p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <div class="p-4 lg:p-6">
-
-                <!-- Payment Options -->
-                <div class="space-y-3 lg:space-y-4 mb-6 lg:mb-8">
-                    <div class="p-3 lg:p-4 border border-gray-200 rounded-lg flex items-center justify-between hover:bg-gray-50 cursor-pointer">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 lg:w-10 lg:h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3 lg:mr-4">
-                                <span class="text-white font-bold text-xs lg:text-sm">GT</span>
+                <div class="p-4">
+                    <!-- Gateway Options -->
+                    <div class="space-y-4 mb-8">
+                        <!-- GTPay Option -->
+                        <div @click="selectedPaymentGateway = 'gtpay'"
+                             :class="['flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all',
+                                     selectedPaymentGateway === 'gtpay' ? 'border-orange-500 bg-orange-50' : 'border-gray-200']">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-sm font-bold">GT</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">GTPay</h4>
+                                    <p class="text-sm text-gray-600">Payments within Nigeria</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 class="text-sm lg:text-base font-medium text-gray-900">GTpay</h4>
-                                <p class="text-xs lg:text-sm text-gray-500">Payments within Nigeria</p>
-                            </div>
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
                         </div>
-                        <svg class="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
+
+                        <!-- Paystack Option -->
+                        <div @click="selectedPaymentGateway = 'paystack'"
+                             :class="['flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all',
+                                     selectedPaymentGateway === 'paystack' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200']">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-xs font-bold">PS</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">Paystack</h4>
+                                    <p class="text-sm text-gray-600">Payments outside Nigeria</p>
+                                </div>
+                            </div>
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
                     </div>
 
-                    <div @click="proceedWithPaystackPayment" 
-                         :class="{'pointer-events-none opacity-50': isProcessingPayment}"
-                         class="p-3 lg:p-4 border border-gray-200 rounded-lg flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 lg:w-10 lg:h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3 lg:mr-4">
-                                <svg v-if="!isProcessingPayment" class="w-4 h-4 lg:w-6 lg:h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                </svg>
-                                <svg v-else class="animate-spin w-4 h-4 lg:w-6 lg:h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </div>
+                    <!-- Booking Summary -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <div class="flex justify-between items-center">
                             <div>
-                                <h4 class="text-sm lg:text-base font-medium text-gray-900">
-                                    {{ isProcessingPayment ? 'Processing...' : 'Paystack' }}
-                                </h4>
-                                <p class="text-xs lg:text-sm text-gray-500">Secure card payment</p>
+                                <h4 class="font-semibold text-gray-900">{{ therapist.name }}</h4>
+                                <p class="text-sm text-gray-600">{{ selectedDate }}, {{ selectedTimeSlot }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-600">Fee:</p>
+                                <p class="text-lg font-bold text-purple-600">₦{{ therapist.hourly_rate?.toLocaleString() }}</p>
                             </div>
                         </div>
-                        <svg v-if="!isProcessingPayment" class="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-3">
+                        <!-- Back Button -->
+                        <button @click="backToTimeSelection"
+                                class="flex-1 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                            Back
+                        </button>
+                        
+                        <!-- Continue Button -->
+                        <button @click="proceedWithSelectedGateway"
+                                :disabled="!selectedPaymentGateway"
+                                :class="['flex-1 py-3 rounded-lg font-medium transition-colors',
+                                       selectedPaymentGateway ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed']">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Details Slider (for GTPay) -->
+        <div v-if="showCardDetailsSlider" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-end z-50">
+            <div class="bg-white w-full max-w-md h-full overflow-y-auto shadow-xl transform transition-transform duration-300 ease-in-out"
+                 :class="showCardDetailsSlider ? 'translate-x-0' : 'translate-x-full'">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h2 class="text-xl font-semibold">Payment Details</h2>
+                    <button @click="closeCardDetailsSlider" class="p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
+                    </button>
+                </div>
+
+                <div class="p-4">
+                    <!-- Card Type Selection -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                        <div 
+                            v-for="cardType in cardTypes" 
+                            :key="cardType.id"
+                            @click="selectedCardType = cardType.id"
+                            :class="[
+                                'border-2 rounded-lg p-3 cursor-pointer transition-all duration-200 flex items-center justify-center',
+                                selectedCardType === cardType.id 
+                                    ? 'border-purple-500 bg-purple-50' 
+                                    : 'border-gray-200 hover:border-gray-300'
+                            ]"
+                        >
+                            <div class="text-center">
+                                <div class="w-8 h-6 mx-auto mb-1 flex items-center justify-center">
+                                    <img 
+                                        :src="cardType.logo" 
+                                        :alt="cardType.name"
+                                        class="max-w-full max-h-full object-contain"
+                                    >
+                                </div>
+                                <span class="text-xs font-medium text-gray-700">{{ cardType.name }}</span>
+                                <div v-if="selectedCardType === cardType.id" class="w-3 h-3 bg-purple-500 rounded-full mx-auto mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Enter Card Details</h3>
+                    
+                    <!-- Card Details Form -->
+                    <div class="space-y-4 mb-6">
+                        <!-- Cardholder Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Cardholder Name
+                            </label>
+                            <input
+                                v-model="cardDetails.holderName"
+                                type="text"
+                                placeholder="Enter Name"
+                                class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            >
+                        </div>
+
+                        <!-- Card Number -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Card Number
+                            </label>
+                            <input
+                                v-model="cardDetails.number"
+                                type="text"
+                                placeholder="Enter Card Number"
+                                maxlength="19"
+                                @input="formatCardNumber"
+                                class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            >
+                        </div>
+
+                        <!-- Expiry Date and CVV -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Expiry Date
+                                </label>
+                                <input
+                                    v-model="cardDetails.expiry"
+                                    type="text"
+                                    placeholder="MM/YY"
+                                    maxlength="5"
+                                    @input="formatExpiry"
+                                    class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    CVV
+                                </label>
+                                <input
+                                    v-model="cardDetails.cvv"
+                                    type="text"
+                                    placeholder="***"
+                                    maxlength="4"
+                                    class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                            </div>
                     </div>
                 </div>
 
                 <!-- Booking Summary -->
-                <div class="border-t pt-4 lg:pt-6 mb-4 lg:mb-6">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm lg:text-base font-medium text-gray-900">{{ therapist.name }}</span>
-                        <span class="text-xs lg:text-sm text-gray-600">Fee:</span>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">{{ therapist.name }}</h4>
+                                <p class="text-sm text-gray-600">{{ selectedDate }}, {{ selectedTimeSlot }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-600">Fee:</p>
+                                <p class="text-lg font-bold text-purple-600">₦{{ therapist.hourly_rate?.toLocaleString() }}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs lg:text-sm text-gray-600">{{ selectedDate }} {{ selectedTimeSlot }}</span>
-                        <span class="text-base lg:text-lg font-bold text-purple-600">${{ therapist.hourly_rate }}</span>
-                    </div>
-                </div>
 
-                <!-- Back Button -->
-                <button @click="backToTimeSelection" 
-                        class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 lg:py-4 rounded-xl transition-colors text-sm lg:text-base">
-                    Back
-                </button>
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-3">
+                        <!-- Back Button -->
+                        <button @click="backToPaymentSelection"
+                                class="flex-1 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                            Back
+                        </button>
+                        
+                        <!-- Pay Now Button -->
+                        <button @click="processPayment"
+                                :disabled="!isCardDetailsValid"
+                                :class="['flex-1 py-3 rounded-lg font-medium transition-colors',
+                                       isCardDetailsValid ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed']">
+                            <span v-if="isProcessingPayment">Processing...</span>
+                            <span v-else>Pay Now</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -428,6 +561,7 @@ import { router, Head, usePage } from '@inertiajs/vue3'
 import Sidebar from '@/Components/Sidebar.vue'
 import AppHeader from '@/Components/AppHeader.vue'
 import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue'
+import PaymentGatewaySelector from '@/Components/PaymentGatewaySelector.vue'
 import axios from 'axios'
 
 const page = usePage()
@@ -441,11 +575,45 @@ const props = defineProps({
 const showAvailableHours = ref(false)
 const showBookingSlider = ref(false)
 const showPaymentSlider = ref(false)
+const showCardDetailsSlider = ref(false)
 const selectedPlatform = ref('')
 const selectedDate = ref('')
 const selectedTimeSlot = ref('')
+const selectedPaymentGateway = ref('')
+const selectedCardType = ref('mastercard')
 const mobileMenuOpen = ref(false)
 const isProcessingPayment = ref(false)
+
+// Card details for GTPay
+const cardDetails = ref({
+    holderName: '',
+    number: '',
+    expiry: '',
+    cvv: ''
+})
+
+const cardTypes = ref([
+    {
+        id: 'mastercard',
+        name: 'Mastercard',
+        logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCA0MCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iI0VCMDAxQiIvPgo8Y2lyY2xlIGN4PSIxNSIgY3k9IjEyIiByPSI3IiBmaWxsPSIjRkY1RjAwIi8+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMTIiIHI9IjciIGZpbGw9IiNGRkY1RjAiLz4KPC9zdmc+'
+    },
+    {
+        id: 'visa',
+        name: 'Visa',
+        logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCA0MCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iIzFFNzNBQSIvPgo8dGV4dCB4PSI1IiB5PSIxNiIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiPlZJU0E8L3RleHQ+Cjwvc3ZnPg=='
+    },
+    {
+        id: 'verve',
+        name: 'Verve Card',
+        logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCA0MCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iIzAwNjUzOSIvPgo8dGV4dCB4PSI4IiB5PSIxNiIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI4IiBmb250LXdlaWdodD0iYm9sZCI+VkVSVkU8L3RleHQ+Cjwvc3ZnPg=='
+    },
+    {
+        id: 'googlepay',
+        name: 'G Pay',
+        logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCA0MCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iIzRDODVGRiIvPgo8dGV4dCB4PSIxMCIgeT0iMTYiIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iOCIgZm9udC13ZWlnaHQ9ImJvbGQiPkdQYXk8L3RleHQ+Cjwvc3ZnPg=='
+    }
+])
 
 // Generate available dates for the next 7 days
 const availableDates = ref([])
@@ -550,6 +718,19 @@ const closeBookingSlider = () => {
 
 const closePaymentSlider = () => {
     showPaymentSlider.value = false
+    selectedPaymentGateway.value = ''
+}
+
+const closeCardDetailsSlider = () => {
+    showCardDetailsSlider.value = false
+    // Reset card details
+    cardDetails.value = {
+        holderName: '',
+        number: '',
+        expiry: '',
+        cvv: ''
+    }
+    selectedCardType.value = 'mastercard'
 }
 
 const proceedToPayment = () => {
@@ -562,43 +743,106 @@ const proceedToPayment = () => {
 const backToTimeSelection = () => {
     showPaymentSlider.value = false
     showBookingSlider.value = true
+    selectedPaymentGateway.value = ''
 }
 
-// Function to handle Paystack payment
-const proceedWithPaystackPayment = async () => {
-    if (!selectedPlatform.value || !selectedDate.value || !selectedTimeSlot.value) {
-        alert('Please select all required fields before proceeding.');
-        return;
-    }
+const backToPaymentSelection = () => {
+    showCardDetailsSlider.value = false
+    showPaymentSlider.value = true
+}
 
-    isProcessingPayment.value = true;
+const proceedWithSelectedGateway = () => {
+    if (!selectedPaymentGateway.value) return
+    
+    if (selectedPaymentGateway.value === 'gtpay') {
+        // Show card details form for GTPay
+        showPaymentSlider.value = false
+        showCardDetailsSlider.value = true
+    } else {
+        // Proceed directly with Paystack
+        processPayment()
+    }
+}
+
+// Card formatting functions
+const formatCardNumber = (event) => {
+    let value = event.target.value.replace(/\s/g, '').replace(/[^0-9]/gi, '')
+    let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value
+    cardDetails.value.number = formattedValue
+}
+
+const formatExpiry = (event) => {
+    let value = event.target.value.replace(/[^0-9]/g, '')
+    if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4)
+    }
+    cardDetails.value.expiry = value
+}
+
+// Computed property to check if card details are valid
+const isCardDetailsValid = computed(() => {
+    return cardDetails.value.holderName.trim() !== '' &&
+           cardDetails.value.number.replace(/\s/g, '').length >= 15 &&
+           cardDetails.value.expiry.length === 5 &&
+           cardDetails.value.cvv.length >= 3
+})
+
+// Function to handle payment processing
+const processPayment = async () => {
+    isProcessingPayment.value = true
 
     try {
-        // Convert selected date to proper format
-        const bookingDate = convertToBookingDate(selectedDate.value);
+        // Prepare payment data
+        const appointmentDateTime = convertToBookingDate(selectedDate.value) + ' ' + selectedTimeSlot.value
         
-        // Initialize payment with backend
+        const paymentData = {
+            therapist_id: props.therapist.id,
+            appointment_datetime: appointmentDateTime,
+            session_type: 'online',
+            platform: selectedPlatform.value,
+            user_message: '',
+            payment_gateway: selectedPaymentGateway.value
+        }
+
+        // For GTPay, include card details
+        if (selectedPaymentGateway.value === 'gtpay') {
+            paymentData.card_details = {
+                holder_name: cardDetails.value.holderName,
+                number: cardDetails.value.number.replace(/\s/g, ''),
+                expiry: cardDetails.value.expiry,
+                cvv: cardDetails.value.cvv,
+                type: selectedCardType.value
+            }
+        }
+
+        // Make AJAX request to initialize payment and get redirect URL
         const response = await axios.post(route('payment.therapist.initialize'), {
             therapist_id: props.therapist.id,
-            booking_date: bookingDate,
+            booking_date: convertToBookingDate(selectedDate.value),
             booking_time: selectedTimeSlot.value,
+            notes: '',
             platform: selectedPlatform.value,
-            notes: `Session via ${selectedPlatform.value}`
-        });
+            payment_gateway: selectedPaymentGateway.value,
+            ...paymentData.card_details && { card_details: paymentData.card_details }
+        })
 
-        if (response.data.status) {
-            // Redirect to Paystack payment page
-            window.location.href = response.data.authorization_url;
+        if (response.data.status && response.data.authorization_url) {
+            // Redirect to payment gateway
+            window.location.href = response.data.authorization_url
         } else {
-            alert('Payment initialization failed: ' + response.data.message);
+            alert('Payment initialization failed: ' + (response.data.message || 'Unknown error'))
         }
     } catch (error) {
-        console.error('Payment error:', error);
-        alert('An error occurred while initializing payment. Please try again.');
+        console.error('Payment error:', error)
+        if (error.response && error.response.data && error.response.data.message) {
+            alert('Payment error: ' + error.response.data.message)
+        } else {
+            alert('An error occurred while processing payment. Please try again.')
+        }
     } finally {
-        isProcessingPayment.value = false;
+        isProcessingPayment.value = false
     }
-};
+}
 
 // Convert display date to booking date format
 const convertToBookingDate = (displayDate) => {

@@ -25,6 +25,7 @@ class TherapistBooking extends Model
         'status',
         'amount',
         'payment_reference',
+        'payment_gateway',
         'payment_status',
         'user_message',
         'admin_notes',

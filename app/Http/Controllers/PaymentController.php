@@ -5,20 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\TherapistBooking;
 use App\Models\User;
 use App\Services\PaystackService;
+use App\Services\MonnifyService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use App\Notifications\TherapistBookingPaid;
+use App\Notifications\TherapistBookingPending;
 
 class PaymentController extends Controller
 {
     protected $paystackService;
+    protected $monnifyService;
 
-    public function __construct(PaystackService $paystackService)
+    public function __construct(PaystackService $paystackService, MonnifyService $monnifyService)
     {
         $this->paystackService = $paystackService;
+        $this->monnifyService = $monnifyService;
     }
 
     /**
@@ -108,7 +114,8 @@ class PaymentController extends Controller
                     'booking_date' => 'required|date|after_or_equal:today',
                     'booking_time' => 'required|string',
                     'notes' => 'nullable|string|max:500',
-                    'platform' => 'nullable|string'
+                    'platform' => 'nullable|string',
+                    'payment_gateway' => 'required|in:paystack,monnify'
                 ]);
                 
                 Log::info('Validation passed', ['validated_data' => $validated]);
@@ -144,7 +151,8 @@ class PaymentController extends Controller
                 'hourly_rate' => $therapist->hourly_rate
             ]);
             
-            $reference = 'booking_' . \Illuminate\Support\Str::random(16);
+            $gateway = $validated['payment_gateway'];
+            $reference = 'booking_' . $gateway . '_' . \Illuminate\Support\Str::random(12);
             $amount = $therapist->hourly_rate * 100; // Convert to kobo (assuming rate is in Naira)
 
             Log::info('Creating booking record', [
@@ -153,7 +161,8 @@ class PaymentController extends Controller
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
                 'amount' => $therapist->hourly_rate,
-                'reference' => $reference
+                'reference' => $reference,
+                'gateway' => $gateway
             ]);
 
             // Combine date and time into appointment_datetime
@@ -169,29 +178,55 @@ class PaymentController extends Controller
                 'notes' => $request->notes,
                 'status' => 'pending',
                 'amount' => $therapist->hourly_rate,
-                'payment_reference' => $reference
+                'payment_reference' => $reference,
+                'payment_gateway' => $gateway
             ]);
 
             Log::info('Booking created successfully', ['booking_id' => $booking->id]);
 
+            // Send pending payment notification
+            $user->notify(new TherapistBookingPending($booking));
+
+            // Initialize payment based on selected gateway
+            if ($gateway === 'monnify') {
+                $paymentData = [
+                    'amount' => $therapist->hourly_rate, // Monnify expects amount in Naira
+                    'customer_name' => $user->name,
+                    'email' => $user->email,
+                    'reference' => $reference,
+                    'description' => 'Therapy Session with ' . $therapist->name,
+                    'callback_url' => route('payment.callback'),
+                    'metadata' => [
+                        'type' => 'therapist_booking',
+                        'booking_id' => $booking->id,
+                        'therapist_id' => $request->therapist_id,
+                        'user_id' => $user->id,
+                        'gateway' => 'monnify'
+                    ]
+                ];
+
+                Log::info('Initializing Monnify payment', ['payment_data' => $paymentData]);
+                $response = $this->monnifyService->initializePayment($paymentData);
+            } else {
             $paymentData = [
                 'email' => $user->email,
-                'amount' => $amount,
+                    'amount' => $amount, // Paystack expects amount in kobo
                 'reference' => $reference,
                 'callback_url' => route('payment.callback'),
                 'metadata' => [
                     'type' => 'therapist_booking',
                     'booking_id' => $booking->id,
                     'therapist_id' => $request->therapist_id,
-                    'user_id' => $user->id
+                        'user_id' => $user->id,
+                        'gateway' => 'paystack'
                 ]
             ];
 
             Log::info('Initializing Paystack payment', ['payment_data' => $paymentData]);
-
             $response = $this->paystackService->initializePayment($paymentData);
+            }
 
-            Log::info('Paystack response', ['response' => $response]);
+            Log::info('Payment gateway response', ['gateway' => $gateway, 'response' => $response]);
 
             if ($response['status'] === true) {
                 return response()->json([
@@ -237,7 +272,15 @@ class PaymentController extends Controller
             return redirect()->route('dashboard')->with('error', 'Payment reference not found');
         }
 
+        // Determine gateway from reference
+        $gateway = str_contains($reference, 'monnify') ? 'monnify' : 'paystack';
+        
+        // Verify payment based on gateway
+        if ($gateway === 'monnify') {
+            $response = $this->monnifyService->verifyPayment($reference);
+        } else {
         $response = $this->paystackService->verifyPayment($reference);
+        }
 
         if ($response['status'] === true && $response['data']['status'] === 'success') {
             $paymentData = $response['data'];
@@ -335,7 +378,7 @@ class PaymentController extends Controller
      */
     private function handleTherapistBookingPayment($paymentData, $metadata)
     {
-        $booking = TherapistBooking::find($metadata['booking_id']);
+        $booking = TherapistBooking::with(['user', 'therapist'])->find($metadata['booking_id']);
         
         if ($booking) {
             $booking->update([
@@ -343,6 +386,9 @@ class PaymentController extends Controller
                 'payment_status' => 'paid',
                 'payment_reference' => $paymentData['reference']
             ]);
+
+            // Send payment confirmation notification
+            $booking->user->notify(new TherapistBookingPaid($booking));
 
             Log::info('Therapist booking payment processed', [
                 'booking_id' => $booking->id,

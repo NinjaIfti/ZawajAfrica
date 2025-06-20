@@ -1,6 +1,7 @@
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue';
+import NotificationBell from './NotificationBell.vue';
 
 const props = defineProps({
     user: Object,
@@ -75,6 +76,9 @@ onUnmounted(() => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </div>
+            
+            <!-- Notifications -->
+            <NotificationBell />
             
             <!-- Profile Dropdown -->
             <div class="relative profile-dropdown">

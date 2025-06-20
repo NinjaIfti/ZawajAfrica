@@ -108,6 +108,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-bookings', [App\Http\Controllers\TherapistBookingController::class, 'userBookings'])->name('therapists.bookings');
     Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingController::class, 'cancel'])->name('therapists.bookings.cancel');
     
+    // Therapist booking reminder routes (for admin/system use)
+    Route::post('/therapist-bookings/reminders/{type}', [App\Http\Controllers\TherapistBookingController::class, 'sendReminders'])
+        ->where('type', '24h|1h|15m')
+        ->name('bookings.reminders');
+    
     // New Me profile routes
     Route::get('/me/profile', [App\Http\Controllers\Me\ProfileController::class, 'index'])->name('me.profile');
     
@@ -148,6 +153,50 @@ Route::middleware('auth')->group(function () {
     Route::post('/chatbot/preferences', [App\Http\Controllers\ChatbotController::class, 'updatePreferences'])->name('chatbot.preferences.update');
     Route::get('/chatbot/preferences', [App\Http\Controllers\ChatbotController::class, 'getPreferences'])->name('chatbot.preferences');
     Route::get('/chatbot/status', [App\Http\Controllers\ChatbotController::class, 'status'])->name('chatbot.status');
+    
+    // Notification routes
+    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.index');
+    Route::get('/notifications/data', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.data');
+    Route::get('/notifications/unread', [App\Http\Controllers\NotificationController::class, 'unread'])->name('notifications.unread');
+    Route::patch('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::patch('/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::delete('/notifications/{id}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::delete('/notifications/clear-read', [App\Http\Controllers\NotificationController::class, 'clearRead'])->name('notifications.clear-read');
+    Route::get('/notifications/settings', [App\Http\Controllers\NotificationController::class, 'getSettings'])->name('notifications.settings.get');
+    Route::post('/notifications/settings', [App\Http\Controllers\NotificationController::class, 'updateSettings'])->name('notifications.settings.update');
+    Route::get('/notifications/test', [App\Http\Controllers\NotificationController::class, 'test'])->name('notifications.test');
+    Route::get('/notifications/demo', function() {
+        $user = Auth::user();
+        
+        // Create sample notifications for demo
+        $user->notify(new \App\Notifications\NewMatchFound($user));
+        $user->notify(new \App\Notifications\ProfileViewed($user));
+        $user->notify(new \App\Notifications\VerificationApproved());
+        
+        // Create dummy therapist booking for demo notifications
+        $therapist = \App\Models\Therapist::first();
+        if ($therapist) {
+            $demoBooking = new \App\Models\TherapistBooking([
+                'id' => 999,
+                'user_id' => $user->id,
+                'therapist_id' => $therapist->id,
+                'appointment_datetime' => now()->addDays(2),
+                'amount' => $therapist->hourly_rate ?? 5000,
+                'payment_reference' => 'DEMO_REF_' . time(),
+                'status' => 'confirmed',
+                'payment_status' => 'paid'
+            ]);
+            $demoBooking->setRelation('therapist', $therapist);
+            
+            // Demo therapist booking notifications
+            $user->notify(new \App\Notifications\TherapistBookingPaid($demoBooking));
+            $user->notify(new \App\Notifications\TherapistBookingPending($demoBooking));
+            $user->notify(new \App\Notifications\TherapistBookingReminder($demoBooking, '24h'));
+            $user->notify(new \App\Notifications\TherapistBookingCancelled($demoBooking, 'Demo cancellation', true));
+        }
+        
+        return redirect()->route('notifications.index')->with('success', 'Demo notifications created!');
+    })->name('notifications.demo');
 });
 
 // Verification routes
@@ -310,5 +359,48 @@ Route::get('/test-openai', function () {
         ]);
     }
 })->middleware('auth')->name('test.openai');
+
+// Test route for Zoho Mail integration (admin only)
+Route::get('/test-zoho-mail', function () {
+    try {
+        $zohoMailService = app(\App\Services\ZohoMailService::class);
+        
+        // Check configuration status
+        $status = $zohoMailService->getStatus();
+        
+        if (!$status['configured']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Zoho Mail not configured. Please add environment variables.',
+                'config_status' => $status,
+                'required_env_vars' => [
+                    'ZOHO_MAIL_ENABLED=true',
+                    'ZOHO_MAIL_USERNAME=support@yourdomain.com',
+                    'ZOHO_MAIL_PASSWORD=your_app_password',
+                    'ZOHO_MAIL_FROM_ADDRESS=support@yourdomain.com'
+                ],
+                'recommended_addresses' => $zohoMailService->getRecommendedEmailAddresses()
+            ], 400);
+        }
+        
+        // Test email sending
+        $testResult = $zohoMailService->testConnection();
+        
+        return response()->json([
+            'status' => $testResult['status'] ? 'success' : 'error',
+            'message' => $testResult['message'],
+            'config_status' => $status,
+            'recommended_addresses' => $zohoMailService->getRecommendedEmailAddresses(),
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Error testing Zoho Mail: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+})->middleware('auth')->name('test.zoho.mail');
 
 require __DIR__.'/auth.php';

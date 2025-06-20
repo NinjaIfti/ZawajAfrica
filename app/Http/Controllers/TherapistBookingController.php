@@ -7,6 +7,8 @@ use App\Models\TherapistBooking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Notifications\TherapistBookingCancelled;
+use App\Notifications\TherapistBookingReminder;
 
 class TherapistBookingController extends Controller
 {
@@ -259,7 +261,7 @@ class TherapistBookingController extends Controller
     }
 
     /**
-     * Store a new booking.
+     * Store a new booking and redirect to payment.
      */
     public function store(Request $request)
     {
@@ -267,7 +269,9 @@ class TherapistBookingController extends Controller
             'therapist_id' => 'required|exists:therapists,id',
             'appointment_datetime' => 'required|date|after:now',
             'session_type' => 'required|in:online,in_person',
+            'platform' => 'nullable|string',
             'user_message' => 'nullable|string|max:1000',
+            'payment_gateway' => 'required|in:paystack,gtpay',
         ]);
 
         // Check if therapist is active
@@ -285,17 +289,34 @@ class TherapistBookingController extends Controller
             return redirect()->back()->with('error', 'This time slot is already booked. Please choose another time.');
         }
 
-        // Create the booking
-        TherapistBooking::create([
-            'user_id' => Auth::id(),
-            'therapist_id' => $validated['therapist_id'],
-            'appointment_datetime' => $validated['appointment_datetime'],
-            'session_type' => $validated['session_type'],
-            'user_message' => $validated['user_message'],
-            'status' => 'pending',
-        ]);
+        // Map payment gateway selection to actual service
+        $gateway = $validated['payment_gateway'] === 'gtpay' ? 'monnify' : 'paystack';
 
-        return redirect()->route('therapists.bookings')->with('success', 'Booking request submitted successfully! You will be notified once confirmed.');
+        // Format data for payment initialization
+        $appointmentDateTime = \Carbon\Carbon::parse($validated['appointment_datetime']);
+        
+        $paymentData = [
+            'therapist_id' => $validated['therapist_id'],
+            'booking_date' => $appointmentDateTime->format('Y-m-d'),
+            'booking_time' => $appointmentDateTime->format('g:i A'),
+            'notes' => $validated['user_message'],
+            'platform' => $validated['platform'],
+            'payment_gateway' => $gateway
+        ];
+
+        // Initialize payment through PaymentController
+        $paymentController = app(PaymentController::class);
+        $paymentRequest = new Request($paymentData);
+        $paymentResponse = $paymentController->initializeTherapistBooking($paymentRequest);
+
+        if ($paymentResponse->getStatusCode() === 200) {
+            $responseData = json_decode($paymentResponse->getContent(), true);
+            if ($responseData['status']) {
+                return redirect($responseData['authorization_url']);
+            }
+        }
+
+        return redirect()->back()->with('error', 'Unable to initialize payment. Please try again.');
     }
 
     /**
@@ -375,7 +396,8 @@ class TherapistBookingController extends Controller
      */
     public function cancel(Request $request, $id)
     {
-        $booking = TherapistBooking::where('user_id', Auth::id())
+        $booking = TherapistBooking::with(['user', 'therapist'])
+            ->where('user_id', Auth::id())
             ->where('id', $id)
             ->whereIn('status', ['pending', 'confirmed'])
             ->firstOrFail();
@@ -384,12 +406,55 @@ class TherapistBookingController extends Controller
             'cancellation_reason' => 'nullable|string|max:500',
         ]);
 
+        // Determine if refund should be issued (e.g., for paid bookings cancelled more than 24 hours in advance)
+        $refundIssued = false;
+        if ($booking->payment_status === 'paid' && $booking->appointment_datetime->diffInHours(now()) > 24) {
+            $refundIssued = true;
+            // Here you would typically call your payment service to process the refund
+            // For now, just update the payment status
+            $booking->update(['payment_status' => 'refunded']);
+        }
+
         $booking->update([
             'status' => 'cancelled',
             'cancellation_reason' => $validated['cancellation_reason'],
             'cancelled_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'Booking cancelled successfully.');
+        // Send cancellation notification
+        $booking->user->notify(new TherapistBookingCancelled(
+            $booking, 
+            $validated['cancellation_reason'] ?? 'Cancelled by user', 
+            $refundIssued
+        ));
+
+        return redirect()->back()->with('success', 'Booking cancelled successfully.' . ($refundIssued ? ' A refund has been initiated.' : ''));
+    }
+
+    /**
+     * Send session reminders for upcoming bookings
+     * This method would typically be called by a scheduled command
+     */
+    public function sendReminders($reminderType = '24h')
+    {
+        $timeFilter = match($reminderType) {
+            '24h' => [now()->addDay()->startOfHour(), now()->addDay()->endOfHour()],
+            '1h' => [now()->addHour()->startOfMinute(), now()->addHour()->addMinutes(5)],
+            '15m' => [now()->addMinutes(15)->startOfMinute(), now()->addMinutes(20)],
+            default => [now()->addDay()->startOfHour(), now()->addDay()->endOfHour()]
+        };
+
+        $upcomingBookings = TherapistBooking::with(['user', 'therapist'])
+            ->where('status', 'confirmed')
+            ->whereBetween('appointment_datetime', $timeFilter)
+            ->get();
+
+        foreach ($upcomingBookings as $booking) {
+            $booking->user->notify(new TherapistBookingReminder($booking, $reminderType));
+        }
+
+        return response()->json([
+            'message' => "Sent {$reminderType} reminders for " . $upcomingBookings->count() . " bookings"
+        ]);
     }
 }
