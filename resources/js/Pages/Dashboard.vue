@@ -1,11 +1,13 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
+import axios from 'axios';
 import Sidebar from '@/Components/Sidebar.vue';
 import DashboardSidebar from '@/Components/DashboardSidebar.vue';
 import MatchCard from '@/Components/MatchCard.vue';
 import TherapistWidget from '@/Components/TherapistWidget.vue';
 import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
+import MatchFiltersModal from '@/Components/MatchFiltersModal.vue';
 
 const page = usePage();
 const showPaymentSuccessModal = ref(false);
@@ -19,6 +21,7 @@ const props = defineProps({
     matches: Array,
     therapists: Array,
     recentMessages: Array,
+    userTier: String,
 });
 
 // Mobile menu state
@@ -172,6 +175,132 @@ const toggleMessagesPanel = () => {
     isMessagesPanelExpanded.value = !isMessagesPanelExpanded.value;
 };
 
+// Search and filter functionality
+const searchQuery = ref('');
+const showFiltersModal = ref(false);
+const appliedFilters = ref({});
+const isSearching = ref(false);
+const searchResults = ref([]);
+const isLoading = ref(false);
+
+// Function to handle search
+const handleSearch = async () => {
+    if (!searchQuery.value.trim()) {
+        searchResults.value = [];
+        return;
+    }
+
+    isSearching.value = true;
+    isLoading.value = true;
+    
+    try {
+        const response = await axios.get('/api/matches/search', {
+            params: {
+                q: searchQuery.value,
+                filters: appliedFilters.value
+            }
+        });
+        
+        if (response.data.success) {
+            searchResults.value = response.data.data.matches || [];
+        }
+    } catch (error) {
+        console.error('Search failed:', error);
+        searchResults.value = [];
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+// Function to clear search
+const clearSearch = () => {
+    searchQuery.value = '';
+    searchResults.value = [];
+    isSearching.value = false;
+};
+
+// Function to apply filters
+const applyFilters = async (filters) => {
+    appliedFilters.value = { ...filters };
+    isLoading.value = true;
+    
+    try {
+        const response = await axios.post('/api/matches/filter', {
+            filters: filters
+        });
+        
+        if (response.data.success) {
+            // Update matches with filtered results
+            const filteredMatches = response.data.data.matches || [];
+            
+            // Replace the matches computed property with filtered results
+            if (filteredMatches.length > 0) {
+                // Update the matches directly
+                await nextTick();
+                // You might need to emit an event or use a different approach
+                // to update the MatchCard component with new data
+                window.location.reload(); // Temporary solution - reload page with filters
+            }
+        }
+    } catch (error) {
+        console.error('Filter failed:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+// Function to clear filters
+const clearFilters = () => {
+    appliedFilters.value = {};
+    window.location.reload(); // Reload to get unfiltered matches
+};
+
+// Function to show filters modal
+const showFilters = () => {
+    showFiltersModal.value = true;
+};
+
+// Get user tier for filters
+const userTier = computed(() => {
+    // Use the tier passed from the backend first (most reliable)
+    if (props.userTier) {
+        return props.userTier;
+    }
+    
+    // Fallback to calculating from user data
+    const user = props.user || page.props.auth?.user;
+    
+    if (!user) return 'free';
+    
+    // Check if user has an active subscription
+    if (user.subscription_status === 'active' && user.subscription_plan) {
+        return user.subscription_plan;
+    }
+    
+    return 'free';
+});
+
+// Debounced search
+let searchTimeout;
+watch(searchQuery, (newValue) => {
+    clearTimeout(searchTimeout);
+    if (newValue.trim()) {
+        searchTimeout = setTimeout(() => {
+            handleSearch();
+        }, 500);
+    } else {
+        clearSearch();
+    }
+});
+
+// Display matches - either search results or regular matches
+const displayMatches = computed(() => {
+    if (isSearching.value && searchResults.value.length > 0) {
+        return searchResults.value.map(user => processUserData(user));
+    }
+    return matches.value;
+});
+
 // Close the profile dropdown when clicking outside
 const closeDropdown = (e) => {
     // If the click is outside the dropdown and the dropdown is open, close it
@@ -324,17 +453,47 @@ onUnmounted(() => {
                 <!-- Search bar with integrated filter button - desktop -->
                 <div class="flex items-center rounded-lg border border-gray-300 bg-white">
                     <div class="flex-1 flex items-center px-4 py-2">
-                            <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input 
+                            v-model="searchQuery"
+                            type="text" 
+                            placeholder="Search by name..." 
+                            class="w-full border-none bg-transparent outline-none"
+                            @keyup.enter="handleSearch"
+                        />
+                        <!-- Clear search button -->
+                        <button 
+                            v-if="searchQuery" 
+                            @click="clearSearch"
+                            class="ml-2 p-1 hover:bg-gray-100 rounded"
+                        >
+                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
-                            <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
+                        </button>
                     </div>
-                    <div class="border-l border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-50">
-                        <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button 
+                        @click="showFilters"
+                        class="border-l border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center"
+                        :class="Object.keys(appliedFilters).length > 0 ? 'bg-purple-50 text-purple-600' : 'text-gray-500'"
+                    >
+                        <svg class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
-                    </div>
-                        </div>
+                        <span v-if="Object.keys(appliedFilters).length > 0" class="text-xs">
+                            ({{ Object.keys(appliedFilters).length }})
+                        </span>
+                    </button>
+                </div>
+                
+                <!-- Search status indicator -->
+                <div v-if="isSearching && searchQuery" class="mt-2 text-sm text-gray-600">
+                    <span v-if="isLoading">Searching...</span>
+                    <span v-else-if="searchResults.length === 0">No users found for "{{ searchQuery }}"</span>
+                    <span v-else>Found {{ searchResults.length }} user(s) for "{{ searchQuery }}"</span>
+                </div>
                     </div>
                     
             <!-- Search bar - Only visible on mobile -->
@@ -345,18 +504,56 @@ onUnmounted(() => {
                         <svg class="mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <input type="text" placeholder="Search" class="w-full border-none bg-transparent outline-none" />
+                        <input 
+                            v-model="searchQuery"
+                            type="text" 
+                            placeholder="Search by name..." 
+                            class="w-full border-none bg-transparent outline-none"
+                            @keyup.enter="handleSearch"
+                        />
+                        <!-- Clear search button -->
+                        <button 
+                            v-if="searchQuery" 
+                            @click="clearSearch"
+                            class="ml-2 p-1 hover:bg-gray-100 rounded"
+                        >
+                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <div class="border-l border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-50">
-                        <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button 
+                        @click="showFilters"
+                        class="border-l border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                        :class="Object.keys(appliedFilters).length > 0 ? 'bg-purple-50 text-purple-600' : 'text-gray-500'"
+                    >
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
-                    </div>
+                    </button>
+                </div>
+                
+                <!-- Search status indicator - mobile -->
+                <div v-if="isSearching && searchQuery" class="mt-2 text-sm text-gray-600">
+                    <span v-if="isLoading">Searching...</span>
+                    <span v-else-if="searchResults.length === 0">No users found for "{{ searchQuery }}"</span>
+                    <span v-else>Found {{ searchResults.length }} user(s) for "{{ searchQuery }}"</span>
                 </div>
             </div>
             
             <!-- Match Cards Component -->
-            <MatchCard :matches="matches" />
+            <MatchCard :matches="displayMatches" />
+            
+            <!-- Loading indicator -->
+            <div v-if="isLoading" class="text-center py-8">
+                <div class="inline-flex items-center px-4 py-2 bg-gray-100 rounded-lg">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading...
+                </div>
+            </div>
         </div>
         
         <!-- Right Sidebar Component -->
@@ -373,6 +570,16 @@ onUnmounted(() => {
             :show="showPaymentSuccessModal" 
             :payment-type="page.props.flash?.payment_type || 'general'"
             @close="closePaymentSuccessModal" 
+        />
+        
+        <!-- Filter Modal -->
+        <MatchFiltersModal 
+            :show="showFiltersModal"
+            :user-tier="userTier"
+            :current-filters="appliedFilters"
+            @close="showFiltersModal = false"
+            @apply-filters="applyFilters"
+            @clear-filters="clearFilters"
         />
     </div>
 </template>

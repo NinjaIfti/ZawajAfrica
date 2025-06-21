@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Notifications\TherapistBookingCancelled;
 use App\Notifications\TherapistBookingReminder;
+use App\Traits\ZohoBookingsIntegration;
 
 class TherapistBookingController extends Controller
 {
+    use ZohoBookingsIntegration;
     /**
      * Display available therapists.
      */
@@ -214,8 +216,18 @@ class TherapistBookingController extends Controller
         // Parse real availability data
         $availabilityData = $this->parseAvailability($therapist->availability);
         
-        // Get available time slots from real availability data
+        // Get available time slots with Zoho integration (real-time if configured)
+        $todayDate = now()->format('Y-m-d');
         $availableSlots = $this->parseAvailableSlots($therapist->availability);
+        
+        // If Zoho is enabled, get real-time availability for today
+        if ($this->isZohoBookingsEnabled() && $therapist->zoho_service_id) {
+            $zohoSlots = $this->getAvailableSlotsWithZoho($therapist, $todayDate);
+            if (!empty($zohoSlots)) {
+                $availableSlots['zoho_slots'] = $zohoSlots;
+                $availableSlots['has_zoho_integration'] = true;
+            }
+        }
         
         // Format therapist data
         $formattedTherapist = [
@@ -245,6 +257,8 @@ class TherapistBookingController extends Controller
             'schedule_by_day' => $availabilityData['schedule_by_day'],
             'available_slots' => $availableSlots['all_slots'] ?? [],
             'slots_by_day' => $availableSlots['slots_by_day'] ?? [],
+            'zoho_slots' => $availableSlots['zoho_slots'] ?? [],
+            'has_zoho_integration' => $availableSlots['has_zoho_integration'] ?? false,
         ];
 
         // Get user's existing bookings with this therapist
@@ -261,7 +275,7 @@ class TherapistBookingController extends Controller
     }
 
     /**
-     * Store a new booking and redirect to payment.
+     * Store a new booking and redirect to payment (with Zoho Bookings integration).
      */
     public function store(Request $request)
     {
@@ -279,7 +293,7 @@ class TherapistBookingController extends Controller
             ->where('status', 'active')
             ->firstOrFail();
 
-        // Check for conflicting bookings
+        // Check for conflicting bookings (local database)
         $conflictingBooking = TherapistBooking::where('therapist_id', $validated['therapist_id'])
             ->where('appointment_datetime', $validated['appointment_datetime'])
             ->whereIn('status', ['pending', 'confirmed'])
@@ -289,6 +303,15 @@ class TherapistBookingController extends Controller
             return redirect()->back()->with('error', 'This time slot is already booked. Please choose another time.');
         }
 
+        // Create booking with Zoho integration
+        $bookingResult = $this->createBookingWithZoho($validated, $therapist);
+        
+        if (!$bookingResult['success']) {
+            return redirect()->back()->with('error', 'Unable to create booking. Please try again.');
+        }
+
+        $booking = $bookingResult['booking'];
+
         // Map payment gateway selection to actual service
         $gateway = $validated['payment_gateway'] === 'gtpay' ? 'monnify' : 'paystack';
 
@@ -297,6 +320,7 @@ class TherapistBookingController extends Controller
         
         $paymentData = [
             'therapist_id' => $validated['therapist_id'],
+            'booking_id' => $booking->id, // Include the booking ID
             'booking_date' => $appointmentDateTime->format('Y-m-d'),
             'booking_time' => $appointmentDateTime->format('g:i A'),
             'notes' => $validated['user_message'],
@@ -316,6 +340,9 @@ class TherapistBookingController extends Controller
             }
         }
 
+        // If payment initialization fails, clean up the booking
+        $booking->delete();
+        
         return redirect()->back()->with('error', 'Unable to initialize payment. Please try again.');
     }
 
@@ -392,7 +419,7 @@ class TherapistBookingController extends Controller
 
 
     /**
-     * Cancel a booking.
+     * Cancel a booking (with Zoho Bookings integration).
      */
     public function cancel(Request $request, $id)
     {
@@ -415,11 +442,12 @@ class TherapistBookingController extends Controller
             $booking->update(['payment_status' => 'refunded']);
         }
 
-        $booking->update([
-            'status' => 'cancelled',
-            'cancellation_reason' => $validated['cancellation_reason'],
-            'cancelled_at' => now(),
-        ]);
+        // Cancel booking with Zoho integration
+        $cancelResult = $this->cancelBookingWithZoho($booking, $validated['cancellation_reason'] ?? 'Cancelled by user');
+        
+        if (!$cancelResult['success']) {
+            return redirect()->back()->with('error', 'Unable to cancel booking. Please try again.');
+        }
 
         // Send cancellation notification
         $booking->user->notify(new TherapistBookingCancelled(
@@ -428,7 +456,15 @@ class TherapistBookingController extends Controller
             $refundIssued
         ));
 
-        return redirect()->back()->with('success', 'Booking cancelled successfully.' . ($refundIssued ? ' A refund has been initiated.' : ''));
+        $successMessage = 'Booking cancelled successfully.';
+        if ($refundIssued) {
+            $successMessage .= ' A refund has been initiated.';
+        }
+        if ($cancelResult['zoho_cancelled']) {
+            $successMessage .= ' Your booking has also been cancelled in our scheduling system.';
+        }
+
+        return redirect()->back()->with('success', $successMessage);
     }
 
     /**

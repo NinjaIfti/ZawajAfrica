@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'verified.user' => \App\Http\Middleware\VerifiedUserMiddleware::class,
+            'tier.access' => \App\Http\Middleware\TierAccessMiddleware::class,
         ]);
         
         // Exclude webhook from CSRF protection

@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Middleware\TierAccessMiddleware;
 
 // Include admin routes
 require __DIR__.'/admin.php';
@@ -74,12 +75,24 @@ Route::get('/dashboard', function () {
         }
     }
     
+    // Get tier information
+    $tierService = app(App\Services\UserTierService::class);
+    $userTier = $tierService->getUserTier($user);
+    $tierInfo = $tierService->getTierInfo($userTier);
+    $dailyUsage = [
+        'profile_views' => $tierService->canViewProfile($user),
+        'messages' => $tierService->canSendMessage($user),
+    ];
+
     return Inertia::render('Dashboard', [
-        'user' => $user,
+        'user' => $user->load('profile'), // Ensure profile is loaded
         'profile' => $user->profile,
         'profileCompletion' => $profileCompletion,
         'potentialMatches' => $potentialMatches,
         'therapists' => $therapists,
+        'tierInfo' => $tierInfo,
+        'dailyUsage' => $dailyUsage,
+        'userTier' => $userTier, // Pass the calculated tier directly
     ]);
 })->middleware(['auth', 'verified', 'verified.user'])->name('dashboard');
 
@@ -130,10 +143,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/me/faqs', [App\Http\Controllers\Me\FAQsController::class, 'index'])->name('me.faqs');
     Route::post('/me/faqs/update', [App\Http\Controllers\Me\FAQsController::class, 'update'])->name('me.faqs.update');
     
-    // Matches routes (placeholder until we create a controller)
-    Route::get('/matches', function() {
-        return Inertia::render('Matches/Index');
-    })->name('matches');
+    // Matches routes (API only - no index page)
+    Route::post('/matches/like', [App\Http\Controllers\MatchController::class, 'like'])->name('matches.like');
+    Route::post('/matches/pass', [App\Http\Controllers\MatchController::class, 'pass'])->name('matches.pass');
+    Route::get('/matches/filters', [App\Http\Controllers\MatchController::class, 'getFilters'])->name('matches.filters');
+    Route::get('/matches/ai-suggestions', [App\Http\Controllers\MatchController::class, 'getAISuggestions'])->name('matches.ai-suggestions');
     
     // Messages routes
     Route::get('/messages', [App\Http\Controllers\MessageController::class, 'index'])->name('messages');
@@ -164,39 +178,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications/clear-read', [App\Http\Controllers\NotificationController::class, 'clearRead'])->name('notifications.clear-read');
     Route::get('/notifications/settings', [App\Http\Controllers\NotificationController::class, 'getSettings'])->name('notifications.settings.get');
     Route::post('/notifications/settings', [App\Http\Controllers\NotificationController::class, 'updateSettings'])->name('notifications.settings.update');
-    Route::get('/notifications/test', [App\Http\Controllers\NotificationController::class, 'test'])->name('notifications.test');
-    Route::get('/notifications/demo', function() {
-        $user = Auth::user();
-        
-        // Create sample notifications for demo
-        $user->notify(new \App\Notifications\NewMatchFound($user));
-        $user->notify(new \App\Notifications\ProfileViewed($user));
-        $user->notify(new \App\Notifications\VerificationApproved());
-        
-        // Create dummy therapist booking for demo notifications
-        $therapist = \App\Models\Therapist::first();
-        if ($therapist) {
-            $demoBooking = new \App\Models\TherapistBooking([
-                'id' => 999,
-                'user_id' => $user->id,
-                'therapist_id' => $therapist->id,
-                'appointment_datetime' => now()->addDays(2),
-                'amount' => $therapist->hourly_rate ?? 5000,
-                'payment_reference' => 'DEMO_REF_' . time(),
-                'status' => 'confirmed',
-                'payment_status' => 'paid'
-            ]);
-            $demoBooking->setRelation('therapist', $therapist);
-            
-            // Demo therapist booking notifications
-            $user->notify(new \App\Notifications\TherapistBookingPaid($demoBooking));
-            $user->notify(new \App\Notifications\TherapistBookingPending($demoBooking));
-            $user->notify(new \App\Notifications\TherapistBookingReminder($demoBooking, '24h'));
-            $user->notify(new \App\Notifications\TherapistBookingCancelled($demoBooking, 'Demo cancellation', true));
-        }
-        
-        return redirect()->route('notifications.index')->with('success', 'Demo notifications created!');
-    })->name('notifications.demo');
+
+
 });
 
 // Verification routes
@@ -253,6 +236,70 @@ Route::get('/matches/profile/{id}', function($id) {
 Route::get('/admin/test-verification', function () {
     return Inertia::render('Admin/TestVerification');
 })->middleware(['auth'])->name('admin.test-verification');
+
+// Debug route to check user tier
+Route::get('/debug/tier', function () {
+    $user = Auth::user();
+    $tierService = app(\App\Services\UserTierService::class);
+    $userTier = $tierService->getUserTier($user);
+    
+    return response()->json([
+        'user_id' => $user->id,
+        'subscription_plan' => $user->subscription_plan,
+        'subscription_status' => $user->subscription_status,
+        'subscription_expires_at' => $user->subscription_expires_at,
+        'calculated_tier' => $userTier,
+        'tier_limits' => $tierService->getUserLimits($user)
+    ]);
+})->middleware(['auth'])->name('debug.tier');
+
+
+
+// Debug route to simulate payment completion
+Route::get('/debug/simulate-payment/{bookingId}', function ($bookingId) {
+    $user = Auth::user();
+    
+    $booking = \App\Models\TherapistBooking::with(['user', 'therapist'])
+        ->where('id', $bookingId)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if (!$booking) {
+        return response()->json([
+            'error' => 'Booking not found or not owned by current user',
+            'booking_id' => $bookingId,
+            'user_id' => $user->id
+        ]);
+    }
+    
+    try {
+        // Simulate payment completion
+        $booking->update([
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_reference' => 'DEBUG_' . time()
+        ]);
+        
+        // Send notification
+        $user->notify(new \App\Notifications\TherapistBookingPaid($booking));
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment simulated and notification sent',
+            'booking_id' => $booking->id,
+            'booking_status' => $booking->status,
+            'payment_status' => $booking->payment_status,
+            'therapist_name' => $booking->therapist->name,
+            'notification_sent' => true
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Failed to simulate payment',
+            'message' => $e->getMessage(),
+            'booking_id' => $booking->id
+        ]);
+    }
+})->middleware(['auth'])->name('debug.simulate-payment');
 
 // Subscription routes
 Route::middleware(['auth'])->group(function () {
@@ -402,5 +449,82 @@ Route::get('/test-zoho-mail', function () {
         ]);
     }
 })->middleware('auth')->name('test.zoho.mail');
+
+// Test route for Zoho Bookings integration (admin only)
+Route::get('/test-zoho-bookings', function () {
+    try {
+        $zohoBookingsService = app(\App\Services\ZohoBookingsService::class);
+        
+        // Check configuration status
+        $status = $zohoBookingsService->getStatus();
+        
+        if (!$status['configured']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Zoho Bookings not configured. Please add environment variables.',
+                'config_status' => $status,
+                'required_env_vars' => [
+                    'ZOHO_BOOKINGS_ENABLED=true',
+                    'ZOHO_BOOKINGS_CLIENT_ID=your_client_id',
+                    'ZOHO_BOOKINGS_CLIENT_SECRET=your_client_secret',
+                    'ZOHO_BOOKINGS_REFRESH_TOKEN=your_refresh_token',
+                    'ZOHO_BOOKINGS_ORGANIZATION_ID=your_org_id',
+                    'ZOHO_BOOKINGS_DATA_CENTER=com'
+                ]
+            ], 400);
+        }
+        
+        // Test connection
+        $testResult = $zohoBookingsService->testConnection();
+        
+        return response()->json([
+            'status' => $testResult['success'] ? 'success' : 'error',
+            'message' => $testResult['message'],
+            'config_status' => $status,
+            'services_count' => $testResult['services_count'] ?? 0,
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Error testing Zoho Bookings: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+})->middleware('auth')->name('test.zoho.bookings');
+
+// API endpoint for tier usage information
+Route::middleware('auth')->get('/api/tier-usage', function () {
+    $user = Auth::user();
+    $tierService = app(\App\Services\UserTierService::class);
+    
+    return response()->json([
+        'tier' => $tierService->getUserTier($user),
+        'tier_info' => $tierService->getTierInfo($tierService->getUserTier($user)),
+        'limits' => $tierService->getUserLimits($user),
+        'daily_usage' => [
+            'profile_views' => $tierService->canViewProfile($user),
+            'messages' => $tierService->canSendMessage($user),
+        ],
+        'today_count' => [
+            'profile_views' => $tierService->getTodayCount($user, 'profile_views'),
+            'messages_sent' => $tierService->getTodayCount($user, 'messages_sent'),
+        ]
+    ]);
+});
+
+// Matches routes (for authenticated users)
+Route::middleware(['auth', 'verified', TierAccessMiddleware::class])->group(function () {
+    // Like/Pass functionality (API endpoints)
+    Route::post('/api/matches/{user}/like', [MatchController::class, 'like'])->name('matches.like');
+    Route::post('/api/matches/{user}/pass', [MatchController::class, 'pass'])->name('matches.pass');
+    
+    // Search and filter routes
+    Route::get('/api/matches/search', [MatchController::class, 'search'])->name('matches.search');
+    Route::post('/api/matches/filter', [MatchController::class, 'filter'])->name('matches.filter');
+});
+
+
 
 require __DIR__.'/auth.php';

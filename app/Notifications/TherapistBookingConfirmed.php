@@ -7,10 +7,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\TherapistBooking;
+use App\Traits\ZohoMailTemplate;
 
-class TherapistBookingConfirmed extends Notification implements ShouldQueue
+class TherapistBookingConfirmed extends Notification // Remove ShouldQueue for immediate processing
 {
-    use Queueable;
+    use Queueable, ZohoMailTemplate;
 
     private TherapistBooking $booking;
 
@@ -37,19 +38,26 @@ class TherapistBookingConfirmed extends Notification implements ShouldQueue
      */
     public function toMail($notifiable)
     {
-        return (new MailMessage)
-            ->subject('✅ Therapy Session Confirmed!')
-            ->greeting('Salam Alaikum ' . $notifiable->name . '!')
+        $message = $this->createBookingEmail('✅ Therapy Session Confirmed!', $notifiable->name)
             ->line('Great news! Your therapy session has been confirmed.')
-            ->line('**Therapist:** ' . $this->booking->therapist->name)
-            ->line('**Date & Time:** ' . $this->booking->appointment_datetime->format('l, F j, Y \a\t g:i A'))
-            ->line('**Session Type:** ' . ucfirst($this->booking->session_type))
-            ->when($this->booking->meeting_link, function ($mail) {
-                return $mail->line('**Meeting Link:** ' . $this->booking->meeting_link);
-            })
+            ->line('We are excited to support you on your journey towards emotional well-being.');
+
+        // Add appointment details using the trait method
+        $this->formatAppointmentDetails($message, $this->booking);
+
+        // Add meeting link if available
+        $this->addMeetingLink($message, $this->booking);
+
+        $message = $message
             ->action('View Booking Details', url('/my-bookings'))
-            ->line('We wish you a beneficial session!')
-            ->salutation('Best regards, The ZawajAfrica Team');
+            ->line('**📋 Before Your Session:**')
+            ->line('• Ensure you have a stable internet connection')
+            ->line('• Find a quiet, private space for your session')
+            ->line('• Have any questions or topics you\'d like to discuss ready')
+            ->line('')
+            ->line('We wish you a beneficial and healing session!');
+
+        return $this->addProfessionalFooter($message);
     }
 
     /**

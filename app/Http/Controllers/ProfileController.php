@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Profile;
+use App\Services\UserTierService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,12 @@ use App\Models\User;
 
 class ProfileController extends Controller
 {
+    protected UserTierService $tierService;
+
+    public function __construct(UserTierService $tierService)
+    {
+        $this->tierService = $tierService;
+    }
     /**
      * Display the user's profile form.
      */
@@ -159,9 +166,38 @@ class ProfileController extends Controller
      */
     public function show($id)
     {
-        // Find the user by ID
+        $currentUser = Auth::user();
+        
+        // Check if user can view profiles
+        $canView = $this->tierService->canViewProfile($currentUser);
+        if (!$canView['allowed']) {
+            return response()->json([
+                'error' => 'Daily profile view limit reached',
+                'limit' => $canView['limit'],
+                'used' => $canView['used'],
+                'tier' => $this->tierService->getUserTier($currentUser),
+                'upgrade_prompt' => true
+            ], 429);
+        }
+
+        // Record the profile view
+        $this->tierService->recordActivity($currentUser, 'profile_views');
+        
+        // Find the target user by ID
         $user = User::with(['appearance', 'lifestyle', 'background', 'about', 'overview', 'photos', 'interests', 'personality'])
             ->findOrFail($id);
+
+        // Check if viewing elite member requires Platinum access
+        $targetUserTier = $this->tierService->getUserTier($user);
+        $currentUserLimits = $this->tierService->getUserLimits($currentUser);
+        
+        if ($targetUserTier === UserTierService::TIER_PLATINUM && !($currentUserLimits['elite_access'] ?? false)) {
+            return response()->json([
+                'error' => 'This is a Platinum Elite member. Upgrade to Platinum to view their profile.',
+                'target_tier' => 'platinum',
+                'upgrade_prompt' => true
+            ], 403);
+        }
         
         // Format profile photo URL if it exists
         if ($user->profile_photo) {
@@ -174,14 +210,40 @@ class ProfileController extends Controller
                 $photo->url = asset('storage/' . $photo->photo_path);
             });
         }
+
+        // Hide contact details for free users
+        $canAccessContact = $currentUserLimits['contact_details'] ?? false;
+        if (!$canAccessContact) {
+            // Remove contact information for free users
+            if ($user->about) {
+                $user->about->phone = null;
+                $user->about->email = null;
+                $user->about->whatsapp = null;
+            }
+        }
+
+        // Check if should show ads for free users
+        $currentViewCount = $this->tierService->getTodayCount($currentUser, 'profile_views');
+        $showAds = $this->tierService->shouldShowAds($currentUser, $currentViewCount);
         
         // Calculate compatibility score (placeholder logic)
         $compatibility = 85; // This would be replaced with actual compatibility algorithm
         
+        // Get tier info for display
+        $currentUserTierInfo = $this->tierService->getTierInfo($this->tierService->getUserTier($currentUser));
+        $targetUserTierInfo = $this->tierService->getTierInfo($targetUserTier);
+        
         return Inertia::render('Profile/View', [
             'id' => $id,
             'userData' => $user,
-            'compatibility' => $compatibility
+            'compatibility' => $compatibility,
+            'viewerLimits' => [
+                'remaining_views' => $canView['remaining'],
+                'can_access_contact' => $canAccessContact,
+                'show_ads' => $showAds,
+                'tier' => $currentUserTierInfo,
+            ],
+            'targetUserTier' => $targetUserTierInfo,
         ]);
     }
 }

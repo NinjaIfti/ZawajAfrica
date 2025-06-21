@@ -7,6 +7,86 @@ const props = defineProps({
         default: () => []
     }
 });
+
+// Handle like button click
+const handleLike = async (match) => {
+    // Frontend validation
+    if (!match || !match.id || typeof match.id !== 'number') {
+        alert('Invalid user selected. Please refresh the page and try again.');
+        return;
+    }
+
+    try {
+        // Get CSRF token with fallback
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         window.Laravel?.csrfToken || 
+                         '';
+
+        if (!csrfToken) {
+            alert('Security token missing. Please refresh the page and try again.');
+            return;
+        }
+
+        const response = await fetch(route('matches.like'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ user_id: match.id })
+        });
+
+        if (!response.ok) {
+            if (response.status === 429) {
+                const data = await response.json();
+                alert(data.error + '\n\nWould you like to upgrade your plan?');
+                if (confirm('Go to subscription page?')) {
+                    window.location.href = route('subscription.index');
+                }
+                return;
+            } else if (response.status === 500) {
+                alert('Server error. Please try again later or contact support.');
+                return;
+            } else if (response.status === 400) {
+                const data = await response.json();
+                alert(data.error || 'Invalid request. Please refresh the page and try again.');
+                return;
+            }
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.match_created) {
+                alert('🎉 It\'s a match! You can now message each other.');
+            } else {
+                alert('💕 Like sent!');
+            }
+        } else if (data.upgrade_required) {
+            alert(data.error + '\n\nWould you like to upgrade your plan?');
+            if (confirm('Go to subscription page?')) {
+                window.location.href = route('subscription.index');
+            }
+        } else {
+            alert(data.error || 'Something went wrong. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error liking user:', error);
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            alert('Network error. Please check your internet connection and try again.');
+        } else if (error.name === 'AbortError') {
+            alert('Request timed out. Please try again.');
+        } else {
+            alert('An unexpected error occurred. Please refresh the page and try again.');
+        }
+    }
+};
+
+// Handle message button click
+const handleMessage = (match) => {
+    // Check if user can message (this will be handled by backend/middleware)
+    window.location.href = route('messages');
+};
 </script>
 
 <template>
@@ -20,7 +100,12 @@ const props = defineProps({
                 <Link :href="route('profile.view', { id: match.id })" class="block">
                     <!-- Match Image -->
                     <div class="h-48 sm:h-56 md:h-64 w-full bg-gray-700 relative">
-                        <img :src="match.image" :alt="match.name" class="h-full w-full object-cover" />
+                        <img 
+                            :src="match.image" 
+                            :alt="match.name" 
+                            class="h-full w-full object-cover" 
+                            @error="$event.target.src = '/images/placeholder.jpg'"
+                        />
                     
                         <!-- Online Status -->
                         <div class="absolute left-3 top-3 flex items-center rounded-full bg-black bg-opacity-70 px-2.5 py-1 text-xs text-white">
@@ -61,12 +146,12 @@ const props = defineProps({
                             <p class="text-xs text-gray-500">{{ match.timestamp }}</p>
                         </Link>
                         <div class="flex space-x-3 items-center">
-                            <button class="text-purple-800 p-1" @click.prevent aria-label="Like">
+                            <button class="text-purple-800 p-1" @click.prevent="handleLike(match)" aria-label="Like">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                 </svg>
                             </button>
-                            <button class="text-purple-800 p-1" @click.prevent aria-label="Message">
+                            <button class="text-purple-800 p-1" @click.prevent="handleMessage(match)" aria-label="Message">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>

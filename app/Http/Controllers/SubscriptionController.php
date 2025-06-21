@@ -29,24 +29,13 @@ class SubscriptionController extends Controller
             $user->profile_photo = asset('storage/' . $user->profile_photo);
         }
         
-        // Define subscription plans
+        // Define subscription plans - Updated pricing
         $plans = [
             'male' => [
                 [
                     'name' => 'Basic',
-                    'price_usd' => 5,
-                    'price_naira' => '7,000',
-                    'features' => [
-                        'Unlock Messages',
-                        'Say Goodbye to Ads',
-                        'Rank Above Other Members',
-                        'Get Better Match'
-                    ]
-                ],
-                [
-                    'name' => 'Economy',
                     'price_usd' => 10,
-                    'price_naira' => '12,000',
+                    'price_naira' => '8,000',
                     'features' => [
                         'Unlock Messages',
                         'Say Goodbye to Ads',
@@ -55,22 +44,39 @@ class SubscriptionController extends Controller
                     ]
                 ],
                 [
-                    'name' => 'VIP',
-                    'price_usd' => 20,
-                    'price_naira' => '20,000',
+                    'name' => 'Gold',
+                    'price_usd' => 15,
+                    'price_naira' => '15,000',
                     'features' => [
                         'Unlock Messages',
                         'Say Goodbye to Ads',
                         'Rank Above Other Members',
-                        'Get Better Match'
+                        'Get Better Match',
+                        'Priority Support',
+                        'Advanced Filters'
+                    ]
+                ],
+                [
+                    'name' => 'Platinum',
+                    'price_usd' => 25,
+                    'price_naira' => '25,000',
+                    'features' => [
+                        'Unlock Messages',
+                        'Say Goodbye to Ads',
+                        'Rank Above Other Members',
+                        'Get Better Match',
+                        'Priority Support',
+                        'Advanced Filters',
+                        'VIP Profile Badge',
+                        'Unlimited Super Likes'
                     ]
                 ]
             ],
             'female' => [
                 [
                     'name' => 'Basic',
-                    'price_usd' => 3,
-                    'price_naira' => '5,000',
+                    'price_usd' => 10,
+                    'price_naira' => '8,000',
                     'features' => [
                         'Unlock Messages',
                         'Say Goodbye to Ads',
@@ -79,25 +85,31 @@ class SubscriptionController extends Controller
                     ]
                 ],
                 [
-                    'name' => 'Economy',
-                    'price_usd' => 7,
-                    'price_naira' => '10,000',
-                    'features' => [
-                        'Unlock Messages',
-                        'Say Goodbye to Ads',
-                        'Rank Above Other Members',
-                        'Get Better Match'
-                    ]
-                ],
-                [
-                    'name' => 'VIP',
+                    'name' => 'Gold',
                     'price_usd' => 15,
-                    'price_naira' => '18,000',
+                    'price_naira' => '15,000',
                     'features' => [
                         'Unlock Messages',
                         'Say Goodbye to Ads',
                         'Rank Above Other Members',
-                        'Get Better Match'
+                        'Get Better Match',
+                        'Priority Support',
+                        'Advanced Filters'
+                    ]
+                ],
+                [
+                    'name' => 'Platinum',
+                    'price_usd' => 25,
+                    'price_naira' => '25,000',
+                    'features' => [
+                        'Unlock Messages',
+                        'Say Goodbye to Ads',
+                        'Rank Above Other Members',
+                        'Get Better Match',
+                        'Priority Support',
+                        'Advanced Filters',
+                        'VIP Profile Badge',
+                        'Unlimited Super Likes'
                     ]
                 ]
             ]

@@ -30,6 +30,45 @@ const openReportModal = () => {
     showReportModal.value = true;
 };
 
+// Handle like button click
+const handleLike = async () => {
+    try {
+        const response = await fetch(route('matches.like'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ user_id: props.id })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.match_created) {
+                alert('🎉 It\'s a match! You can now message each other.');
+            } else {
+                alert('💕 Like sent!');
+            }
+        } else if (data.upgrade_required) {
+            alert(data.error + '\n\nWould you like to upgrade your plan?');
+            if (confirm('Go to subscription page?')) {
+                window.location.href = route('subscription.index');
+            }
+        } else {
+            alert(data.error || 'Something went wrong. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error liking user:', error);
+        alert('Network error. Please check your connection and try again.');
+    }
+};
+
+// Handle message button click
+const handleMessage = () => {
+    window.location.href = route('messages');
+};
+
 const props = defineProps({
     id: Number,
     userData: Object,
@@ -484,12 +523,12 @@ onMounted(() => {
                                     <p class="text-gray-600 mb-2">{{ profile.location }}</p>
                                 </div>
                                 <div class="flex space-x-2">
-                                    <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50">
+                                    <button @click="handleLike" class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50">
                                         <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                                         </svg>
                                     </button>
-                                    <button class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50">
+                                    <button @click="handleMessage" class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50">
                                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                         </svg>

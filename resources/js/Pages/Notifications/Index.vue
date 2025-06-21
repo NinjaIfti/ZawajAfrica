@@ -6,10 +6,27 @@
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Header -->
-            <div class=" border-b border-gray-200 px-4 sm:px-6 lg:px-8">
+            <div class="border-b border-gray-200 px-4 sm:px-6 lg:px-8">
                 <AppHeader :user="$page.props.auth.user">
                     <template #title>
-                        <h1 class="text-2xl font-bold text-gray-900 mt-4">Notifications</h1>
+                        <div class="flex items-center justify-between">
+                            <h1 class="text-2xl font-bold text-gray-900 mt-4">Notifications</h1>
+                            <div class="flex space-x-2 mt-4">
+                                <button
+                                    @click="fetchNotifications"
+                                    class="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors"
+                                >
+                                    Refresh
+                                </button>
+                                <button
+                                    v-if="counts.unread > 0"
+                                    @click="markAllAsRead"
+                                    class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                                >
+                                    Mark All Read
+                                </button>
+                            </div>
+                        </div>
                     </template>
                 </AppHeader>
             </div>
@@ -17,6 +34,22 @@
             <!-- Content Area -->
             <div class="flex-1 overflow-y-auto">
                 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    
+                    <!-- Stats Bar -->
+                    <div v-if="counts.total > 0" class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <div class="text-2xl font-bold text-gray-900">{{ counts.total }}</div>
+                            <p class="text-sm text-gray-600">Total</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <div class="text-2xl font-bold text-purple-600">{{ counts.unread }}</div>
+                            <p class="text-sm text-gray-600">Unread</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <div class="text-2xl font-bold text-green-600">{{ counts.read }}</div>
+                            <p class="text-sm text-gray-600">Read</p>
+                        </div>
+                    </div>
                     
                     <!-- Notifications List -->
                     <div class="space-y-3">
@@ -26,7 +59,7 @@
                         </div>
                         
                         <!-- No Notifications -->
-                        <div v-else-if="!notifications.data || notifications.data.length === 0" class="text-center py-12">
+                        <div v-else-if="!notifications?.data || notifications.data.length === 0" class="text-center py-12">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
@@ -34,52 +67,8 @@
                             <p class="mt-1 text-sm text-gray-500">You're all caught up!</p>
                         </div>
                         
-                        <!-- Demo Notifications if no real ones exist -->
-                        <template v-else-if="notifications.data.length === 0">
-                            <!-- Session Reminder -->
-                            <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
-                                <div class="flex items-start space-x-3">
-                                    <div class="flex-shrink-0">
-                                        <img class="h-10 w-10 rounded-full" src="/images/placeholder.jpg" alt="Dr. Maria Azad">
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex-1">
-                                                <p class="text-sm text-gray-900">
-                                                    Today you have a session with therapist <span class="font-semibold">Dr. Maria Azad</span> at <span class="font-semibold">09:00 PM</span>
-                                                </p>
-                                                <p class="text-xs text-gray-500 mt-1">Today at 9:42 AM</p>
-                                            </div>
-                                            <button class="ml-4 bg-purple-600 text-white px-4 py-1 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors duration-200">
-                                                Join Now
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Multiple Verification Notifications -->
-                            <template v-for="i in 6" :key="i">
-                                <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0">
-                                            <img class="h-10 w-10 rounded-full" src="/images/placeholder.jpg" alt="Verification">
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex-1">
-                                                    <p class="text-sm text-gray-900">Your documents has been verified.</p>
-                                                    <p class="text-xs text-gray-500 mt-1">Today at 9:42 AM</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
-                        </template>
-                        
                         <!-- Real Notifications -->
-                        <template v-else>
+                        <template v-else-if="notifications?.data && notifications.data.length > 0">
                             <div
                                 v-for="notification in notifications.data"
                                 :key="notification.id"
@@ -90,12 +79,12 @@
                                 <div class="flex items-start space-x-3">
                                     <div class="flex-shrink-0">
                                         <div
-                                            v-if="notification.data?.sender_photo || notification.data?.match_photo || notification.data?.viewer_photo"
+                                            v-if="notification.data?.sender_photo || notification.data?.match_photo || notification.data?.viewer_photo || notification.data?.therapist_photo || notification.data?.liker_photo"
                                             class="h-10 w-10 rounded-full overflow-hidden"
                                         >
                                             <img 
-                                                :src="notification.data.sender_photo || notification.data.match_photo || notification.data.viewer_photo || '/images/placeholder.jpg'" 
-                                                :alt="notification.data.sender_name || notification.data.match_name || notification.data.viewer_name || 'User'"
+                                                :src="notification.data.sender_photo || notification.data.match_photo || notification.data.viewer_photo || notification.data.therapist_photo || notification.data.liker_photo || '/images/placeholder.jpg'" 
+                                                :alt="notification.data.sender_name || notification.data.match_name || notification.data.viewer_name || notification.data.therapist_name || notification.data.liker_name || 'User'"
                                                 class="h-full w-full object-cover"
                                             >
                                         </div>
@@ -134,6 +123,34 @@
                                                     d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                                                 />
                                                 <path
+                                                    v-else-if="notification.data?.icon === 'credit-card'"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                                                />
+                                                <path
+                                                    v-else-if="notification.data?.icon === 'clock' || notification.data?.icon === 'calendar-clock'"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                                <path
+                                                    v-else-if="notification.data?.icon === 'x-circle'"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                                <path
+                                                    v-else-if="notification.data?.icon === 'eye'"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                />
+                                                <path
                                                     v-else
                                                     stroke-linecap="round"
                                                     stroke-linejoin="round"
@@ -146,8 +163,11 @@
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between">
                                             <div class="flex-1">
-                                                <p class="text-sm text-gray-900">
-                                                    {{ notification.data?.message || notification.data?.title || 'Notification' }}
+                                                <p class="text-sm font-medium text-gray-900">
+                                                    {{ notification.data?.title || 'Notification' }}
+                                                </p>
+                                                <p class="text-sm text-gray-600 mt-1">
+                                                    {{ notification.data?.message }}
                                                 </p>
                                                 <p class="text-xs text-gray-500 mt-1">
                                                     {{ formatTime(notification.created_at) }}
@@ -235,12 +255,22 @@ export default {
             loading.value = true
             try {
                 const response = await axios.get('/notifications/data')
-                notifications.value = response.data.notifications
-                counts.value = response.data.counts
+                
+                // The response should have: { notifications: PaginatedData, counts: {...} }
+                if (response.data && response.data.notifications) {
+                    notifications.value = response.data.notifications
+                    counts.value = response.data.counts || { total: 0, unread: 0, read: 0 }
+                } else {
+                    // Fallback if response format is different
+                    notifications.value = { data: [] }
+                    counts.value = { total: 0, unread: 0, read: 0 }
+                }
             } catch (error) {
                 console.error('Failed to fetch notifications:', error)
-                // Set demo data if fetch fails
+                
+                // Set empty data if fetch fails
                 notifications.value = { data: [] }
+                counts.value = { total: 0, unread: 0, read: 0 }
             } finally {
                 loading.value = false
             }
@@ -257,6 +287,22 @@ export default {
                 }
             } catch (error) {
                 console.error('Failed to mark notification as read:', error)
+            }
+        }
+
+        const markAllAsRead = async () => {
+            try {
+                await axios.patch('/notifications/mark-all-read')
+                // Update all unread notifications to read
+                notifications.value.data.forEach(notification => {
+                    if (!notification.read_at) {
+                        notification.read_at = new Date().toISOString()
+                    }
+                })
+                counts.value.read += counts.value.unread
+                counts.value.unread = 0
+            } catch (error) {
+                console.error('Failed to mark all notifications as read:', error)
             }
         }
 
@@ -299,6 +345,10 @@ export default {
                 blue: 'bg-blue-500',
                 green: 'bg-green-500',
                 indigo: 'bg-indigo-500',
+                red: 'bg-red-500',
+                orange: 'bg-orange-500',
+                yellow: 'bg-yellow-500',
+                pink: 'bg-pink-500',
                 gray: 'bg-gray-500'
             }
             return colors[color] || 'bg-gray-500'
@@ -327,7 +377,9 @@ export default {
             loading,
             notifications,
             counts,
+            fetchNotifications,
             markAsRead,
+            markAllAsRead,
             deleteNotification,
             handleNotificationClick,
             getIconBgClass,

@@ -5,12 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Message;
 use App\Models\User;
 use App\Notifications\NewMessage;
+use App\Services\UserTierService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class MessageController extends Controller
 {
+    protected UserTierService $tierService;
+
+    public function __construct(UserTierService $tierService)
+    {
+        $this->tierService = $tierService;
+    }
     /**
      * Display the messages index page.
      */
@@ -216,6 +223,27 @@ class MessageController extends Controller
         
         $sender = Auth::user();
         $receiver = User::findOrFail($request->receiver_id);
+
+        // Check if sender can send messages
+        $canSend = $this->tierService->canSendMessage($sender);
+        if (!$canSend['allowed']) {
+            return response()->json([
+                'error' => $canSend['message'],
+                'reason' => $canSend['reason'] ?? 'tier_restriction',
+                'upgrade_prompt' => true,
+                'tier' => $this->tierService->getUserTier($sender)
+            ], 403);
+        }
+
+        // Check for free user interaction
+        $freeUserCheck = $this->tierService->checkFreeUserInteraction($sender, $receiver);
+        if ($freeUserCheck['requires_upgrade']) {
+            return response()->json([
+                'error' => $freeUserCheck['message'],
+                'upgrade_url' => $freeUserCheck['upgrade_url'],
+                'upgrade_prompt' => true
+            ], 403);
+        }
         
         $message = Message::create([
             'sender_id' => $sender->id,
@@ -223,6 +251,9 @@ class MessageController extends Controller
             'content' => $request->content,
             'is_read' => false
         ]);
+
+        // Record messaging activity
+        $this->tierService->recordActivity($sender, 'messages_sent');
         
         // Send notification to receiver
         $receiver->notify(new NewMessage($sender, $message));

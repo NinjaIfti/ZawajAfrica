@@ -8,7 +8,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\TherapistBooking;
 
-class TherapistBookingPaid extends Notification implements ShouldQueue
+class TherapistBookingPaid extends Notification // Remove ShouldQueue for immediate processing
 {
     use Queueable;
 

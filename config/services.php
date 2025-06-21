@@ -75,4 +75,14 @@ return [
         'from_name' => env('ZOHO_MAIL_FROM_NAME', 'ZawajAfrica'),
     ],
 
+    'zoho_bookings' => [
+        'enabled' => env('ZOHO_BOOKINGS_ENABLED', false),
+        'client_id' => env('ZOHO_BOOKINGS_CLIENT_ID'),
+        'client_secret' => env('ZOHO_BOOKINGS_CLIENT_SECRET'),
+        'refresh_token' => env('ZOHO_BOOKINGS_REFRESH_TOKEN'),
+        'organization_id' => env('ZOHO_BOOKINGS_ORGANIZATION_ID'),
+        'data_center' => env('ZOHO_BOOKINGS_DATA_CENTER', 'com'),
+        'webhook_secret' => env('ZOHO_BOOKINGS_WEBHOOK_SECRET'),
+    ],
+
 ];

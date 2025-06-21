@@ -39,17 +39,17 @@ class PaymentController extends Controller
 
         $user = Auth::user();
         
-        // Define subscription plans
+        // Define subscription plans - Updated pricing
         $plans = [
             'male' => [
-                'Basic' => ['price_usd' => 5, 'price_naira' => 7000],
-                'Economy' => ['price_usd' => 10, 'price_naira' => 12000],
-                'VIP' => ['price_usd' => 20, 'price_naira' => 20000]
+                'Basic' => ['price_usd' => 10, 'price_naira' => 8000],
+                'Gold' => ['price_usd' => 15, 'price_naira' => 15000],
+                'Platinum' => ['price_usd' => 25, 'price_naira' => 25000]
             ],
             'female' => [
-                'Basic' => ['price_usd' => 3, 'price_naira' => 5000],
-                'Economy' => ['price_usd' => 7, 'price_naira' => 10000],
-                'VIP' => ['price_usd' => 15, 'price_naira' => 18000]
+                'Basic' => ['price_usd' => 10, 'price_naira' => 8000],
+                'Gold' => ['price_usd' => 15, 'price_naira' => 15000],
+                'Platinum' => ['price_usd' => 25, 'price_naira' => 25000]
             ]
         ];
 
@@ -381,19 +381,52 @@ class PaymentController extends Controller
         $booking = TherapistBooking::with(['user', 'therapist'])->find($metadata['booking_id']);
         
         if ($booking) {
+            Log::info('Processing therapist booking payment', [
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'therapist_id' => $booking->therapist_id,
+                'amount' => $paymentData['amount'] / 100,
+                'payment_reference' => $paymentData['reference']
+            ]);
+
             $booking->update([
                 'status' => 'confirmed',
                 'payment_status' => 'paid',
                 'payment_reference' => $paymentData['reference']
             ]);
 
-            // Send payment confirmation notification
-            $booking->user->notify(new TherapistBookingPaid($booking));
+            Log::info('Booking updated successfully', [
+                'booking_id' => $booking->id,
+                'new_status' => $booking->status,
+                'new_payment_status' => $booking->payment_status
+            ]);
 
-            Log::info('Therapist booking payment processed', [
+            // Send payment confirmation notification
+            try {
+                $booking->user->notify(new TherapistBookingPaid($booking));
+                Log::info('TherapistBookingPaid notification sent successfully', [
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->user_id,
+                    'user_email' => $booking->user->email
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send TherapistBookingPaid notification', [
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->user_id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+
+            Log::info('Therapist booking payment processed successfully', [
                 'booking_id' => $booking->id,
                 'therapist_id' => $metadata['therapist_id'],
                 'amount' => $paymentData['amount'] / 100
+            ]);
+        } else {
+            Log::error('Booking not found for payment processing', [
+                'booking_id' => $metadata['booking_id'],
+                'metadata' => $metadata
             ]);
         }
     }

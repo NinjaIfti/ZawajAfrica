@@ -52,20 +52,18 @@ class NewMatchFound extends Notification implements ShouldQueue
      *
      * @return array<string, mixed>
      */
-    public function toArray($notifiable)
+    public function toArray(object $notifiable): array
     {
         return [
-            'type' => 'new_match',
-            'title' => 'New Match Found!',
-            'message' => $this->match->name . ' is a potential match for you',
+            'title' => 'New Match Found! 🎉',
+            'message' => 'You have a new match with ' . $this->match->name . '!',
+            'icon' => 'heart',
+            'color' => 'green',
+            'action_text' => 'View Match',
+            'action_url' => route('messages'),
             'match_id' => $this->match->id,
             'match_name' => $this->match->name,
-            'match_photo' => $this->match->profile_photo ? asset('storage/' . $this->match->profile_photo) : null,
-            'action_url' => '/matches/profile/' . $this->match->id,
-            'action_text' => 'View Profile',
-            'icon' => 'heart',
-            'color' => 'purple',
-            'created_at' => now()->toISOString(),
+            'match_photo' => $this->match->profile_photo ? asset('storage/' . $this->match->profile_photo) : null
         ];
     }
 }

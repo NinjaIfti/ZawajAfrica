@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
@@ -49,12 +50,9 @@ class NotificationController extends Controller
             'read' => $user->readNotifications()->count(),
         ];
         
-        // Get type counts
-        $typeCounts = $user->notifications()
-            ->selectRaw('JSON_EXTRACT(data, "$.type") as type, COUNT(*) as count')
-            ->groupBy('type')
-            ->pluck('count', 'type')
-            ->toArray();
+        // Temporarily removed type counts due to MySQL ONLY_FULL_GROUP_BY mode issues
+        // This feature can be re-implemented later if needed
+        $typeCounts = [];
         
         return response()->json([
             'notifications' => $notifications,
@@ -180,16 +178,5 @@ class NotificationController extends Controller
         return response()->json(['success' => true]);
     }
     
-    /**
-     * Test notification (for development)
-     */
-    public function test()
-    {
-        $user = Auth::user();
-        
-        // Send a test notification
-        $user->notify(new \App\Notifications\NewMatchFound($user));
-        
-        return response()->json(['message' => 'Test notification sent']);
-    }
+
 } 

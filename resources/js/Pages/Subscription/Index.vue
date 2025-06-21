@@ -53,8 +53,8 @@ const genderPlans = computed(() => {
 // Define plan hierarchy for upgrade/downgrade logic
 const planHierarchy = {
     'Basic': 1,
-    'Economy': 2,
-    'VIP': 3
+    'Gold': 2,
+    'Platinum': 3
 };
 
 // Helper function to get plan status

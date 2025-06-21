@@ -129,7 +129,7 @@ class ZohoMailService
      */
     public function getRecommendedEmailAddresses(): array
     {
-        $domain = '@zawajAfrica.com'; // Update with actual domain
+        $domain = '@zawajafrica.online';
         
         return [
             'support' => 'support' . $domain,
