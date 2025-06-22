@@ -30,32 +30,18 @@ class MonnifyService
         // Monnify auth endpoint structure
         $authUrl = rtrim($this->baseUrl, '/') . '/api/v1/auth/login';
         
-        Log::info('Monnify Auth Attempt', [
-            'base_url' => $this->baseUrl,
-            'auth_url' => $authUrl,
-            'api_key_length' => strlen($this->apiKey ?? ''),
-            'secret_key_length' => strlen($this->secretKey ?? '')
-        ]);
-        
         $response = Http::timeout(30)->withHeaders([
             'Authorization' => 'Basic ' . $credentials,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json'
         ])->post($authUrl);
 
-        Log::info('Monnify Auth Response', [
-            'url' => $authUrl,
-            'status' => $response->status(),
-            'headers' => $response->headers(),
-            'body' => $response->body()
-        ]);
-
         if ($response->successful()) {
             $data = $response->json();
             if (isset($data['responseBody']['accessToken'])) {
                 return $data['responseBody']['accessToken'];
             }
-            throw new \Exception('No access token in response: ' . json_encode($data));
+            throw new \Exception('No access token in response');
         }
 
         throw new \Exception('Failed to get Monnify access token: ' . $response->status() . ' - ' . $response->body());
@@ -89,11 +75,6 @@ class MonnifyService
                 'Content-Type' => 'application/json'
             ])->post($initUrl, $payload);
 
-            Log::info('Monnify Initialize Payment Response', [
-                'status_code' => $response->status(),
-                'response' => $response->json()
-            ]);
-
             if ($response->successful()) {
                 $data = $response->json();
                 if ($data['requestSuccessful']) {
@@ -114,11 +95,6 @@ class MonnifyService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Monnify Payment Initialization Error', [
-                'error' => $e->getMessage(),
-                'payment_data' => $paymentData
-            ]);
-
             return [
                 'status' => false,
                 'message' => 'Payment service temporarily unavailable'
@@ -141,12 +117,6 @@ class MonnifyService
                 'Content-Type' => 'application/json'
             ])->get($queryUrl, [
                 'paymentReference' => $reference
-            ]);
-
-            Log::info('Monnify Verify Payment Response', [
-                'reference' => $reference,
-                'status_code' => $response->status(),
-                'response' => $response->json()
             ]);
 
             if ($response->successful()) {
@@ -174,11 +144,6 @@ class MonnifyService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Monnify Payment Verification Error', [
-                'error' => $e->getMessage(),
-                'reference' => $reference
-            ]);
-
             return [
                 'status' => false,
                 'message' => 'Payment verification service temporarily unavailable'

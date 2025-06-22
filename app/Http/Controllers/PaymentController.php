@@ -137,73 +137,27 @@ class PaymentController extends Controller
     public function initializeTherapistBooking(Request $request)
     {
         try {
-            // Debug: Log the incoming request data (sanitized)
-            $sanitizedData = $request->all();
-            // Remove sensitive data from logs
-            unset($sanitizedData['card_details'], $sanitizedData['cvv'], $sanitizedData['card_number']);
-            
-            Log::info('Therapist booking payment request', [
-                'request_data' => $sanitizedData,
-                'user_id' => Auth::id()
-            ]);
-
             // Validate the request
-            try {
-                $validated = $request->validate([
-                    'therapist_id' => 'required|exists:therapists,id',
-                    'booking_date' => 'required|date|after_or_equal:today',
-                    'booking_time' => 'required|string',
-                    'notes' => 'nullable|string|max:500',
-                    'platform' => 'nullable|string',
-                    'payment_gateway' => 'required|in:paystack,monnify'
-                ]);
-                
-                Log::info('Validation passed', ['validated_data' => $validated]);
-                
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                Log::error('Validation failed', [
-                    'errors' => $e->errors(),
-                    'request_data' => $request->all()
-                ]);
-                throw $e;
-            }
+            $validated = $request->validate([
+                'therapist_id' => 'required|exists:therapists,id',
+                'booking_date' => 'required|date|after_or_equal:today',
+                'booking_time' => 'required|string',
+                'notes' => 'nullable|string|max:500',
+                'platform' => 'nullable|string',
+                'payment_gateway' => 'required|in:paystack,monnify'
+            ]);
 
             $user = Auth::user();
             
-            // Check if therapist exists
+            // Check if therapist exists and has hourly_rate
             $therapist = \App\Models\Therapist::find($request->therapist_id);
-            if (!$therapist) {
-                Log::error('Therapist not found', ['therapist_id' => $request->therapist_id]);
-                throw new \Exception('Therapist not found');
+            if (!$therapist || !$therapist->hourly_rate) {
+                throw new \Exception('Therapist not found or rate not configured');
             }
-            
-            // Check if therapist has hourly_rate
-            if (!$therapist->hourly_rate) {
-                Log::error('Therapist hourly rate not set', [
-                    'therapist_id' => $request->therapist_id,
-                    'hourly_rate' => $therapist->hourly_rate
-                ]);
-                throw new \Exception('Therapist hourly rate not configured');
-            }
-            
-            Log::info('Therapist found', [
-                'therapist_id' => $therapist->id,
-                'hourly_rate' => $therapist->hourly_rate
-            ]);
             
             $gateway = $validated['payment_gateway'];
             $reference = 'booking_' . $gateway . '_' . \Illuminate\Support\Str::random(12);
             $amount = $therapist->hourly_rate * 100; // Convert to kobo (assuming rate is in Naira)
-
-            Log::info('Creating booking record', [
-                'user_id' => $user->id,
-                'therapist_id' => $request->therapist_id,
-                'booking_date' => $request->booking_date,
-                'booking_time' => $request->booking_time,
-                'amount' => $therapist->hourly_rate,
-                'reference' => $reference,
-                'gateway' => $gateway
-            ]);
 
             // Combine date and time into appointment_datetime
             $appointmentDatetime = Carbon::createFromFormat('Y-m-d g:i A', $request->booking_date . ' ' . $request->booking_time);
@@ -228,8 +182,6 @@ class PaymentController extends Controller
                 'payment_gateway' => $gateway
             ]);
 
-            Log::info('Booking created successfully', ['booking_id' => $booking->id]);
-
             // Send pending payment notification
             $user->notify(new TherapistBookingPending($booking));
 
@@ -251,7 +203,6 @@ class PaymentController extends Controller
                     ]
                 ];
 
-                Log::info('Initializing Monnify payment', ['payment_data' => $paymentData]);
                 $response = $this->monnifyService->initializePayment($paymentData);
             } else {
             $paymentData = [
@@ -268,7 +219,6 @@ class PaymentController extends Controller
                 ]
             ];
 
-            Log::info('Initializing Paystack payment', ['payment_data' => $paymentData]);
             $response = $this->paystackService->initializePayment($paymentData);
             }
 
