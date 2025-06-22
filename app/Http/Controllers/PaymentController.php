@@ -272,8 +272,6 @@ class PaymentController extends Controller
             $response = $this->paystackService->initializePayment($paymentData);
             }
 
-            Log::info('Payment gateway response', ['gateway' => $gateway, 'response' => $response]);
-
             if ($response['status'] === true) {
                 return response()->json([
                     'status' => true,
@@ -283,43 +281,7 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // If Monnify fails, try Paystack as fallback
-            if ($gateway === 'monnify') {
-                Log::warning('Monnify failed, falling back to Paystack', ['original_error' => $response['message']]);
-                
-                // Update booking to use Paystack
-                $booking->update(['payment_gateway' => 'paystack']);
-                
-                $paystackData = [
-                    'email' => $user->email,
-                    'amount' => $therapist->hourly_rate * 100, // Convert to kobo
-                    'reference' => $reference,
-                    'callback_url' => route('payment.callback'),
-                    'metadata' => [
-                        'type' => 'therapist_booking',
-                        'booking_id' => $booking->id,
-                        'therapist_id' => $request->therapist_id,
-                        'user_id' => $user->id,
-                        'gateway' => 'paystack',
-                        'fallback_from' => 'monnify'
-                    ]
-                ];
-
-                $paystackResponse = $this->paystackService->initializePayment($paystackData);
-                
-                if ($paystackResponse['status'] === true) {
-                    return response()->json([
-                        'status' => true,
-                        'authorization_url' => $paystackResponse['data']['authorization_url'],
-                        'reference' => $reference,
-                        'booking_id' => $booking->id,
-                        'gateway_switched' => true,
-                        'message' => 'Redirected to alternative payment method'
-                    ]);
-                }
-            }
-
-            // Delete the booking if all payment methods fail
+            // Delete the booking if payment initialization fails
             $booking->delete();
             
             return response()->json([
