@@ -35,12 +35,12 @@
                     </div>
                 </div>
 
-                <!-- GT Pay (Monnify) Option -->
+                <!-- Monnify Option -->
                 <div 
-                    @click="selectGateway('gtpay')"
+                    @click="selectGateway('monnify')"
                     :class="[
                         'border-2 rounded-lg p-4 cursor-pointer transition-all duration-200',
-                        selectedGateway === 'gtpay' 
+                        selectedGateway === 'monnify' 
                             ? 'border-purple-500 bg-purple-50' 
                             : 'border-gray-200 hover:border-gray-300'
                     ]"
@@ -48,16 +48,16 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
                             <div class="w-12 h-8 bg-purple-600 rounded flex items-center justify-center">
-                                <span class="text-white text-xs font-bold">GT</span>
+                                <span class="text-white text-xs font-bold">MN</span>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900">GTPay</h4>
+                                <h4 class="font-semibold text-gray-900">Monnify</h4>
                                 <p class="text-sm text-gray-600">Payments within Nigeria</p>
                             </div>
                         </div>
                         <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center">
                             <div 
-                                v-if="selectedGateway === 'gtpay'" 
+                                v-if="selectedGateway === 'monnify'" 
                                 class="w-3 h-3 bg-purple-500 rounded-full"
                             ></div>
                         </div>
@@ -66,102 +66,19 @@
             </div>
         </div>
 
-        <!-- GT Pay Card Details Form (for GTPay) -->
-        <div v-if="selectedGateway === 'gtpay'" class="space-y-6">
-            <div class="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Enter Card Details</h3>
-                
-                <!-- Card Type Selection -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div 
-                        v-for="cardType in cardTypes" 
-                        :key="cardType.id"
-                        @click="selectCardType(cardType.id)"
-                        :class="[
-                            'border-2 rounded-lg p-3 cursor-pointer transition-all duration-200 flex items-center justify-center',
-                            selectedCardType === cardType.id 
-                                ? 'border-purple-500 bg-purple-50' 
-                                : 'border-gray-200 hover:border-gray-300'
-                        ]"
-                    >
-                        <div class="text-center">
-                            <div class="w-8 h-6 mx-auto mb-1 flex items-center justify-center">
-                                <img 
-                                    :src="cardType.logo" 
-                                    :alt="cardType.name"
-                                    class="max-w-full max-h-full object-contain"
-                                >
-                            </div>
-                            <span class="text-xs font-medium text-gray-700">{{ cardType.name }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card Details Form -->
-                <div class="space-y-4">
-                    <!-- Cardholder Name -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Cardholder Name
-                        </label>
-                        <input
-                            v-model="cardDetails.holderName"
-                            type="text"
-                            placeholder="Enter Name"
-                            class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                    </div>
-
-                    <!-- Card Number -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Card Number
-                        </label>
-                        <input
-                            v-model="cardDetails.number"
-                            type="text"
-                            placeholder="Enter Card Number"
-                            maxlength="19"
-                            @input="formatCardNumber"
-                            class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                    </div>
-
-                    <!-- Expiry Date and CVV -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Expiry Date
-                            </label>
-                            <input
-                                v-model="cardDetails.expiry"
-                                type="text"
-                                placeholder="MM/YY"
-                                maxlength="5"
-                                @input="formatExpiry"
-                                class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            >
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                CVV
-                            </label>
-                            <input
-                                v-model="cardDetails.cvv"
-                                type="text"
-                                placeholder="***"
-                                maxlength="4"
-                                class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Amount Display -->
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <div class="flex justify-between items-center text-lg font-semibold">
-                        <span class="text-gray-700">Total Amount:</span>
-                        <span class="text-green-600">{{ formatAmount(amount) }}</span>
+        <!-- Monnify Info (when selected) -->
+        <div v-if="selectedGateway === 'monnify'" class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+                <svg class="w-5 h-5 text-orange-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <div>
+                    <h4 class="font-medium text-orange-900">Monnify Payment</h4>
+                    <p class="text-sm text-orange-700 mt-1">
+                        You'll be redirected to Monnify's secure payment page where you can pay with cards, bank transfer, or USSD.
+                    </p>
+                    <div class="mt-3 text-lg font-semibold text-orange-900">
+                        Amount: {{ formatAmount(amount) }}
                     </div>
                 </div>
             </div>
@@ -204,7 +121,7 @@
                 ]"
             >
                 <span v-if="processing">Processing...</span>
-                <span v-else>{{ selectedGateway === 'gtpay' ? 'Pay with GTPay' : 'Pay with Paystack' }}</span>
+                <span v-else>{{ selectedGateway === 'monnify' ? 'Pay with Monnify' : 'Pay with Paystack' }}</span>
             </button>
         </div>
     </div>
@@ -274,18 +191,8 @@ export default {
         ])
 
         const canProceed = computed(() => {
-            if (selectedGateway.value === 'paystack') {
-                return true // Paystack doesn't need card details, just redirect
-            }
-            
-            if (selectedGateway.value === 'gtpay') {
-                return cardDetails.value.holderName.trim() !== '' &&
-                       cardDetails.value.number.replace(/\s/g, '').length >= 15 &&
-                       cardDetails.value.expiry.length === 5 &&
-                       cardDetails.value.cvv.length >= 3
-            }
-            
-            return false
+            // Both Paystack and Monnify redirect to their hosted payment pages
+            return selectedGateway.value === 'paystack' || selectedGateway.value === 'monnify'
         })
 
         const selectGateway = (gateway) => {
@@ -331,17 +238,7 @@ export default {
                     payment_gateway: selectedGateway.value
                 }
 
-                // For GTPay (uses Monnify backend), include card details for direct processing
-                if (selectedGateway.value === 'gtpay') {
-                    paymentData.card_details = {
-                        holder_name: cardDetails.value.holderName,
-                        number: cardDetails.value.number.replace(/\s/g, ''),
-                        expiry: cardDetails.value.expiry,
-                        cvv: cardDetails.value.cvv,
-                        type: selectedCardType.value
-                    }
-                }
-                // For Paystack, no card details needed - will redirect to Paystack checkout
+                // Both gateways redirect to their hosted payment pages - no card details needed
 
                 emit('payment-initiated', paymentData)
             } catch (error) {

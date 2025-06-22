@@ -503,12 +503,12 @@ const updateProfilePhoto = (event) => {
                                     <label class="text-sm text-gray-500">Annual Income</label>
                                     <select v-model="userData.overview.income_range" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-200">
                                         <option value="">Select Income Range</option>
-                                        <option value="Less than $30,000">Less than $30,000</option>
-                                        <option value="$30,000 - $50,000">$30,000 - $50,000</option>
-                                        <option value="$50,000 - $75,000">$50,000 - $75,000</option>
-                                        <option value="$75,000 - $100,000">$75,000 - $100,000</option>
-                                        <option value="$100,000 - $150,000">$100,000 - $150,000</option>
-                                        <option value="More than $150,000">More than $150,000</option>
+                                        <option value="Less than ₦2,400,000">Less than ₦2,400,000</option>
+                                        <option value="₦2,400,000 - ₦4,000,000">₦2,400,000 - ₦4,000,000</option>
+                                        <option value="₦4,000,000 - ₦6,000,000">₦4,000,000 - ₦6,000,000</option>
+                                        <option value="₦6,000,000 - ₦8,000,000">₦6,000,000 - ₦8,000,000</option>
+                                        <option value="₦8,000,000 - ₦12,000,000">₦8,000,000 - ₦12,000,000</option>
+                                        <option value="More than ₦12,000,000">More than ₦12,000,000</option>
                                         <option value="Prefer not to say">Prefer not to say</option>
                                     </select>
                                 </div>

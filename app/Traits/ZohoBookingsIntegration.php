@@ -35,7 +35,7 @@ trait ZohoBookingsIntegration
     /**
      * Create booking in both local database and Zoho Bookings
      */
-    protected function createBookingWithZoho(array $validatedData, Therapist $therapist): array
+    protected function createBookingWithZoho(array $validatedData, Therapist $therapist, string $paymentReference = null): array
     {
         $user = Auth::user();
         
@@ -47,7 +47,9 @@ trait ZohoBookingsIntegration
             'session_type' => $validatedData['session_type'],
             'platform' => $validatedData['platform'] ?? null,
             'user_message' => $validatedData['user_message'] ?? null,
-            'status' => 'pending'
+            'status' => 'pending',
+            'payment_reference' => $paymentReference,
+            'amount' => $therapist->hourly_rate
         ]);
 
         // If Zoho Bookings is enabled, create booking there too

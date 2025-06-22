@@ -27,16 +27,38 @@ class MonnifyService
     {
         $credentials = base64_encode($this->apiKey . ':' . $this->secretKey);
         
-        $response = Http::withHeaders([
+        // Monnify auth endpoint structure
+        $authUrl = rtrim($this->baseUrl, '/') . '/api/v1/auth/login';
+        
+        Log::info('Monnify Auth Attempt', [
+            'base_url' => $this->baseUrl,
+            'auth_url' => $authUrl,
+            'api_key_length' => strlen($this->apiKey ?? ''),
+            'secret_key_length' => strlen($this->secretKey ?? '')
+        ]);
+        
+        $response = Http::timeout(30)->withHeaders([
             'Authorization' => 'Basic ' . $credentials,
-            'Content-Type' => 'application/json'
-        ])->post($this->baseUrl . '/auth/login');
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        ])->post($authUrl);
+
+        Log::info('Monnify Auth Response', [
+            'url' => $authUrl,
+            'status' => $response->status(),
+            'headers' => $response->headers(),
+            'body' => $response->body()
+        ]);
 
         if ($response->successful()) {
-            return $response->json()['responseBody']['accessToken'];
+            $data = $response->json();
+            if (isset($data['responseBody']['accessToken'])) {
+                return $data['responseBody']['accessToken'];
+            }
+            throw new \Exception('No access token in response: ' . json_encode($data));
         }
 
-        throw new \Exception('Failed to get Monnify access token: ' . $response->body());
+        throw new \Exception('Failed to get Monnify access token: ' . $response->status() . ' - ' . $response->body());
     }
 
     /**
@@ -49,21 +71,23 @@ class MonnifyService
             
             $payload = [
                 'amount' => $paymentData['amount'],
-                'customerName' => $paymentData['customer_name'],
-                'customerEmail' => $paymentData['email'],
-                'paymentReference' => $paymentData['reference'],
-                'paymentDescription' => $paymentData['description'] ?? 'Payment for services',
-                'redirectUrl' => $paymentData['callback_url'],
-                'paymentMethods' => ['CARD', 'ACCOUNT_TRANSFER'],
+                'customerName' => $paymentData['customerName'],
+                'customerEmail' => $paymentData['customerEmail'],
+                'paymentReference' => $paymentData['paymentReference'],
+                'paymentDescription' => $paymentData['paymentDescription'] ?? 'Payment for services',
+                'redirectUrl' => $paymentData['redirectUrl'],
+                'paymentMethods' => ['CARD', 'ACCOUNT_TRANSFER', 'USSD'],
                 'currencyCode' => 'NGN',
                 'contractCode' => $this->contractCode,
                 'metadata' => $paymentData['metadata'] ?? []
             ];
 
+            $initUrl = rtrim($this->baseUrl, '/') . '/api/v1/merchant/transactions/init-transaction';
+            
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
                 'Content-Type' => 'application/json'
-            ])->post($this->baseUrl . '/merchant/transactions/init-transaction', $payload);
+            ])->post($initUrl, $payload);
 
             Log::info('Monnify Initialize Payment Response', [
                 'status_code' => $response->status(),
@@ -110,10 +134,12 @@ class MonnifyService
         try {
             $accessToken = $this->getAccessToken();
             
+            $queryUrl = rtrim($this->baseUrl, '/') . '/api/v1/merchant/transactions/query';
+            
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
                 'Content-Type' => 'application/json'
-            ])->get($this->baseUrl . '/merchant/transactions/query', [
+            ])->get($queryUrl, [
                 'paymentReference' => $reference
             ]);
 

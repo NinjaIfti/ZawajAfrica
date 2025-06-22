@@ -108,7 +108,7 @@
                                     <!-- Consultation Fee -->
                                     <div class="text-center mb-4 lg:mb-6 bg-gray-100 rounded-lg p-2 lg:p-3">
                                         <span class="text-xs lg:text-sm text-gray-600">Online Consultation Fee:</span>
-                                        <p class="text-lg lg:text-2xl font-bold text-gray-900">${{ Number(therapist.hourly_rate).toLocaleString() }}</p>
+                                        <p class="text-lg lg:text-2xl font-bold text-gray-900">₦{{ Number(therapist.hourly_rate).toLocaleString() }}</p>
                                     </div>
                                     <!-- Book Appointment Button -->
                                     <button 
@@ -336,16 +336,16 @@
                 <div class="p-4">
                     <!-- Gateway Options -->
                     <div class="space-y-4 mb-8">
-                        <!-- GTPay Option -->
-                        <div @click="selectedPaymentGateway = 'gtpay'"
+                        <!-- Monnify Option -->
+                        <div @click="selectedPaymentGateway = 'monnify'"
                              :class="['flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all',
-                                     selectedPaymentGateway === 'gtpay' ? 'border-orange-500 bg-orange-50' : 'border-gray-200']">
+                                     selectedPaymentGateway === 'monnify' ? 'border-orange-500 bg-orange-50' : 'border-gray-200']">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-                                    <span class="text-white text-sm font-bold">GT</span>
+                                    <span class="text-white text-sm font-bold">MN</span>
                                 </div>
                                 <div>
-                                    <h4 class="font-semibold text-gray-900">GTPay</h4>
+                                    <h4 class="font-semibold text-gray-900">Monnify</h4>
                                     <p class="text-sm text-gray-600">Payments within Nigeria</p>
                                 </div>
                             </div>
@@ -407,7 +407,7 @@
             </div>
         </div>
 
-        <!-- Card Details Slider (for GTPay) -->
+        <!-- Card Details Slider (for Monnify) -->
         <div v-if="showCardDetailsSlider" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-end z-50">
             <div class="bg-white w-full max-w-md h-full overflow-y-auto shadow-xl transform transition-transform duration-300 ease-in-out"
                  :class="showCardDetailsSlider ? 'translate-x-0' : 'translate-x-full'">
@@ -584,7 +584,7 @@ const selectedCardType = ref('mastercard')
 const mobileMenuOpen = ref(false)
 const isProcessingPayment = ref(false)
 
-// Card details for GTPay
+// Card details for Monnify
 const cardDetails = ref({
     holderName: '',
     number: '',
@@ -754,14 +754,8 @@ const backToPaymentSelection = () => {
 const proceedWithSelectedGateway = () => {
     if (!selectedPaymentGateway.value) return
     
-    if (selectedPaymentGateway.value === 'gtpay') {
-        // Show card details form for GTPay
-        showPaymentSlider.value = false
-        showCardDetailsSlider.value = true
-    } else {
-        // Proceed directly with Paystack
-        processPayment()
-    }
+    // Both Monnify and Paystack redirect to their hosted payment pages
+    processPayment()
 }
 
 // Card formatting functions
@@ -804,16 +798,7 @@ const processPayment = async () => {
             payment_gateway: selectedPaymentGateway.value
         }
 
-        // For GTPay, include card details
-        if (selectedPaymentGateway.value === 'gtpay') {
-            paymentData.card_details = {
-                holder_name: cardDetails.value.holderName,
-                number: cardDetails.value.number.replace(/\s/g, ''),
-                expiry: cardDetails.value.expiry,
-                cvv: cardDetails.value.cvv,
-                type: selectedCardType.value
-            }
-        }
+        // No card details needed - both gateways handle payment on their secure pages
 
         // Make AJAX request to initialize payment and get redirect URL
         const response = await axios.post(route('payment.therapist.initialize'), {
@@ -822,8 +807,7 @@ const processPayment = async () => {
             booking_time: selectedTimeSlot.value,
             notes: '',
             platform: selectedPlatform.value,
-            payment_gateway: selectedPaymentGateway.value,
-            ...paymentData.card_details && { card_details: paymentData.card_details }
+            payment_gateway: selectedPaymentGateway.value
         })
 
         if (response.data.status && response.data.authorization_url) {

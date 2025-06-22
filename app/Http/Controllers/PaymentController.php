@@ -25,6 +25,42 @@ class PaymentController extends Controller
     {
         $this->paystackService = $paystackService;
         $this->monnifyService = $monnifyService;
+        
+        // Validate payment gateway configurations
+        $this->validatePaymentConfig();
+    }
+    
+    /**
+     * Validate that required payment gateway configurations are present
+     */
+    private function validatePaymentConfig(): void
+    {
+        $errors = [];
+        
+        // Check Paystack configuration
+        if (empty(config('services.paystack.secret_key'))) {
+            $errors[] = 'Paystack secret key not configured';
+        }
+        if (empty(config('services.paystack.public_key'))) {
+            $errors[] = 'Paystack public key not configured';
+        }
+        
+        // Check Monnify configuration
+        if (empty(config('services.monnify.secret_key'))) {
+            $errors[] = 'Monnify secret key not configured';
+        }
+        if (empty(config('services.monnify.api_key'))) {
+            $errors[] = 'Monnify API key not configured';
+        }
+        if (empty(config('services.monnify.contract_code'))) {
+            $errors[] = 'Monnify contract code not configured';
+        }
+        
+        if (!empty($errors)) {
+            Log::critical('Payment gateway configuration errors', ['errors' => $errors]);
+            // In production, you might want to disable payment features instead of throwing
+            // throw new \Exception('Payment gateway misconfiguration: ' . implode(', ', $errors));
+        }
     }
 
     /**
@@ -42,14 +78,14 @@ class PaymentController extends Controller
         // Define subscription plans - Updated pricing
         $plans = [
             'male' => [
-                'Basic' => ['price_usd' => 10, 'price_naira' => 8000],
-                'Gold' => ['price_usd' => 15, 'price_naira' => 15000],
-                'Platinum' => ['price_usd' => 25, 'price_naira' => 25000]
+                'Basic' => ['price_naira' => 8000],
+                'Gold' => ['price_naira' => 15000],
+                'Platinum' => ['price_naira' => 25000]
             ],
             'female' => [
-                'Basic' => ['price_usd' => 10, 'price_naira' => 8000],
-                'Gold' => ['price_usd' => 15, 'price_naira' => 15000],
-                'Platinum' => ['price_usd' => 25, 'price_naira' => 25000]
+                'Basic' => ['price_naira' => 8000],
+                'Gold' => ['price_naira' => 15000],
+                'Platinum' => ['price_naira' => 25000]
             ]
         ];
 
@@ -101,9 +137,13 @@ class PaymentController extends Controller
     public function initializeTherapistBooking(Request $request)
     {
         try {
-            // Debug: Log the incoming request data
+            // Debug: Log the incoming request data (sanitized)
+            $sanitizedData = $request->all();
+            // Remove sensitive data from logs
+            unset($sanitizedData['card_details'], $sanitizedData['cvv'], $sanitizedData['card_number']);
+            
             Log::info('Therapist booking payment request', [
-                'request_data' => $request->all(),
+                'request_data' => $sanitizedData,
                 'user_id' => Auth::id()
             ]);
 
@@ -168,6 +208,12 @@ class PaymentController extends Controller
             // Combine date and time into appointment_datetime
             $appointmentDatetime = Carbon::createFromFormat('Y-m-d g:i A', $request->booking_date . ' ' . $request->booking_time);
 
+            // Validate payment amount matches therapist rate
+            $expectedAmount = $therapist->hourly_rate;
+            if ($request->has('amount') && abs($request->amount - $expectedAmount) > 0.01) {
+                throw new \Exception('Payment amount mismatch. Expected: ₦' . number_format($expectedAmount, 2));
+            }
+
             // Create booking record
             $booking = TherapistBooking::create([
                 'user_id' => $user->id,
@@ -177,7 +223,7 @@ class PaymentController extends Controller
                 'booking_time' => $request->booking_time,
                 'notes' => $request->notes,
                 'status' => 'pending',
-                'amount' => $therapist->hourly_rate,
+                'amount' => $expectedAmount, // Use therapist's rate, not user input
                 'payment_reference' => $reference,
                 'payment_gateway' => $gateway
             ]);
@@ -191,11 +237,11 @@ class PaymentController extends Controller
             if ($gateway === 'monnify') {
                 $paymentData = [
                     'amount' => $therapist->hourly_rate, // Monnify expects amount in Naira
-                    'customer_name' => $user->name,
-                    'email' => $user->email,
-                    'reference' => $reference,
-                    'description' => 'Therapy Session with ' . $therapist->name,
-                    'callback_url' => route('payment.callback'),
+                    'customerName' => $user->name,
+                    'customerEmail' => $user->email,
+                    'paymentReference' => $reference,
+                    'paymentDescription' => 'Therapy Session with ' . $therapist->name,
+                    'redirectUrl' => route('payment.callback'),
                     'metadata' => [
                         'type' => 'therapist_booking',
                         'booking_id' => $booking->id,
@@ -237,7 +283,43 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Delete the booking if payment initialization fails
+            // If Monnify fails, try Paystack as fallback
+            if ($gateway === 'monnify') {
+                Log::warning('Monnify failed, falling back to Paystack', ['original_error' => $response['message']]);
+                
+                // Update booking to use Paystack
+                $booking->update(['payment_gateway' => 'paystack']);
+                
+                $paystackData = [
+                    'email' => $user->email,
+                    'amount' => $therapist->hourly_rate * 100, // Convert to kobo
+                    'reference' => $reference,
+                    'callback_url' => route('payment.callback'),
+                    'metadata' => [
+                        'type' => 'therapist_booking',
+                        'booking_id' => $booking->id,
+                        'therapist_id' => $request->therapist_id,
+                        'user_id' => $user->id,
+                        'gateway' => 'paystack',
+                        'fallback_from' => 'monnify'
+                    ]
+                ];
+
+                $paystackResponse = $this->paystackService->initializePayment($paystackData);
+                
+                if ($paystackResponse['status'] === true) {
+                    return response()->json([
+                        'status' => true,
+                        'authorization_url' => $paystackResponse['data']['authorization_url'],
+                        'reference' => $reference,
+                        'booking_id' => $booking->id,
+                        'gateway_switched' => true,
+                        'message' => 'Redirected to alternative payment method'
+                    ]);
+                }
+            }
+
+            // Delete the booking if all payment methods fail
             $booking->delete();
             
             return response()->json([
@@ -331,20 +413,58 @@ class PaymentController extends Controller
     public function handleWebhook(Request $request)
     {
         $payload = $request->getContent();
-        $signature = $request->header('x-paystack-signature');
+        $paystackSignature = $request->header('x-paystack-signature');
+        $monnifySignature = $request->header('monnify-signature');
         
-        // Verify webhook signature
-        $computedSignature = hash_hmac('sha512', $payload, config('services.paystack.secret_key'));
-        
-        if (!hash_equals($computedSignature, $signature)) {
-            Log::warning('Invalid webhook signature');
-            return response('Invalid signature', 400);
+        // Determine webhook source and verify signature
+        if ($paystackSignature) {
+            // Paystack webhook
+            $computedSignature = hash_hmac('sha512', $payload, config('services.paystack.secret_key'));
+            
+            if (!hash_equals($computedSignature, $paystackSignature)) {
+                Log::warning('Invalid Paystack webhook signature', [
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'payload_length' => strlen($payload)
+                ]);
+                return response('Invalid signature', 400);
+            }
+        } elseif ($monnifySignature) {
+            // Monnify webhook
+            $computedSignature = hash_hmac('sha512', $payload, config('services.monnify.secret_key'));
+            
+            if (!hash_equals($computedSignature, $monnifySignature)) {
+                Log::warning('Invalid Monnify webhook signature', [
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'payload_length' => strlen($payload)
+                ]);
+                return response('Invalid signature', 400);
+            }
+        } else {
+            Log::warning('Webhook received without valid signature headers', [
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all()
+            ]);
+            return response('No valid signature found', 400);
         }
 
         $event = json_decode($payload, true);
         
-        if ($event['event'] === 'charge.success') {
+        if (!$event) {
+            Log::error('Invalid JSON payload in webhook', [
+                'payload' => $payload,
+                'ip' => $request->ip()
+            ]);
+            return response('Invalid JSON', 400);
+        }
+        
+        // Handle different webhook events
+        if (isset($event['event']) && $event['event'] === 'charge.success') {
             $this->handleSuccessfulCharge($event['data']);
+        } elseif (isset($event['eventType']) && $event['eventType'] === 'SUCCESSFUL_TRANSACTION') {
+            // Monnify webhook format
+            $this->handleSuccessfulCharge($event['eventData']);
         }
 
         return response('Webhook handled', 200);

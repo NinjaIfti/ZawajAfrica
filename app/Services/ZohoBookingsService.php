@@ -99,15 +99,19 @@ class ZohoBookingsService
     /**
      * Make authenticated API request to Zoho Bookings
      */
-    private function makeApiRequest(string $method, string $endpoint, array $data = []): array
+    private function makeApiRequest(string $method, string $endpoint, array $data = [], int $retryCount = 0): array
     {
+        $maxRetries = 3;
+        $retryDelay = 1; // seconds
+        
         $accessToken = $this->getAccessToken();
         if (!$accessToken) {
-            return ['success' => false, 'error' => 'Unable to get access token'];
+            return ['success' => false, 'error' => 'Unable to get access token', 'retry_needed' => false];
         }
 
         try {
-            $response = Http::withToken($accessToken)
+            $response = Http::timeout(30)
+                ->withToken($accessToken)
                 ->withHeaders([
                     'orgId' => $this->organizationId,
                     'Content-Type' => 'application/json'
@@ -129,7 +133,7 @@ class ZohoBookingsService
                     $httpResponse = $response->delete($url, $data);
                     break;
                 default:
-                    return ['success' => false, 'error' => 'Invalid HTTP method'];
+                    return ['success' => false, 'error' => 'Invalid HTTP method', 'retry_needed' => false];
             }
 
             if ($httpResponse->successful()) {
@@ -139,30 +143,71 @@ class ZohoBookingsService
                 ];
             }
 
+            // Handle specific HTTP status codes
+            $statusCode = $httpResponse->status();
+            $shouldRetry = in_array($statusCode, [429, 500, 502, 503, 504]) && $retryCount < $maxRetries;
+            
+            if ($statusCode === 401 && $retryCount < 1) {
+                // Token might be expired, try to refresh and retry once
+                Cache::forget('zoho_bookings_access_token');
+                $this->accessToken = null;
+                sleep($retryDelay);
+                return $this->makeApiRequest($method, $endpoint, $data, $retryCount + 1);
+            }
+
+            if ($shouldRetry) {
+                sleep($retryDelay * ($retryCount + 1)); // Exponential backoff
+                return $this->makeApiRequest($method, $endpoint, $data, $retryCount + 1);
+            }
+
             Log::error('Zoho Bookings API request failed', [
                 'method' => $method,
                 'endpoint' => $endpoint,
-                'status' => $httpResponse->status(),
-                'response' => $httpResponse->body()
+                'status' => $statusCode,
+                'response' => $httpResponse->body(),
+                'retry_count' => $retryCount
             ]);
 
             return [
                 'success' => false,
-                'error' => 'API request failed',
-                'status' => $httpResponse->status(),
-                'response' => $httpResponse->json()
+                'error' => 'API request failed: HTTP ' . $statusCode,
+                'status' => $statusCode,
+                'response' => $httpResponse->json(),
+                'retry_needed' => false
+            ];
+
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // Network/connection errors - these are retryable
+            if ($retryCount < $maxRetries) {
+                sleep($retryDelay * ($retryCount + 1));
+                return $this->makeApiRequest($method, $endpoint, $data, $retryCount + 1);
+            }
+            
+            Log::error('Zoho Bookings connection error', [
+                'method' => $method,
+                'endpoint' => $endpoint,
+                'error' => $e->getMessage(),
+                'retry_count' => $retryCount
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+                'retry_needed' => false
             ];
 
         } catch (\Exception $e) {
             Log::error('Exception in Zoho Bookings API request', [
                 'method' => $method,
                 'endpoint' => $endpoint,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => 'Unexpected error: ' . $e->getMessage(),
+                'retry_needed' => false
             ];
         }
     }

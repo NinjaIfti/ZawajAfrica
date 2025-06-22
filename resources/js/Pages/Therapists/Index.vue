@@ -110,7 +110,7 @@
                         <!-- Consultation Fee -->
                         <div class="text-center mb-3 lg:mb-4 bg-gray-100 rounded-lg p-2 lg:p-3">
                             <span class="text-xs lg:text-sm text-gray-600">Online Consultation Fee:</span>
-                            <p class="text-lg lg:text-xl font-bold text-gray-900">${{ Number(therapist.hourly_rate).toLocaleString() }}</p>
+                            <p class="text-lg lg:text-xl font-bold text-gray-900">₦{{ Number(therapist.hourly_rate).toLocaleString() }}</p>
                         </div>
 
                         <!-- Book Appointment Button -->
