@@ -7,47 +7,56 @@ A comprehensive web platform for therapy booking and matrimonial services with i
 ## 🚀 Tech Stack
 
 ### **Backend Framework**
+
 - **Laravel 12.16.0** - Modern PHP framework for robust backend development
 - **Laravel Breeze** - Authentication scaffolding with API support
 - **Laravel Sanctum** - API token authentication for secure mobile/SPA access
 
 ### **Frontend Framework**
+
 - **Vue.js 3** - Progressive JavaScript framework for building user interfaces
 - **Inertia.js** - Modern monolith approach connecting Laravel and Vue seamlessly
 - **Tailwind CSS** - Utility-first CSS framework for rapid UI development
 - **Vite** - Fast build tool and development server
 
 ### **Database**
+
 - **SQLite** (Development) - Lightweight database for local development
 - **MySQL/PostgreSQL** (Production) - Scalable database for production deployment
 
 ### **Third-Party Integrations**
 
 #### **Communication & Email**
+
 - **Zoho Mail** - Professional email service for platform communications
 - **Zoho Calendar/Bookings** - Appointment scheduling and management
 - **Zoho Chat (SalesIQ/Cliq)** - Live support and chat features
 
 #### **Payment Processing**
+
 - **Paystack** - Secure payment gateway for VIP subscriptions and therapist bookings
 - Supports multiple payment methods and mobile-friendly transactions
 
 #### **Translation Services**
+
 - **Azure Translator API** - Microsoft's translation service for multi-language support
 - Real-time translation of profiles, chats, and messages
 
 #### **Additional Features**
+
 - **Pre-built Chatbot** - AI-powered customer support and user guidance
 - **Custom Booking System** - Multi-platform therapy sessions (Zoom, WhatsApp, Telegram, Google Meet)
 
 ## 🏗️ Architecture
 
 ### **Monolithic SPA Architecture**
+
 - **Laravel** handles all backend logic, API endpoints, and business logic
 - **Vue.js** manages the frontend user interface and user interactions
 - **Inertia.js** bridges the gap, providing SPA experience without API complexity
 
 ### **Key Benefits**
+
 - ✅ Single codebase deployment
 - ✅ Server-side rendering capabilities
 - ✅ Seamless data flow between backend and frontend
@@ -57,6 +66,7 @@ A comprehensive web platform for therapy booking and matrimonial services with i
 ## 📱 Features
 
 ### **Core Functionality**
+
 - **User Authentication** - Registration, login, password reset, email verification
 - **Therapist Booking System** - Schedule appointments with preferred communication platforms
 - **Multi-language Support** - Real-time translation powered by Azure Translator
@@ -64,6 +74,7 @@ A comprehensive web platform for therapy booking and matrimonial services with i
 - **Live Chat Support** - Integrated chatbot and live support system
 
 ### **Admin Features**
+
 - **User Management** - Comprehensive user and therapist administration
 - **Booking Management** - Appointment scheduling and calendar integration
 - **Payment Tracking** - Transaction monitoring and subscription management
@@ -72,12 +83,14 @@ A comprehensive web platform for therapy booking and matrimonial services with i
 ## 🛠️ Development Setup
 
 ### **Prerequisites**
+
 - PHP 8.2+
 - Composer
 - Node.js 18+
 - npm or yarn
 
 ### **Installation**
+
 ```bash
 # Clone the repository
 git clone [repository-url]
@@ -103,6 +116,7 @@ npm run build
 ```
 
 ### **Development Servers**
+
 ```bash
 # Terminal 1: Laravel backend
 php artisan serve
@@ -114,12 +128,14 @@ npm run dev
 ## 🌍 Deployment
 
 ### **Production Environment**
+
 - **Hosting**: DigitalOcean
 - **Domain**: Registered with QServers.ng
 - **DNS**: Managed through QServers
 - **Email**: Zoho Mail with custom MX records
 
 ### **Deployment Steps**
+
 1. Configure production environment variables
 2. Set up database and run migrations
 3. Configure Zoho Mail MX records
@@ -130,6 +146,7 @@ npm run dev
 ## 🔧 Configuration
 
 ### **Environment Variables**
+
 ```env
 # Application
 APP_NAME=ZawajAfrica
@@ -164,15 +181,18 @@ AZURE_TRANSLATOR_REGION=your_region
 ## 📚 API Integrations
 
 ### **Zoho Services**
+
 - **Mail**: Automated email notifications and communications
 - **Calendar**: Appointment scheduling and reminders
 - **Chat**: Customer support and live assistance
 
 ### **Payment Gateway**
+
 - **Paystack**: Secure payment processing with webhook support
 - **Supported Methods**: Card payments, bank transfers, mobile money
 
 ### **Translation**
+
 - **Azure Translator**: Real-time text translation
 - **Supported Languages**: Multiple language pairs for global accessibility
 
@@ -219,6 +239,7 @@ This project is proprietary software. All rights reserved.
 ## 📞 Support
 
 For technical support or questions about the platform:
+
 - Email: support@zawajafrica.com
 - Documentation: [Internal Wiki/Documentation]
 - Development Team: [Contact Information]

@@ -17,7 +17,7 @@ class ProfileController extends Controller
      */
     public function index()
     {
-        $user = Auth::user()->load(['appearance', 'lifestyle', 'background', 'about', 'overview']);
+        $user = Auth::user()->load(['appearance', 'lifestyle', 'background', 'about', 'overview', 'others']);
         
         // Ensure the profile photo URL is fully qualified
         if ($user->profile_photo) {
@@ -51,6 +51,10 @@ class ProfileController extends Controller
             // Validate request using standard validation
             $validated = Validator::make($requestData, [
                 'name' => ['sometimes', 'string', 'max:255'],
+                'gender' => ['sometimes', 'string', 'nullable', 'in:Male,Female'],
+                'dob_day' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:31'],
+                'dob_month' => ['sometimes', 'nullable', 'string', 'in:Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec'],
+                'dob_year' => ['sometimes', 'nullable', 'integer', 'min:1950', 'max:2010'],
                 'country' => ['sometimes', 'string', 'nullable', 'max:255'],
                 'state' => ['sometimes', 'string', 'nullable', 'max:255'],
                 'city' => ['sometimes', 'string', 'nullable', 'max:255'],
@@ -59,6 +63,7 @@ class ProfileController extends Controller
                 'background' => ['sometimes', 'array'],
                 'about' => ['sometimes', 'array'],
                 'overview' => ['sometimes', 'array'],
+                'others' => ['sometimes', 'array'],
             ])->validate();
             
             // Log the validated data for debugging
@@ -70,6 +75,22 @@ class ProfileController extends Controller
             // Update user's basic info
             if (isset($validated['name'])) {
                 $user->name = $validated['name'];
+            }
+            
+            if (isset($validated['gender'])) {
+                $user->gender = $validated['gender'];
+            }
+            
+            if (isset($validated['dob_day'])) {
+                $user->dob_day = $validated['dob_day'];
+            }
+            
+            if (isset($validated['dob_month'])) {
+                $user->dob_month = $validated['dob_month'];
+            }
+            
+            if (isset($validated['dob_year'])) {
+                $user->dob_year = $validated['dob_year'];
             }
             
             // Update location components if provided
@@ -125,11 +146,19 @@ class ProfileController extends Controller
                 );
             }
             
+            // Update others data
+            if (isset($validated['others'])) {
+                $user->others()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $validated['others']
+                );
+            }
+            
             // Save the user
             $user->save();
             
             // Reload the user with relationships
-            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about', 'overview']);
+            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about', 'overview', 'others']);
             
             // Format profile photo URL if it exists
             if ($user->profile_photo) {
@@ -186,21 +215,19 @@ class ProfileController extends Controller
                 ->update(['profile_photo' => $path]);
             
             // Reload user and format photo URL
-            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about']);
+            $user = $user->fresh(['appearance', 'lifestyle', 'background', 'about', 'overview', 'others']);
             $user->profile_photo = asset('storage/' . $path);
             
-            // Return JSON response with user data for frontend to update
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile photo updated successfully',
+            // Return Inertia response instead of JSON
+            return redirect()->back()->with([
+                'success' => 'Profile photo updated successfully',
                 'user' => $user
             ]);
         }
         
-        // Return error as JSON
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to upload profile photo'
-        ], 422);
+        // Return Inertia error response
+        return redirect()->back()->withErrors([
+            'profile_photo' => 'Failed to upload profile photo'
+        ]);
     }
 }

@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use App\Notifications\TherapistBookingPaid;
-use App\Notifications\TherapistBookingPending;
 
 class PaymentController extends Controller
 {
@@ -182,9 +181,6 @@ class PaymentController extends Controller
                 'payment_gateway' => $gateway
             ]);
 
-            // Send pending payment notification
-            $user->notify(new TherapistBookingPending($booking));
-
             // Initialize payment based on selected gateway
             if ($gateway === 'monnify') {
                 $paymentData = [
@@ -260,30 +256,60 @@ class PaymentController extends Controller
      */
     public function handleCallback(Request $request)
     {
-        $reference = $request->query('reference');
+        // Monnify sends 'paymentReference', Paystack sends 'reference'
+        $reference = $request->query('reference') ?? $request->query('paymentReference');
+        
+        Log::info('Payment callback received', [
+            'reference' => $reference,
+            'paystack_reference' => $request->query('reference'),
+            'monnify_reference' => $request->query('paymentReference'),
+            'all_query_params' => $request->query(),
+            'request_url' => $request->fullUrl()
+        ]);
         
         if (!$reference) {
+            Log::error('Payment callback: No reference found in either parameter');
             return redirect()->route('dashboard')->with('error', 'Payment reference not found');
         }
 
         // Determine gateway from reference
         $gateway = str_contains($reference, 'monnify') ? 'monnify' : 'paystack';
         
+        Log::info('Payment callback gateway determined', [
+            'reference' => $reference,
+            'gateway' => $gateway
+        ]);
+        
         // Verify payment based on gateway
         if ($gateway === 'monnify') {
             $response = $this->monnifyService->verifyPayment($reference);
         } else {
-        $response = $this->paystackService->verifyPayment($reference);
+            $response = $this->paystackService->verifyPayment($reference);
         }
+
+        Log::info('Payment verification response', [
+            'reference' => $reference,
+            'gateway' => $gateway,
+            'verification_response' => $response
+        ]);
 
         if ($response['status'] === true && $response['data']['status'] === 'success') {
             $paymentData = $response['data'];
-            $metadata = $paymentData['metadata'];
+            $metadata = $paymentData['metadata'] ?? [];
+
+            Log::info('Payment verification successful', [
+                'reference' => $reference,
+                'gateway' => $gateway,
+                'payment_data' => $paymentData,
+                'metadata' => $metadata,
+                'metadata_type' => $metadata['type'] ?? 'no_type'
+            ]);
 
             try {
                 DB::beginTransaction();
 
-                if ($metadata['type'] === 'subscription') {
+                if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
+                    Log::info('Processing subscription payment');
                     $this->handleSubscriptionPayment($paymentData, $metadata);
                     DB::commit();
                     return redirect()->route('subscription.index')->with([
@@ -291,12 +317,22 @@ class PaymentController extends Controller
                         'payment_type' => 'subscription'
                     ]);
                     
-                } elseif ($metadata['type'] === 'therapist_booking') {
+                } elseif (isset($metadata['type']) && $metadata['type'] === 'therapist_booking') {
+                    Log::info('Processing therapist booking payment', [
+                        'booking_id' => $metadata['booking_id'] ?? 'no_booking_id',
+                        'metadata' => $metadata
+                    ]);
                     $this->handleTherapistBookingPayment($paymentData, $metadata);
                     DB::commit();
                     return redirect()->route('therapists.index')->with([
                         'payment_success' => true,
                         'payment_type' => 'therapist_booking'
+                    ]);
+                } else {
+                    Log::warning('Payment callback: Unknown payment type or missing metadata', [
+                        'reference' => $reference,
+                        'gateway' => $gateway,
+                        'metadata' => $metadata
                     ]);
                 }
 
@@ -310,10 +346,21 @@ class PaymentController extends Controller
                 DB::rollBack();
                 Log::error('Payment processing error: ' . $e->getMessage(), [
                     'reference' => $reference,
-                    'metadata' => $metadata
+                    'gateway' => $gateway,
+                    'metadata' => $metadata,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 return redirect()->route('dashboard')->with('error', 'Payment was successful but there was an error processing your order. Please contact support.');
             }
+        } else {
+            Log::error('Payment verification failed', [
+                'reference' => $reference,
+                'gateway' => $gateway,
+                'verification_response' => $response,
+                'status' => $response['status'] ?? 'unknown',
+                'data_status' => $response['data']['status'] ?? 'unknown'
+            ]);
         }
 
         return redirect()->route('dashboard')->with('error', 'Payment verification failed');
@@ -410,57 +457,86 @@ class PaymentController extends Controller
      */
     private function handleTherapistBookingPayment($paymentData, $metadata)
     {
+        // Ensure we have a booking_id
+        if (!isset($metadata['booking_id'])) {
+            Log::error('No booking_id found in metadata', [
+                'metadata' => $metadata,
+                'payment_data' => $paymentData
+            ]);
+            throw new \Exception('Booking ID not found in payment metadata');
+        }
+
         $booking = TherapistBooking::with(['user', 'therapist'])->find($metadata['booking_id']);
         
-        if ($booking) {
-            Log::info('Processing therapist booking payment', [
-                'booking_id' => $booking->id,
-                'user_id' => $booking->user_id,
-                'therapist_id' => $booking->therapist_id,
-                'amount' => $paymentData['amount'] / 100,
-                'payment_reference' => $paymentData['reference']
+        if (!$booking) {
+            Log::error('Booking not found for payment processing', [
+                'booking_id' => $metadata['booking_id'],
+                'metadata' => $metadata,
+                'payment_reference' => $paymentData['reference'] ?? 'no_reference'
             ]);
+            throw new \Exception('Booking not found with ID: ' . $metadata['booking_id']);
+        }
 
-            $booking->update([
-                'status' => 'confirmed',
-                'payment_status' => 'paid',
-                'payment_reference' => $paymentData['reference']
-            ]);
+        Log::info('Processing therapist booking payment', [
+            'booking_id' => $booking->id,
+            'user_id' => $booking->user_id,
+            'therapist_id' => $booking->therapist_id,
+            'current_status' => $booking->status,
+            'current_payment_status' => $booking->payment_status,
+            'amount' => $paymentData['amount'] / 100,
+            'payment_reference' => $paymentData['reference']
+        ]);
 
-            Log::info('Booking updated successfully', [
-                'booking_id' => $booking->id,
-                'new_status' => $booking->status,
-                'new_payment_status' => $booking->payment_status
-            ]);
+        // Update booking status
+        $booking->update([
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_reference' => $paymentData['reference'],
+            'payment_gateway' => $metadata['gateway'] ?? 'unknown'
+        ]);
 
-            // Send payment confirmation notification
-            try {
+        // Refresh the booking to get updated data
+        $booking->fresh();
+
+        Log::info('Booking updated successfully', [
+            'booking_id' => $booking->id,
+            'new_status' => $booking->status,
+            'new_payment_status' => $booking->payment_status,
+            'payment_gateway' => $booking->payment_gateway
+        ]);
+
+        // Send payment confirmation notification
+        try {
+            if ($booking->user) {
                 $booking->user->notify(new TherapistBookingPaid($booking));
                 Log::info('TherapistBookingPaid notification sent successfully', [
                     'booking_id' => $booking->id,
                     'user_id' => $booking->user_id,
-                    'user_email' => $booking->user->email
+                    'user_email' => $booking->user->email,
+                    'user_name' => $booking->user->name
                 ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to send TherapistBookingPaid notification', [
+            } else {
+                Log::error('User not found for booking notification', [
                     'booking_id' => $booking->id,
-                    'user_id' => $booking->user_id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'user_id' => $booking->user_id
                 ]);
             }
-
-            Log::info('Therapist booking payment processed successfully', [
+        } catch (\Exception $e) {
+            Log::error('Failed to send TherapistBookingPaid notification', [
                 'booking_id' => $booking->id,
-                'therapist_id' => $metadata['therapist_id'],
-                'amount' => $paymentData['amount'] / 100
+                'user_id' => $booking->user_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-        } else {
-            Log::error('Booking not found for payment processing', [
-                'booking_id' => $metadata['booking_id'],
-                'metadata' => $metadata
-            ]);
+            // Don't throw here - we want the payment to still be processed even if notification fails
         }
+
+        Log::info('Therapist booking payment processed successfully', [
+            'booking_id' => $booking->id,
+            'therapist_id' => $metadata['therapist_id'] ?? $booking->therapist_id,
+            'amount' => $paymentData['amount'] / 100,
+            'gateway' => $metadata['gateway'] ?? 'unknown'
+        ]);
     }
 
     /**

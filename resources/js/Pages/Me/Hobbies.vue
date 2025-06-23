@@ -1,218 +1,220 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { router } from '@inertiajs/vue3';
-import Sidebar from '@/Components/Sidebar.vue';
-import ProfileHeader from '@/Components/ProfileHeader.vue';
-import axios from 'axios';
+    import { Head, Link } from '@inertiajs/vue3';
+    import { ref, computed, onMounted, onUnmounted } from 'vue';
+    import { router } from '@inertiajs/vue3';
+    import Sidebar from '@/Components/Sidebar.vue';
+    import ProfileHeader from '@/Components/ProfileHeader.vue';
+    import axios from 'axios';
 
-const props = defineProps({
-    auth: Object,
-    user: Object,
-    flash: Object,
-});
+    const props = defineProps({
+        auth: Object,
+        user: Object,
+        flash: Object,
+    });
 
-// Load hobbies data from user object or initialize empty values
-const interests = ref({
-    entertainment: props.user?.interests?.entertainment || '',
-    food: props.user?.interests?.food || '',
-    music: props.user?.interests?.music || '',
-    sports: props.user?.interests?.sports || '',
-});
+    // Load hobbies data from user object or initialize empty values
+    const interests = ref({
+        entertainment: props.user?.interests?.entertainment || '',
+        food: props.user?.interests?.food || '',
+        music: props.user?.interests?.music || '',
+        sports: props.user?.interests?.sports || '',
+    });
 
-// Show success message if it exists in flash data
-const showSuccess = ref(!!props.flash?.success);
-const successMessage = ref(props.flash?.success || '');
+    // Show success message if it exists in flash data
+    const showSuccess = ref(!!props.flash?.success);
+    const successMessage = ref(props.flash?.success || '');
 
-// Auto-hide success message after 3 seconds if it exists
-if (showSuccess.value) {
-    setTimeout(() => {
-        showSuccess.value = false;
-    }, 3000);
-}
-
-// Entertainment options with checkboxes
-const entertainmentOptions = ref([
-    { id: 'antiques', label: 'Antiques', checked: false },
-    { id: 'art_painting', label: 'Art / Painting', checked: false },
-    { id: 'astrology', label: 'Astrology', checked: false },
-    { id: 'ballet', label: 'Ballet', checked: false },
-    { id: 'bars_pubs', label: 'Bars / Pubs / Nightclubs', checked: false },
-    { id: 'collecting', label: 'Collecting', checked: false },
-    { id: 'dancing', label: 'Dancing', checked: false },
-    { id: 'dining_out', label: 'Dining Out', checked: false },
-    { id: 'dinner', label: 'Dinner', checked: false },
-]);
-
-// Initialize entertainment checkboxes based on existing value
-onMounted(() => {
-    if (interests.value.entertainment) {
-        const selectedEntertainment = interests.value.entertainment.split(',').map(item => item.trim());
-        entertainmentOptions.value.forEach(option => {
-            option.checked = selectedEntertainment.includes(option.label);
-        });
+    // Auto-hide success message after 3 seconds if it exists
+    if (showSuccess.value) {
+        setTimeout(() => {
+            showSuccess.value = false;
+        }, 3000);
     }
-});
 
-// Show/hide entertainment dropdown
-const showEntertainmentDropdown = ref(false);
+    // Entertainment options with checkboxes
+    const entertainmentOptions = ref([
+        { id: 'antiques', label: 'Antiques', checked: false },
+        { id: 'art_painting', label: 'Art / Painting', checked: false },
+        { id: 'astrology', label: 'Astrology', checked: false },
+        { id: 'ballet', label: 'Ballet', checked: false },
+        { id: 'bars_pubs', label: 'Bars / Pubs / Nightclubs', checked: false },
+        { id: 'collecting', label: 'Collecting', checked: false },
+        { id: 'dancing', label: 'Dancing', checked: false },
+        { id: 'dining_out', label: 'Dining Out', checked: false },
+        { id: 'dinner', label: 'Dinner', checked: false },
+    ]);
 
-// Toggle entertainment dropdown
-const toggleEntertainmentDropdown = () => {
-    showEntertainmentDropdown.value = !showEntertainmentDropdown.value;
-};
-
-// Close entertainment dropdown when clicking outside
-const closeEntertainmentDropdown = (e) => {
-    if (showEntertainmentDropdown.value && !e.target.closest('.entertainment-dropdown') && 
-        !e.target.closest('.entertainment-toggle')) {
-        showEntertainmentDropdown.value = false;
-    }
-};
-
-// Update entertainment interests based on checkboxes
-const updateEntertainmentInterests = () => {
-    const selected = entertainmentOptions.value
-        .filter(option => option.checked)
-        .map(option => option.label);
-    
-    interests.value.entertainment = selected.join(', ');
-};
-
-// For tracking editing state for each section
-const editingSections = ref({
-    entertainment: false,
-    food: false,
-    music: false,
-    sports: false
-});
-
-// Global editing state (for backward compatibility)
-const isEditing = computed(() => {
-    return Object.values(editingSections.value).some(value => value);
-});
-
-const isSaving = ref(false);
-
-// Mobile menu state
-const isMobileMenuOpen = ref(false);
-
-// Toggle mobile menu
-const toggleMobileMenu = () => {
-    isMobileMenuOpen.value = !isMobileMenuOpen.value;
-    
-    // Prevent body scrolling when menu is open
-    if (isMobileMenuOpen.value) {
-        document.body.classList.add('overflow-hidden');
-    } else {
-        document.body.classList.remove('overflow-hidden');
-    }
-};
-
-// Close mobile menu when clicking outside
-const closeMobileMenu = (e) => {
-    if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && 
-        !e.target.closest('.mobile-menu-toggle')) {
-        isMobileMenuOpen.value = false;
-        document.body.classList.remove('overflow-hidden');
-    }
-};
-
-// Add click event listener when component is mounted
-onMounted(() => {
-    document.addEventListener('click', closeMobileMenu);
-    document.addEventListener('click', closeEntertainmentDropdown);
-});
-
-// Remove event listener when component is unmounted
-onUnmounted(() => {
-    document.removeEventListener('click', closeMobileMenu);
-    document.removeEventListener('click', closeEntertainmentDropdown);
-    document.body.classList.remove('overflow-hidden');
-});
-
-// Toggle editing for a specific section
-const toggleEditSection = (section) => {
-    editingSections.value[section] = !editingSections.value[section];
-};
-
-// Update interest field
-const updateInterest = (field, value) => {
-    interests.value[field] = value;
-};
-
-// Save changes for all sections
-const saveChanges = () => {
-    isSaving.value = true;
-    
-    // Update entertainment field based on checkboxes before saving
-    updateEntertainmentInterests();
-    
-    // Use Axios directly instead of Inertia for better control of the response
-    axios.post(route('me.hobbies.update'), interests.value)
-        .then(response => {
-            isSaving.value = false;
-            
-            // Reset all editing states
-            Object.keys(editingSections.value).forEach(key => {
-                editingSections.value[key] = false;
+    // Initialize entertainment checkboxes based on existing value
+    onMounted(() => {
+        if (interests.value.entertainment) {
+            const selectedEntertainment = interests.value.entertainment.split(',').map(item => item.trim());
+            entertainmentOptions.value.forEach(option => {
+                option.checked = selectedEntertainment.includes(option.label);
             });
-            
-            // Show success message
-            showSuccess.value = true;
-            successMessage.value = response.data.message || 'Hobbies updated successfully';
-            
-            // Auto-hide success message after 3 seconds
-            setTimeout(() => {
-                showSuccess.value = false;
-            }, 3000);
-        })
-        .catch(error => {
-            isSaving.value = false;
-            console.error('Error updating hobbies:', error);
-        });
-};
+        }
+    });
 
-// Save changes for a specific section
-const saveSectionChanges = (section) => {
-    isSaving.value = true;
-    
-    // If saving entertainment section, update based on checkboxes
-    if (section === 'entertainment') {
-        updateEntertainmentInterests();
-    }
-    
-    // Create a complete data object with all interests
-    // This ensures we don't lose other sections when updating just one section
-    const completeData = {
-        entertainment: interests.value.entertainment,
-        food: interests.value.food,
-        music: interests.value.music,
-        sports: interests.value.sports,
-        // Just mark which section was updated
-        updated_section: section
+    // Show/hide entertainment dropdown
+    const showEntertainmentDropdown = ref(false);
+
+    // Toggle entertainment dropdown
+    const toggleEntertainmentDropdown = () => {
+        showEntertainmentDropdown.value = !showEntertainmentDropdown.value;
     };
-    
-    // Use Axios to submit all interests data
-    axios.post(route('me.hobbies.update'), completeData)
-        .then(response => {
-            isSaving.value = false;
-            editingSections.value[section] = false;
-            
-            // Show success message
-            showSuccess.value = true;
-            successMessage.value = response.data.message || 'Section updated successfully';
-            
-            // Auto-hide success message after 3 seconds
-            setTimeout(() => {
-                showSuccess.value = false;
-            }, 3000);
-        })
-        .catch(error => {
-            isSaving.value = false;
-            console.error(`Error updating ${section}:`, error);
-        });
-};
+
+    // Close entertainment dropdown when clicking outside
+    const closeEntertainmentDropdown = e => {
+        if (
+            showEntertainmentDropdown.value &&
+            !e.target.closest('.entertainment-dropdown') &&
+            !e.target.closest('.entertainment-toggle')
+        ) {
+            showEntertainmentDropdown.value = false;
+        }
+    };
+
+    // Update entertainment interests based on checkboxes
+    const updateEntertainmentInterests = () => {
+        const selected = entertainmentOptions.value.filter(option => option.checked).map(option => option.label);
+
+        interests.value.entertainment = selected.join(', ');
+    };
+
+    // For tracking editing state for each section
+    const editingSections = ref({
+        entertainment: false,
+        food: false,
+        music: false,
+        sports: false,
+    });
+
+    // Global editing state (for backward compatibility)
+    const isEditing = computed(() => {
+        return Object.values(editingSections.value).some(value => value);
+    });
+
+    const isSaving = ref(false);
+
+    // Mobile menu state
+    const isMobileMenuOpen = ref(false);
+
+    // Toggle mobile menu
+    const toggleMobileMenu = () => {
+        isMobileMenuOpen.value = !isMobileMenuOpen.value;
+
+        // Prevent body scrolling when menu is open
+        if (isMobileMenuOpen.value) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+    };
+
+    // Close mobile menu when clicking outside
+    const closeMobileMenu = e => {
+        if (isMobileMenuOpen.value && !e.target.closest('.mobile-menu') && !e.target.closest('.mobile-menu-toggle')) {
+            isMobileMenuOpen.value = false;
+            document.body.classList.remove('overflow-hidden');
+        }
+    };
+
+    // Add click event listener when component is mounted
+    onMounted(() => {
+        document.addEventListener('click', closeMobileMenu);
+        document.addEventListener('click', closeEntertainmentDropdown);
+    });
+
+    // Remove event listener when component is unmounted
+    onUnmounted(() => {
+        document.removeEventListener('click', closeMobileMenu);
+        document.removeEventListener('click', closeEntertainmentDropdown);
+        document.body.classList.remove('overflow-hidden');
+    });
+
+    // Toggle editing for a specific section
+    const toggleEditSection = section => {
+        editingSections.value[section] = !editingSections.value[section];
+    };
+
+    // Update interest field
+    const updateInterest = (field, value) => {
+        interests.value[field] = value;
+    };
+
+    // Save changes for all sections
+    const saveChanges = () => {
+        isSaving.value = true;
+
+        // Update entertainment field based on checkboxes before saving
+        updateEntertainmentInterests();
+
+        // Use Axios directly instead of Inertia for better control of the response
+        axios
+            .post(route('me.hobbies.update'), interests.value)
+            .then(response => {
+                isSaving.value = false;
+
+                // Reset all editing states
+                Object.keys(editingSections.value).forEach(key => {
+                    editingSections.value[key] = false;
+                });
+
+                // Show success message
+                showSuccess.value = true;
+                successMessage.value = response.data.message || 'Hobbies updated successfully';
+
+                // Auto-hide success message after 3 seconds
+                setTimeout(() => {
+                    showSuccess.value = false;
+                }, 3000);
+            })
+            .catch(error => {
+                isSaving.value = false;
+                console.error('Error updating hobbies:', error);
+            });
+    };
+
+    // Save changes for a specific section
+    const saveSectionChanges = section => {
+        isSaving.value = true;
+
+        // If saving entertainment section, update based on checkboxes
+        if (section === 'entertainment') {
+            updateEntertainmentInterests();
+        }
+
+        // Create a complete data object with all interests
+        // This ensures we don't lose other sections when updating just one section
+        const completeData = {
+            entertainment: interests.value.entertainment,
+            food: interests.value.food,
+            music: interests.value.music,
+            sports: interests.value.sports,
+            // Just mark which section was updated
+            updated_section: section,
+        };
+
+        // Use Axios to submit all interests data
+        axios
+            .post(route('me.hobbies.update'), completeData)
+            .then(response => {
+                isSaving.value = false;
+                editingSections.value[section] = false;
+
+                // Show success message
+                showSuccess.value = true;
+                successMessage.value = response.data.message || 'Section updated successfully';
+
+                // Auto-hide success message after 3 seconds
+                setTimeout(() => {
+                    showSuccess.value = false;
+                }, 3000);
+            })
+            .catch(error => {
+                isSaving.value = false;
+                console.error(`Error updating ${section}:`, error);
+            });
+    };
 </script>
 
 <template>
@@ -221,50 +223,46 @@ const saveSectionChanges = (section) => {
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
         <!-- Mobile header with hamburger menu - Only visible on mobile -->
         <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
-            <button 
-                @click="toggleMobileMenu" 
-                class="mobile-menu-toggle p-1 mr-3"
-                aria-label="Toggle menu"
-            >
-                <svg 
-                    class="h-6 w-6 text-gray-700" 
-                    :class="{ 'hidden': isMobileMenuOpen }"
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+            <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
+                <svg
+                    class="h-6 w-6 text-gray-700"
+                    :class="{ hidden: isMobileMenuOpen }"
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                 >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-                <svg 
-                    class="h-6 w-6 text-gray-700" 
-                    :class="{ 'hidden': !isMobileMenuOpen }"
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+                <svg
+                    class="h-6 w-6 text-gray-700"
+                    :class="{ hidden: !isMobileMenuOpen }"
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                 >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
-            
+
             <!-- Page title on mobile -->
             <h1 class="text-lg font-bold">My Hobbies</h1>
         </div>
 
         <!-- Mobile Menu Overlay -->
-        <div 
-            v-if="isMobileMenuOpen" 
+        <div
+            v-if="isMobileMenuOpen"
             class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
             @click="toggleMobileMenu"
         ></div>
 
         <!-- Left Sidebar Component - Slides in from left on mobile -->
-        <aside 
+        <aside
             class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
-            :class="{'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen}"
+            :class="{ 'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen }"
         >
-        <Sidebar :user="$page.props.auth.user" />
+            <Sidebar :user="$page.props.auth.user" />
         </aside>
-        
+
         <!-- Main Content -->
         <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
             <div class="container mx-auto max-w-6xl">
@@ -273,53 +271,108 @@ const saveSectionChanges = (section) => {
 
                 <!-- Mobile Profile Navigation - Only visible on mobile -->
                 <div class="md:hidden mb-4 overflow-x-auto">
-                    <div class="flex  rounded-lg shadow-sm">
-                        <Link 
-                            :href="route('me.profile')" 
+                    <div class="flex rounded-lg shadow-sm">
+                        <Link
+                            :href="route('me.profile')"
                             class="py-3 px-4 flex items-center gap-1 whitespace-nowrap font-medium text-gray-700"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                />
                             </svg>
                             Profile
                         </Link>
-                        
-                        <Link 
-                            :href="route('me.photos')" 
+
+                        <Link
+                            :href="route('me.photos')"
                             class="py-3 px-4 flex items-center gap-1 whitespace-nowrap font-medium text-gray-700"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
                             </svg>
                             Photos
                         </Link>
-                        
-                        <Link 
-                            :href="route('me.hobbies')" 
+
+                        <Link
+                            :href="route('me.hobbies')"
                             class="py-3 px-4 flex items-center gap-1 whitespace-nowrap font-medium bg-primary-dark text-white"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                             </svg>
                             Hobbies
                         </Link>
-                        
-                        <Link 
-                            :href="route('me.personality')" 
+
+                        <Link
+                            :href="route('me.personality')"
                             class="py-3 px-4 flex items-center gap-1 whitespace-nowrap font-medium text-gray-700"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                />
                             </svg>
                             Personality
                         </Link>
-                        
-                        <Link 
-                            :href="route('me.faqs')" 
+
+                        <Link
+                            :href="route('me.faqs')"
                             class="py-3 px-4 flex items-center gap-1 whitespace-nowrap font-medium text-gray-700"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                             </svg>
                             FAQs
                         </Link>
@@ -329,113 +382,170 @@ const saveSectionChanges = (section) => {
                 <!-- Hobbies Content -->
                 <div class="bg-white shadow-md rounded-lg p-6">
                     <h2 class="text-2xl font-bold mb-6">My Hobbies & Interests</h2>
-                    
+
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-bold">Hobbies & Interests</h2>
-                        
+
                         <div class="flex items-center space-x-3">
                             <!-- Success message when saved -->
                             <div v-if="showSuccess" class="text-green-600 text-sm flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-5 w-5 mr-1"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M5 13l4 4L19 7"
+                                    />
                                 </svg>
                                 {{ successMessage }}
                             </div>
                         </div>
                     </div>
-                    <p class="text-gray-600 mb-6">Let others know what your interests are and help us connect you with users that may have similar interests.</p>
-                    
+                    <p class="text-gray-600 mb-6">
+                        Let others know what your interests are and help us connect you with users that may have similar
+                        interests.
+                    </p>
+
                     <div class="space-y-6">
                         <!-- Entertainment -->
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <label class="block text-gray-700 font-medium">What do you do for fun/entertainment?</label>
-                                
+                                <label class="block text-gray-700 font-medium">
+                                    What do you do for fun/entertainment?
+                                </label>
+
                                 <!-- Edit/Save buttons for this section -->
                                 <div class="flex items-center space-x-2">
-                                    <button 
+                                    <button
                                         v-if="editingSections.entertainment"
-                                        @click="saveSectionChanges('entertainment')" 
+                                        @click="saveSectionChanges('entertainment')"
                                         class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
                                         :disabled="isSaving"
                                     >
                                         <span v-if="isSaving">Saving...</span>
                                         <span v-else>Save</span>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="!editingSections.entertainment"
-                                        @click="toggleEditSection('entertainment')" 
+                                        @click="toggleEditSection('entertainment')"
                                         class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
                                         title="Edit entertainment interests"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="editingSections.entertainment"
-                                        @click="toggleEditSection('entertainment')" 
+                                        @click="toggleEditSection('entertainment')"
                                         class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
                                         title="Cancel editing"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <!-- Entertainment dropdown -->
                             <div class="relative entertainment-dropdown">
-                                <div 
-                                    @click="editingSections.entertainment && toggleEntertainmentDropdown()" 
+                                <div
+                                    @click="editingSections.entertainment && toggleEntertainmentDropdown()"
                                     class="entertainment-toggle w-full border border-gray-300 rounded-md shadow-sm p-2 flex items-center justify-between cursor-pointer"
-                                    :class="{ 'bg-gray-50 cursor-not-allowed': !editingSections.entertainment, 'hover:bg-gray-50': editingSections.entertainment }"
+                                    :class="{
+                                        'bg-gray-50 cursor-not-allowed': !editingSections.entertainment,
+                                        'hover:bg-gray-50': editingSections.entertainment,
+                                    }"
                                 >
-                                    <span v-if="interests.entertainment" class="text-gray-900">{{ interests.entertainment }}</span>
+                                    <span v-if="interests.entertainment" class="text-gray-900">
+                                        {{ interests.entertainment }}
+                                    </span>
                                     <span v-else class="text-gray-500">Select entertainment options...</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-5 w-5 text-gray-400"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                            clip-rule="evenodd"
+                                        />
                                     </svg>
                                 </div>
-                                
+
                                 <!-- Dropdown content -->
-                                <div 
-                                    v-if="showEntertainmentDropdown && editingSections.entertainment" 
+                                <div
+                                    v-if="showEntertainmentDropdown && editingSections.entertainment"
                                     class="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 py-2 max-h-60 overflow-y-auto"
                                 >
                                     <div class="px-4 py-2 border-b border-gray-100">
                                         <h3 class="font-medium text-gray-900">What do you do for fun/entertainment?</h3>
                                     </div>
-                                    
+
                                     <div class="p-2 space-y-2">
-                                        <div 
-                                            v-for="option in entertainmentOptions" 
-                                            :key="option.id" 
+                                        <div
+                                            v-for="option in entertainmentOptions"
+                                            :key="option.id"
                                             class="flex items-center px-2 py-1 hover:bg-gray-50 rounded"
                                         >
-                                            <input 
-                                                type="checkbox" 
-                                                :id="option.id" 
+                                            <input
+                                                type="checkbox"
+                                                :id="option.id"
                                                 v-model="option.checked"
                                                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                                 @change="updateEntertainmentInterests"
+                                            />
+                                            <label
+                                                :for="option.id"
+                                                class="ml-2 block text-sm text-gray-900 cursor-pointer"
                                             >
-                                            <label :for="option.id" class="ml-2 block text-sm text-gray-900 cursor-pointer">{{ option.label }}</label>
+                                                {{ option.label }}
+                                            </label>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="px-4 py-2 border-t border-gray-100 flex justify-between">
-                                        <button 
-                                            @click="showEntertainmentDropdown = false" 
+                                        <button
+                                            @click="showEntertainmentDropdown = false"
                                             class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
                                         >
                                             Save Changes
                                         </button>
-                                        <button 
-                                            @click="showEntertainmentDropdown = false" 
+                                        <button
+                                            @click="showEntertainmentDropdown = false"
                                             class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
                                         >
                                             Cancel
@@ -448,154 +558,226 @@ const saveSectionChanges = (section) => {
                         <!-- Food -->
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <label for="food" class="block text-gray-700 font-medium">What sort of food do you like?</label>
-                                
+                                <label for="food" class="block text-gray-700 font-medium">
+                                    What sort of food do you like?
+                                </label>
+
                                 <!-- Edit/Save buttons for this section -->
                                 <div class="flex items-center space-x-2">
-                                    <button 
+                                    <button
                                         v-if="editingSections.food"
-                                        @click="saveSectionChanges('food')" 
+                                        @click="saveSectionChanges('food')"
                                         class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
                                         :disabled="isSaving"
                                     >
                                         <span v-if="isSaving">Saving...</span>
                                         <span v-else>Save</span>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="!editingSections.food"
-                                        @click="toggleEditSection('food')" 
+                                        @click="toggleEditSection('food')"
                                         class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
                                         title="Edit food preferences"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="editingSections.food"
-                                        @click="toggleEditSection('food')" 
+                                        @click="toggleEditSection('food')"
                                         class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
                                         title="Cancel editing"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
-                            <input 
-                                id="food" 
-                                type="text" 
+                            <input
+                                id="food"
+                                type="text"
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 v-model="interests.food"
                                 @input="updateInterest('food', $event.target.value)"
                                 :disabled="!editingSections.food"
                                 placeholder="Italian, Indian, Chinese, Halal, Vegetarian, etc."
-                            >
+                            />
                         </div>
 
                         <!-- Music -->
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <label for="music" class="block text-gray-700 font-medium">What sort of music do you like?</label>
-                                
+                                <label for="music" class="block text-gray-700 font-medium">
+                                    What sort of music do you like?
+                                </label>
+
                                 <!-- Edit/Save buttons for this section -->
                                 <div class="flex items-center space-x-2">
-                                    <button 
+                                    <button
                                         v-if="editingSections.music"
-                                        @click="saveSectionChanges('music')" 
+                                        @click="saveSectionChanges('music')"
                                         class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
                                         :disabled="isSaving"
                                     >
                                         <span v-if="isSaving">Saving...</span>
                                         <span v-else>Save</span>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="!editingSections.music"
-                                        @click="toggleEditSection('music')" 
+                                        @click="toggleEditSection('music')"
                                         class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
                                         title="Edit music preferences"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="editingSections.music"
-                                        @click="toggleEditSection('music')" 
+                                        @click="toggleEditSection('music')"
                                         class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
                                         title="Cancel editing"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
-                            <input 
-                                id="music" 
-                                type="text" 
+                            <input
+                                id="music"
+                                type="text"
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 v-model="interests.music"
                                 @input="updateInterest('music', $event.target.value)"
                                 :disabled="!editingSections.music"
                                 placeholder="Pop, Rock, Classical, Jazz, Hip Hop, etc."
-                            >
+                            />
                         </div>
 
                         <!-- Sports -->
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <label for="sports" class="block text-gray-700 font-medium">What sports do you play or like to watch?</label>
-                                
+                                <label for="sports" class="block text-gray-700 font-medium">
+                                    What sports do you play or like to watch?
+                                </label>
+
                                 <!-- Edit/Save buttons for this section -->
                                 <div class="flex items-center space-x-2">
-                                    <button 
+                                    <button
                                         v-if="editingSections.sports"
-                                        @click="saveSectionChanges('sports')" 
+                                        @click="saveSectionChanges('sports')"
                                         class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm"
                                         :disabled="isSaving"
                                     >
                                         <span v-if="isSaving">Saving...</span>
                                         <span v-else>Save</span>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="!editingSections.sports"
-                                        @click="toggleEditSection('sports')" 
+                                        @click="toggleEditSection('sports')"
                                         class="p-1 text-gray-500 hover:text-indigo-600 focus:outline-none"
                                         title="Edit sports preferences"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         v-if="editingSections.sports"
-                                        @click="toggleEditSection('sports')" 
+                                        @click="toggleEditSection('sports')"
                                         class="p-1 text-gray-500 hover:text-red-600 focus:outline-none"
                                         title="Cancel editing"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
-                            <input 
-                                id="sports" 
-                                type="text" 
+                            <input
+                                id="sports"
+                                type="text"
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 v-model="interests.sports"
                                 @input="updateInterest('sports', $event.target.value)"
                                 :disabled="!editingSections.sports"
                                 placeholder="Football, Basketball, Cricket, Swimming, etc."
-                            >
+                            />
                         </div>
                     </div>
                 </div>
@@ -605,25 +787,25 @@ const saveSectionChanges = (section) => {
 </template>
 
 <style scoped>
-/* Ensure proper stacking on mobile */
-@media (max-width: 768px) {
-    .min-h-screen {
-        padding-top: 1rem;
+    /* Ensure proper stacking on mobile */
+    @media (max-width: 768px) {
+        .min-h-screen {
+            padding-top: 1rem;
+        }
     }
-}
 
-/* Prevent scrolling when mobile menu is open */
-:global(.overflow-hidden) {
-    overflow: hidden;
-}
+    /* Prevent scrolling when mobile menu is open */
+    :global(.overflow-hidden) {
+        overflow: hidden;
+    }
 
-/* Form styling */
-input:disabled {
-    background-color: #f9fafb;
-    cursor: not-allowed;
-}
+    /* Form styling */
+    input:disabled {
+        background-color: #f9fafb;
+        cursor: not-allowed;
+    }
 
-button {
-    transition: all 0.2s;
-}
+    button {
+        transition: all 0.2s;
+    }
 </style>

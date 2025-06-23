@@ -39,11 +39,8 @@ class UserLike extends Model
      */
     public static function isMutualLike(int $userId1, int $userId2): bool
     {
-        // Ensure consistent ordering like UserMatch does
-        if ($userId1 > $userId2) {
-            [$userId1, $userId2] = [$userId2, $userId1];
-        }
-
+        // Don't change the order - preserve actual sender/receiver relationships
+        // Check if user1 liked user2 AND user2 liked user1
         $like1 = self::where('user_id', $userId1)
                     ->where('liked_user_id', $userId2)
                     ->where('status', 'pending')
@@ -84,11 +81,7 @@ class UserLike extends Model
      */
     public static function markAsMatched(int $userId1, int $userId2): void
     {
-        // Ensure consistent ordering
-        if ($userId1 > $userId2) {
-            [$userId1, $userId2] = [$userId2, $userId1];
-        }
-
+        // Update both likes regardless of order - preserve actual relationships
         self::where('user_id', $userId1)
             ->where('liked_user_id', $userId2)
             ->update(['status' => 'matched']);

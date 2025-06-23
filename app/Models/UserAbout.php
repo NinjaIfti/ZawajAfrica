@@ -24,6 +24,9 @@ class UserAbout extends Model
         'looking_for_education',
         'looking_for_religious_practice',
         'looking_for_marital_status',
+        'looking_for_relocate',
+        'looking_for_children',
+        'looking_for_tribe',
     ];
     
     /**

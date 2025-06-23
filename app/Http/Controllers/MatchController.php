@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Cache;
 
 class MatchController extends Controller
 {
@@ -24,104 +25,161 @@ class MatchController extends Controller
         $this->tierService = $tierService;
     }
 
-
-
     /**
      * Send a like to another user
      */
-    public function like(Request $request)
+    public function like(Request $request, $user)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id'
-        ]);
+        $targetUserId = $user; // Get user ID from URL parameter
 
-        $user = Auth::user();
-        $targetUserId = $request->user_id;
+        $currentUser = Auth::user();
 
-        // Check if user can view profiles
-        $canView = $this->tierService->canViewProfile($user);
+        // Rate limiting - max 5 likes per minute
+        $rateLimitKey = "user_likes_rate_limit:{$currentUser->id}";
+        $likesInLastMinute = Cache::get($rateLimitKey, 0);
+        
+        if ($likesInLastMinute >= 5) {
+            \Log::warning("Like rate limit exceeded", [
+                'user_id' => $currentUser->id,
+                'tier' => $this->tierService->getUserTier($currentUser),
+                'attempts_in_minute' => $likesInLastMinute
+            ]);
+            
+            return response()->json([
+                'error' => 'Too many likes sent. Please wait a moment before liking again.',
+                'rate_limited' => true
+            ], 429);
+        }
+
+        // Check if user can view profiles first (without recording activity yet)
+        $canView = $this->tierService->canViewProfile($currentUser);
         if (!$canView['allowed']) {
+            \Log::info("Like attempt blocked by view limit", [
+                'user_id' => $currentUser->id,
+                'tier' => $this->tierService->getUserTier($currentUser),
+                'daily_views_used' => $canView['used'],
+                'daily_limit' => $canView['limit']
+            ]);
+            
             return response()->json([
                 'error' => 'Daily profile view limit reached',
                 'upgrade_required' => true
             ], 429);
         }
 
-        // Check if already liked or matched
-        if (UserLike::where('user_id', $user->id)->where('liked_user_id', $targetUserId)->exists()) {
-            return response()->json([
-                'error' => 'You have already liked this user',
-                'already_liked' => true
-            ], 400);
-        }
-
-        if (UserMatch::areMatched($user->id, $targetUserId)) {
-            return response()->json([
-                'error' => 'You are already matched with this user',
-                'already_matched' => true
-            ], 400);
-        }
-
         // Use database transaction to prevent race conditions
         $matchCreated = false;
-        $targetUser = \App\Models\User::find($targetUserId);
+        $targetUser = null;
+        $error = null;
         
-        DB::transaction(function () use ($user, $targetUserId, $targetUser, &$matchCreated) {
-            // Record the profile view activity at the start of transaction
-            $this->tierService->recordActivity($user, 'profile_views');
-            
-            // Lock the user records to prevent race conditions
-            DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
-            DB::table('users')->where('id', $targetUserId)->lockForUpdate()->first();
-            
-            // Check if already liked or matched within the transaction
-            if (UserLike::where('user_id', $user->id)->where('liked_user_id', $targetUserId)->exists()) {
-                throw new \Exception('You have already liked this user');
-            }
-            
-            if (UserMatch::areMatched($user->id, $targetUserId)) {
-                throw new \Exception('You are already matched with this user');
-            }
-
-            // Create the like
-            UserLike::create([
-                'user_id' => $user->id,
-                'liked_user_id' => $targetUserId,
-                'status' => 'pending',
-                'liked_at' => now()
-            ]);
-
-            // Check for mutual like within transaction
-            $isMutual = UserLike::isMutualLike($user->id, $targetUserId);
-
-            if ($isMutual) {
-                // Create a match
-                UserMatch::createMatch($user->id, $targetUserId);
+        try {
+            DB::transaction(function () use ($currentUser, $targetUserId, &$matchCreated, &$targetUser, &$error) {
+                // Lock the user records to prevent race conditions first
+                DB::table('users')->where('id', $currentUser->id)->lockForUpdate()->first();
+                DB::table('users')->where('id', $targetUserId)->lockForUpdate()->first();
                 
-                // Mark likes as matched
-                UserLike::markAsMatched($user->id, $targetUserId);
+                // Get target user within transaction
+                $targetUser = \App\Models\User::find($targetUserId);
+                if (!$targetUser) {
+                    $error = 'Target user not found';
+                    return;
+                }
+                
+                // Check if already liked or matched within the transaction
+                if (UserLike::where('user_id', $currentUser->id)->where('liked_user_id', $targetUserId)->exists()) {
+                    $error = 'You have already liked this user';
+                    return;
+                }
+                
+                if (UserMatch::areMatched($currentUser->id, $targetUserId)) {
+                    $error = 'You are already matched with this user';
+                    return;
+                }
 
-                $matchCreated = true;
+                // Create the like
+                UserLike::create([
+                    'user_id' => $currentUser->id,
+                    'liked_user_id' => $targetUserId,
+                    'status' => 'pending',
+                    'liked_at' => now()
+                ]);
+
+                // Check for mutual like within transaction
+                $isMutual = UserLike::isMutualLike($currentUser->id, $targetUserId);
+
+                if ($isMutual) {
+                    // Create a match
+                    UserMatch::createMatch($currentUser->id, $targetUserId);
+                    
+                    // Mark likes as matched
+                    UserLike::markAsMatched($currentUser->id, $targetUserId);
+
+                    $matchCreated = true;
+                    
+                    // Log successful match creation
+                    \Log::info("Match created", [
+                        'user_1' => $currentUser->id,
+                        'user_2' => $targetUserId,
+                        'user_1_tier' => $this->tierService->getUserTier($currentUser),
+                        'user_2_tier' => $this->tierService->getUserTier($targetUser)
+                    ]);
+                } else {
+                    // Log like sent
+                    \Log::info("Like sent", [
+                        'sender_id' => $currentUser->id,
+                        'receiver_id' => $targetUserId,
+                        'sender_tier' => $this->tierService->getUserTier($currentUser)
+                    ]);
+                }
+            });
+        } catch (\Exception $e) {
+            \Log::error("Like operation failed", [
+                'user_id' => $currentUser->id,
+                'target_user_id' => $targetUserId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Like operation failed. Please try again.',
+                'debug' => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
+
+        // Handle errors from transaction
+        if ($error) {
+            $statusCode = 400;
+            $response = ['error' => $error];
+            
+            if ($error === 'You have already liked this user') {
+                $response['already_liked'] = true;
+            } elseif ($error === 'You are already matched with this user') {
+                $response['already_matched'] = true;
             }
-        });
+            
+            return response()->json($response, $statusCode);
+        }
 
         // Send notifications outside transaction
-        $senderUserTier = $this->tierService->getUserTier($user);
+        $senderUserTier = $this->tierService->getUserTier($currentUser);
         $canRevealLiker = in_array($senderUserTier, [UserTierService::TIER_BASIC, UserTierService::TIER_GOLD, UserTierService::TIER_PLATINUM]);
         
         if ($matchCreated) {
             // Send match notifications to both users
-            $user->notify(new NewMatchFound($targetUser));
-            $targetUser->notify(new NewMatchFound($user));
+            $currentUser->notify(new NewMatchFound($targetUser));
+            $targetUser->notify(new NewMatchFound($currentUser));
         } else {
-            $targetUser->notify(new NewLikeReceived($user, $canRevealLiker));
+            $targetUser->notify(new NewLikeReceived($currentUser, $canRevealLiker));
         }
+
+        // Increment rate limiting counter after successful operation
+        Cache::put($rateLimitKey, $likesInLastMinute + 1, now()->addMinute());
 
         return response()->json([
             'success' => true,
             'message' => $matchCreated ? 'It\'s a match!' : 'Like sent successfully',
             'match_created' => $matchCreated,
-            'can_message' => $this->tierService->canSendMessage($user)['allowed']
+            'can_message' => $this->tierService->canSendMessage($currentUser)['allowed']
         ]);
     }
 
@@ -136,23 +194,22 @@ class MatchController extends Controller
 
         $user = Auth::user();
 
-        // Check if user can view profiles
-        $canView = $this->tierService->canViewProfile($user);
-        if (!$canView['allowed']) {
+        // Record the profile view if allowed
+        $viewStatus = $this->tierService->recordProfileView($user);
+        if (!$viewStatus['allowed']) {
             return response()->json([
                 'error' => 'Daily profile view limit reached',
                 'upgrade_required' => true
             ], 429);
         }
 
-        // Record the profile view activity
-        $this->tierService->recordActivity($user, 'profile_views');
-
         // Here you would typically create a "pass" record in the database
+        // TODO: Implement user pass tracking to avoid showing same profiles repeatedly
 
         return response()->json([
             'success' => true,
-            'message' => 'Profile skipped'
+            'message' => 'Profile skipped',
+            'remaining_views' => $viewStatus['remaining']
         ]);
     }
 
@@ -346,6 +403,4 @@ class MatchController extends Controller
             'tier' => $userTier
         ]);
     }
-
-
 }

@@ -78,6 +78,7 @@ class MonnifyService
             if ($response->successful()) {
                 $data = $response->json();
                 if ($data['requestSuccessful']) {
+                    // Return format similar to Paystack
                     return [
                         'status' => true,
                         'data' => [
@@ -108,6 +109,10 @@ class MonnifyService
     public function verifyPayment(string $reference)
     {
         try {
+            Log::info('Monnify: Starting payment verification', [
+                'reference' => $reference
+            ]);
+
             $accessToken = $this->getAccessToken();
             
             $queryUrl = rtrim($this->baseUrl, '/') . '/api/v1/merchant/transactions/query';
@@ -119,24 +124,113 @@ class MonnifyService
                 'paymentReference' => $reference
             ]);
 
+            Log::info('Monnify: Verification API response', [
+                'reference' => $reference,
+                'status_code' => $response->status(),
+                'response_body' => $response->json()
+            ]);
+
             if ($response->successful()) {
                 $data = $response->json();
                 if ($data['requestSuccessful']) {
                     $transaction = $data['responseBody'];
                     
+                    Log::info('Monnify: Transaction details', [
+                        'reference' => $reference,
+                        'transaction' => $transaction
+                    ]);
+                    
+                    // Handle metadata properly - try multiple possible field names
+                    $metadata = [];
+                    
+                    // Check for various metadata field names that Monnify might use
+                    $metadataFields = ['metaData', 'customerMetaData', 'metadata', 'transactionMetaData'];
+                    
+                    foreach ($metadataFields as $field) {
+                        if (isset($transaction[$field])) {
+                            Log::info('Monnify: Found metadata in field', [
+                                'reference' => $reference,
+                                'field' => $field,
+                                'raw_metadata' => $transaction[$field]
+                            ]);
+                            
+                            if (is_string($transaction[$field])) {
+                                $decoded = json_decode($transaction[$field], true);
+                                if (json_last_error() === JSON_ERROR_NONE) {
+                                    $metadata = $decoded;
+                                } else {
+                                    Log::warning('Monnify: Failed to decode metadata JSON', [
+                                        'reference' => $reference,
+                                        'field' => $field,
+                                        'raw_data' => $transaction[$field],
+                                        'json_error' => json_last_error_msg()
+                                    ]);
+                                }
+                            } elseif (is_array($transaction[$field])) {
+                                $metadata = $transaction[$field];
+                            }
+                            break; // Use the first one found
+                        }
+                    }
+                    
+                    // If no metadata found in transaction, try to get it from our local database
+                    if (empty($metadata)) {
+                        Log::warning('Monnify: No metadata found in transaction response, checking local database', [
+                            'reference' => $reference
+                        ]);
+                        
+                        // Try to find the booking by payment reference
+                        $booking = \App\Models\TherapistBooking::where('payment_reference', $reference)->first();
+                        if ($booking) {
+                            $metadata = [
+                                'type' => 'therapist_booking',
+                                'booking_id' => $booking->id,
+                                'therapist_id' => $booking->therapist_id,
+                                'user_id' => $booking->user_id,
+                                'gateway' => 'monnify'
+                            ];
+                            
+                            Log::info('Monnify: Reconstructed metadata from local booking', [
+                                'reference' => $reference,
+                                'booking_id' => $booking->id,
+                                'metadata' => $metadata
+                            ]);
+                        } else {
+                            Log::error('Monnify: No local booking found for reference', [
+                                'reference' => $reference
+                            ]);
+                        }
+                    }
+                    
+                    $paymentStatus = strtolower($transaction['paymentStatus']) === 'paid' ? 'success' : 'failed';
+                    
+                    Log::info('Monnify: Final verification result', [
+                        'reference' => $reference,
+                        'payment_status' => $paymentStatus,
+                        'amount' => $transaction['amountPaid'],
+                        'metadata' => $metadata
+                    ]);
+                    
+                    // Return in Paystack-compatible format
                     return [
                         'status' => true,
                         'data' => [
-                            'status' => strtolower($transaction['paymentStatus']) === 'paid' ? 'success' : 'failed',
+                            'status' => $paymentStatus,
                             'reference' => $transaction['paymentReference'],
                             'amount' => $transaction['amountPaid'] * 100, // Convert to kobo for consistency
                             'currency' => 'NGN',
                             'paid_at' => $transaction['paidOn'] ?? now(),
-                            'metadata' => $transaction['metaData'] ?? []
+                            'metadata' => $metadata
                         ]
                     ];
                 }
             }
+
+            Log::error('Monnify: Payment verification failed', [
+                'reference' => $reference,
+                'response_status' => $response->status(),
+                'response_body' => $response->json()
+            ]);
 
             return [
                 'status' => false,
@@ -144,6 +238,12 @@ class MonnifyService
             ];
 
         } catch (\Exception $e) {
+            Log::error('Monnify: Payment verification exception', [
+                'reference' => $reference,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return [
                 'status' => false,
                 'message' => 'Payment verification service temporarily unavailable'

@@ -20,6 +20,7 @@ class UserLifestyle extends Model
         'smokes',
         'has_children',
         'number_of_children',
+        'want_children',
         'occupation',
     ];
     

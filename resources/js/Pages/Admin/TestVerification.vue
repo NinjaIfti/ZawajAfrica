@@ -1,6 +1,6 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
-import AdminLayout from '@/Layouts/AdminLayout.vue';
+    import { Head } from '@inertiajs/vue3';
+    import AdminLayout from '@/Layouts/AdminLayout.vue';
 </script>
 
 <template>
@@ -8,9 +8,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Test Verification Page
-            </h2>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800">Test Verification Page</h2>
         </template>
 
         <div class="py-12">
@@ -24,4 +22,4 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
             </div>
         </div>
     </AdminLayout>
-</template> 
+</template>

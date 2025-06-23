@@ -11,6 +11,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // User Management
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     Route::get('/users/{userId}', [AdminController::class, 'viewUser'])->name('users.view');
+    Route::delete('/users/{userId}', [AdminController::class, 'deleteUser'])->name('users.delete');
     
     // Verification Management
     Route::get('/verifications', [AdminController::class, 'verifications'])->name('verifications');

@@ -58,6 +58,13 @@ class HandleInertiaRequests extends Middleware
                 'payment_type' => $request->session()->get('payment_type'),
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                'csrf_token' => $request->session()->get('csrf_token'),
+            ],
+            'csrf_token' => csrf_token(),
+            // Always include a fresh CSRF token
+            'csrf' => [
+                'token' => csrf_token(),
+                'header' => 'X-CSRF-TOKEN',
             ],
         ];
     }

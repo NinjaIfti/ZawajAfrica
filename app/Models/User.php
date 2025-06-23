@@ -16,7 +16,9 @@ use App\Models\UserAbout;
 use App\Models\UserPhoto;
 use App\Models\Message;
 use App\Models\UserOverview;
+use App\Models\UserOthers;
 use App\Models\UserReport;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -59,6 +61,14 @@ class User extends Authenticatable
     ];
 
     /**
+     * The attributes that should not be saved to the database.
+     * These are virtual attributes used for display purposes only.
+     *
+     * @var array<string>
+     */
+    protected $guarded_attributes = ['location'];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @var array<string, string>
@@ -69,6 +79,19 @@ class User extends Authenticatable
         'is_verified' => 'boolean',
         'subscription_expires_at' => 'datetime',
     ];
+
+    /**
+     * Override the save method to exclude virtual attributes
+     */
+    public function save(array $options = [])
+    {
+        // Remove virtual attributes before saving
+        foreach ($this->guarded_attributes as $attribute) {
+            unset($this->attributes[$attribute]);
+        }
+        
+        return parent::save($options);
+    }
     
     /**
      * Get user's age based on date of birth.
@@ -159,6 +182,14 @@ class User extends Authenticatable
     }
     
     /**
+     * Get the others data associated with the user.
+     */
+    public function others()
+    {
+        return $this->hasOne(UserOthers::class);
+    }
+    
+    /**
      * Get the photos associated with the user.
      */
     public function photos()
@@ -221,23 +252,18 @@ class User extends Authenticatable
      */
     public function conversations()
     {
-        $sentMessages = $this->sentMessages()
-            ->select('sender_id', 'receiver_id')
+        // More efficient approach using a single query
+        $conversationUserIds = DB::table('messages')
+            ->select(DB::raw('CASE 
+                WHEN sender_id = ' . $this->id . ' THEN receiver_id 
+                ELSE sender_id 
+            END as conversation_user_id'))
+            ->where(function($query) {
+                $query->where('sender_id', $this->id)
+                      ->orWhere('receiver_id', $this->id);
+            })
             ->distinct()
-            ->get()
-            ->map(function ($message) {
-                return $message->receiver_id;
-            });
-            
-        $receivedMessages = $this->receivedMessages()
-            ->select('sender_id', 'receiver_id')
-            ->distinct()
-            ->get()
-            ->map(function ($message) {
-                return $message->sender_id;
-            });
-            
-        $conversationUserIds = $sentMessages->merge($receivedMessages)->unique();
+            ->pluck('conversation_user_id');
         
         return User::whereIn('id', $conversationUserIds)->get();
     }
@@ -275,5 +301,13 @@ class User extends Authenticatable
             ->where('reported_user_id', $userId)
             ->where('is_blocked', true)
             ->exists();
+    }
+
+    /**
+     * Get therapist bookings made by this user.
+     */
+    public function therapistBookings()
+    {
+        return $this->hasMany(\App\Models\TherapistBooking::class);
     }
 }

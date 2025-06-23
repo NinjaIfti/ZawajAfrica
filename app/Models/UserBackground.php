@@ -17,6 +17,8 @@ class UserBackground extends Model
     protected $fillable = [
         'user_id',
         'nationality',
+        'ethnic_group',
+        'islamic_affiliation',
         'education',
         'language_spoken',
         'born_reverted',

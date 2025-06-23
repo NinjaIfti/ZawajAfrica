@@ -17,6 +17,9 @@ class AdminMiddleware
     {
         // Check if user is authenticated and is admin
         if (!$request->user() || $request->user()->email !== 'admin@zawagafrica.com') {
+            if ($request->expectsJson() || $request->is('admin/*')) {
+                abort(403, 'Unauthorized');
+            }
             return redirect()->route('dashboard');
         }
 

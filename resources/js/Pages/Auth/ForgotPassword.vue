@@ -1,20 +1,20 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import InputError from '@/Components/InputError.vue';
+    import { Head, Link, useForm } from '@inertiajs/vue3';
+    import InputError from '@/Components/InputError.vue';
 
-defineProps({
-    status: {
-        type: String,
-    },
-});
+    defineProps({
+        status: {
+            type: String,
+        },
+    });
 
-const form = useForm({
-    email: '',
-});
+    const form = useForm({
+        email: '',
+    });
 
-const submit = () => {
-    form.post(route('password.email'));
-};
+    const submit = () => {
+        form.post(route('password.email'));
+    };
 </script>
 
 <template>
@@ -28,22 +28,33 @@ const submit = () => {
 
             <!-- Background with overlay -->
             <div class="absolute inset-0">
-                <img 
-                    src="/images/login.png" 
-                    alt="Background" 
-                    class="h-full w-full object-cover"
-                />
+                <img src="/images/login.png" alt="Background" class="h-full w-full object-cover" />
                 <!-- Purple overlay -->
                 <div class="absolute inset-0 bg-[#654396] opacity-30"></div>
-                
+
                 <!-- Gradient overlay at bottom -->
-                <div class="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-b from-[#65439600] to-[#654396f2]"></div>
+                <div
+                    class="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-b from-[#65439600] to-[#654396f2]"
+                ></div>
             </div>
 
             <!-- Language selector -->
-            <div class="absolute left-[5%] top-[5%] z-10 flex items-center rounded-full bg-[#654396] bg-opacity-70 px-4 py-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+            <div
+                class="absolute left-[5%] top-[5%] z-10 flex items-center rounded-full bg-[#654396] bg-opacity-70 px-4 py-2"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="mr-2 h-5 w-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1"
+                        d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"
+                    />
                 </svg>
                 <span class="text-white">English</span>
             </div>
@@ -69,12 +80,23 @@ const submit = () => {
                 <div class="w-full max-w-[600px] px-8 md:px-[90px]">
                     <!-- Back button -->
                     <div class="mb-8">
-                        <Link 
-                            :href="route('login')" 
+                        <Link
+                            :href="route('login')"
                             class="inline-flex items-center text-gray-700 hover:text-[#654396] transition-colors"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-6 w-6 mr-2"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                                />
                             </svg>
                             <span>Back to Login</span>
                         </Link>
@@ -86,10 +108,7 @@ const submit = () => {
                     </div>
 
                     <!-- Success message -->
-                    <div
-                        v-if="status"
-                        class="mb-6 p-4 rounded-lg bg-green-50 text-green-700 text-lg"
-                    >
+                    <div v-if="status" class="mb-6 p-4 rounded-lg bg-green-50 text-green-700 text-lg">
                         {{ status }}
                     </div>
 
@@ -102,8 +121,19 @@ const submit = () => {
                     <div class="mb-[30px]">
                         <label for="email" class="mb-3 block text-lg text-[#41465a]">Email Address</label>
                         <div class="flex items-center rounded-lg bg-[#F5F5F5] px-5 py-5">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="mr-3 h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="mr-3 h-6 w-6 text-gray-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="1.5"
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                />
                             </svg>
                             <input
                                 id="email"
@@ -133,10 +163,8 @@ const submit = () => {
 
                     <!-- Login link -->
                     <div class="text-center text-lg">
-                        <span>Remember your password? </span>
-                        <Link :href="route('login')" class="text-[#654396] font-medium hover:underline">
-                            Log in!
-                        </Link>
+                        <span>Remember your password?</span>
+                        <Link :href="route('login')" class="text-[#654396] font-medium hover:underline">Log in!</Link>
                     </div>
                 </div>
             </div>
@@ -145,5 +173,5 @@ const submit = () => {
 </template>
 
 <style scoped>
-/* Add any custom styles here if needed */
+    /* Add any custom styles here if needed */
 </style>

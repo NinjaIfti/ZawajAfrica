@@ -35,10 +35,10 @@ class AuthenticatedSessionController extends Controller
 
         // Check if the user is an admin
         if (Auth::user()->email === 'admin@zawagafrica.com') {
-            return redirect()->route('admin.dashboard');
+            return redirect()->route('admin.dashboard')->with('csrf_token', csrf_token());
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('dashboard', absolute: false))->with('csrf_token', csrf_token());
     }
 
     /**

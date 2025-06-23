@@ -1,0 +1,10 @@
+node_modules
+vendor
+bootstrap/cache
+storage
+public/build
+public/hot
+*.min.js
+*.min.css
+.env
+.git 

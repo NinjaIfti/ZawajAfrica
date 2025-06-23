@@ -133,9 +133,9 @@ class OpenAIService
         $basePrompt .= $timeContext;
 
         if ($userId) {
-            // Get user data for personalization
-            $user = \App\Models\User::with(['profile', 'about', 'background', 'lifestyle'])
-                ->find($userId);
+                    // Get user data for personalization
+        $user = \App\Models\User::with(['profile', 'about', 'background', 'lifestyle', 'overview'])
+            ->find($userId);
 
             if ($user) {
                 $personalizationContext = $this->buildPersonalizationContext($user, $userPreferences);
@@ -177,13 +177,16 @@ class OpenAIService
             }
         }
 
-        // Background information
-        if ($user->background) {
-            if ($user->background->religion) {
-                $context[] = "Religion: {$user->background->religion}";
+        // Background information  
+        if ($user->overview) {
+            if ($user->overview->religion) {
+                $context[] = "Religion: {$user->overview->religion}";
             }
-            if ($user->background->ethnicity) {
-                $context[] = "Ethnicity: {$user->background->ethnicity}";
+        }
+        
+        if ($user->background) {
+            if ($user->background->ethnic_group) {
+                $context[] = "Ethnicity: {$user->background->ethnic_group}";
             }
             if ($user->background->education) {
                 $context[] = "Education: {$user->background->education}";

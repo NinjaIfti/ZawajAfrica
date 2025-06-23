@@ -88,7 +88,7 @@ class ProfileController extends Controller
             'bio' => 'nullable|string|max:1000',
             'height' => 'nullable|string|max:10',
             'body_type' => 'nullable|string|max:50',
-            'ethnicity' => 'nullable|string|max:50',
+            'ethnic_group' => 'nullable|string|max:50',
             'religion' => 'nullable|string|max:50',
             'religious_values' => 'nullable|string|max:50',
             'marital_status' => 'nullable|string|max:50',
@@ -115,7 +115,22 @@ class ProfileController extends Controller
             
             // Profile Picture
             'profile_picture' => 'nullable|image|max:2048',
+            
+            // Contact Information (restricted for free users)
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
+            'whatsapp' => 'nullable|string|max:20',
+            'telegram' => 'nullable|string|max:50',
+            'instagram' => 'nullable|string|max:50',
         ]);
+        
+        // Validate profile content for tier restrictions
+        $contentValidation = $this->tierService->validateProfileContent($user, $validated);
+        if (!$contentValidation['valid']) {
+            return Redirect::back()->withErrors([
+                'tier_restriction' => $contentValidation['errors']
+            ])->withInput();
+        }
         
         // Handle profile picture upload if present
         if ($request->hasFile('profile_picture')) {
@@ -128,6 +143,9 @@ class ProfileController extends Controller
             $path = $request->file('profile_picture')->store('profile-pictures', 'public');
             $validated['profile_picture'] = $path;
         }
+        
+        // Record profile update activity
+        $this->tierService->recordActivity($user, 'profile_updates');
         
         // Update or create profile
         $user->createOrUpdateProfile($validated);
@@ -168,35 +186,40 @@ class ProfileController extends Controller
     {
         $currentUser = Auth::user();
         
-        // Check if user can view profiles
-        $canView = $this->tierService->canViewProfile($currentUser);
-        if (!$canView['allowed']) {
+        // Record the profile view and check limits
+        $viewStatus = $this->tierService->recordProfileView($currentUser);
+        if (!$viewStatus['allowed']) {
             return response()->json([
                 'error' => 'Daily profile view limit reached',
-                'limit' => $canView['limit'],
-                'used' => $canView['used'],
+                'limit' => $viewStatus['limit'],
+                'used' => $viewStatus['used'],
                 'tier' => $this->tierService->getUserTier($currentUser),
                 'upgrade_prompt' => true
             ], 429);
         }
-
-        // Record the profile view
-        $this->tierService->recordActivity($currentUser, 'profile_views');
         
         // Find the target user by ID
-        $user = User::with(['appearance', 'lifestyle', 'background', 'about', 'overview', 'photos', 'interests', 'personality'])
+        $user = User::with(['appearance', 'lifestyle', 'background', 'about', 'overview', 'photos', 'interests', 'personality', 'others'])
             ->findOrFail($id);
 
         // Check if viewing elite member requires Platinum access
         $targetUserTier = $this->tierService->getUserTier($user);
         $currentUserLimits = $this->tierService->getUserLimits($currentUser);
         
+        // Enhanced check for elite member access
         if ($targetUserTier === UserTierService::TIER_PLATINUM && !($currentUserLimits['elite_access'] ?? false)) {
-            return response()->json([
-                'error' => 'This is a Platinum Elite member. Upgrade to Platinum to view their profile.',
-                'target_tier' => 'platinum',
-                'upgrade_prompt' => true
-            ], 403);
+            // Double-check that target is actually an active platinum user
+            $isActivePlatinum = $user->subscription_plan === 'platinum' 
+                && $user->subscription_status === 'active'
+                && (!$user->subscription_expires_at || $user->subscription_expires_at->isFuture());
+                
+            if ($isActivePlatinum) {
+                return response()->json([
+                    'error' => 'This is a Platinum Elite member. Upgrade to Platinum to view their profile.',
+                    'target_tier' => 'platinum',
+                    'upgrade_prompt' => true
+                ], 403);
+            }
         }
         
         // Format profile photo URL if it exists
@@ -238,7 +261,7 @@ class ProfileController extends Controller
             'userData' => $user,
             'compatibility' => $compatibility,
             'viewerLimits' => [
-                'remaining_views' => $canView['remaining'],
+                'remaining_views' => $viewStatus['remaining'],
                 'can_access_contact' => $canAccessContact,
                 'show_ads' => $showAds,
                 'tier' => $currentUserTierInfo,

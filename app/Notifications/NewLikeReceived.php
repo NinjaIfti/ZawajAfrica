@@ -7,21 +7,29 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\User;
+use App\Services\ZohoMailService;
+use App\Services\UserTierService;
+use App\Traits\ZohoMailTemplate;
 
 class NewLikeReceived extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, ZohoMailTemplate;
 
     private User $liker;
-    private bool $canReveal;
+    private User $receiver;
+    private string $receiverTier;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(User $liker, bool $canReveal = false)
+    public function __construct(User $liker, User $receiver)
     {
         $this->liker = $liker;
-        $this->canReveal = $canReveal;
+        $this->receiver = $receiver;
+        
+        // Determine receiver's tier to decide if we can reveal liker's name
+        $tierService = app(UserTierService::class);
+        $this->receiverTier = $tierService->getUserTier($receiver);
     }
 
     /**
@@ -31,7 +39,21 @@ class NewLikeReceived extends Notification implements ShouldQueue
      */
     public function via($notifiable)
     {
-        return ['database'];
+        // Send both database (in-app) and mail (Zoho email) notifications
+        return ['database', 'mail'];
+    }
+
+    /**
+     * Check if we can reveal the liker's name based on receiver's tier
+     */
+    private function canRevealLiker(): bool
+    {
+        // Free users see anonymous messages, paid users see actual names
+        return in_array($this->receiverTier, [
+            UserTierService::TIER_BASIC,
+            UserTierService::TIER_GOLD, 
+            UserTierService::TIER_PLATINUM
+        ]);
     }
 
     /**
@@ -39,16 +61,38 @@ class NewLikeReceived extends Notification implements ShouldQueue
      */
     public function toMail($notifiable)
     {
-        return (new MailMessage)
-            ->subject('💕 Someone likes you on ZawajAfrica!')
-            ->greeting('Salam Alaikum ' . $notifiable->name . '!')
-            ->line($this->canReveal 
-                ? $this->liker->name . ' has liked your profile!'
-                : 'Someone has liked your profile!')
-            ->line('Check out who\'s interested in you and maybe like them back!')
-            ->action('View Messages', url('/messages'))
-            ->line('May Allah bless your search for a righteous partner!')
-            ->salutation('Best wishes, The ZawajAfrica Team');
+        // Configure Zoho Mail before sending
+        $zohoMailService = app(ZohoMailService::class);
+        $zohoMailService->configureMailer();
+
+        $canReveal = $this->canRevealLiker();
+        
+        if ($canReveal) {
+            // For paid users - show actual liker's name
+            $subject = '💕 ' . $this->liker->name . ' likes you on ZawajAfrica!';
+            $mainMessage = $this->liker->name . ' has liked your profile!';
+            $encouragement = 'Check out their profile and maybe like them back for a potential match!';
+        } else {
+            // For free users - anonymous message with upgrade prompt
+            $subject = '💕 Someone likes you on ZawajAfrica!';
+            $mainMessage = 'Someone has liked your profile!';
+            $encouragement = 'Upgrade to a paid plan to see who liked you and unlock more features!';
+        }
+
+        $message = $this->createMatchEmail($subject, $notifiable->name)
+            ->line($mainMessage)
+            ->line($encouragement);
+
+        if ($canReveal) {
+            $message->action('View Their Profile', url('/matches/profile/' . $this->liker->id));
+        } else {
+            $message->action('Upgrade Now', url('/subscription'));
+        }
+
+        return $message
+            ->line('Don\'t miss out on potential connections!')
+            ->addIslamicBlessing($message)
+            ->addProfessionalFooter($message);
     }
 
     /**

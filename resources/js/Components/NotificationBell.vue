@@ -7,12 +7,7 @@
             :class="{ 'text-green-600': hasUnread }"
         >
             <!-- Bell Icon -->
-            <svg
-                class="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-            >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -20,7 +15,7 @@
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                 />
             </svg>
-            
+
             <!-- Badge for unread count -->
             <span
                 v-if="unreadCount > 0"
@@ -53,15 +48,32 @@
             <div class="max-h-96 overflow-y-auto">
                 <div v-if="loading" class="px-4 py-8 text-center text-gray-500">
                     <svg class="w-6 h-6 mx-auto animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                     </svg>
                     <p class="mt-2">Loading notifications...</p>
                 </div>
 
                 <div v-else-if="notifications.length === 0" class="px-4 py-8 text-center text-gray-500">
                     <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        <path
+                            stroke="currentColor"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                        />
                     </svg>
                     <p>No notifications yet</p>
                     <p class="text-sm">We'll notify you when something happens!</p>
@@ -82,7 +94,12 @@
                                     class="w-8 h-8 rounded-full flex items-center justify-center"
                                     :class="getIconBgClass(notification.data.color || 'gray')"
                                 >
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg
+                                        class="w-4 h-4 text-white"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
                                         <path
                                             v-if="notification.data.icon === 'heart'"
                                             stroke-linecap="round"
@@ -197,136 +214,136 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
-import axios from 'axios'
+    import { ref, onMounted, onUnmounted, computed } from 'vue';
+    import { Link, router } from '@inertiajs/vue3';
+    import axios from 'axios';
 
-export default {
-    name: 'NotificationBell',
-    components: {
-        Link
-    },
-    setup() {
-        const isOpen = ref(false)
-        const loading = ref(false)
-        const notifications = ref([])
-        const unreadCount = ref(0)
-        const dropdown = ref(null)
+    export default {
+        name: 'NotificationBell',
+        components: {
+            Link,
+        },
+        setup() {
+            const isOpen = ref(false);
+            const loading = ref(false);
+            const notifications = ref([]);
+            const unreadCount = ref(0);
+            const dropdown = ref(null);
 
-        const hasUnread = computed(() => unreadCount.value > 0)
+            const hasUnread = computed(() => unreadCount.value > 0);
 
-        const toggleDropdown = () => {
-            isOpen.value = !isOpen.value
-            if (isOpen.value) {
-                fetchNotifications()
-            }
-        }
-
-        const closeDropdown = () => {
-            isOpen.value = false
-        }
-
-        const fetchNotifications = async () => {
-            loading.value = true
-            try {
-                const response = await axios.get('/notifications/unread')
-                notifications.value = response.data.notifications
-                unreadCount.value = response.data.unread_count
-            } catch (error) {
-                console.error('Failed to fetch notifications:', error)
-            } finally {
-                loading.value = false
-            }
-        }
-
-        const markAllAsRead = async () => {
-            try {
-                await axios.patch('/notifications/mark-all-read')
-                notifications.value.forEach(n => n.read_at = new Date().toISOString())
-                unreadCount.value = 0
-            } catch (error) {
-                console.error('Failed to mark notifications as read:', error)
-            }
-        }
-
-        const handleNotificationClick = async (notification) => {
-            // Mark as read if unread
-            if (!notification.read_at) {
-                try {
-                    await axios.patch(`/notifications/${notification.id}/read`)
-                    notification.read_at = new Date().toISOString()
-                    unreadCount.value = Math.max(0, unreadCount.value - 1)
-                } catch (error) {
-                    console.error('Failed to mark notification as read:', error)
+            const toggleDropdown = () => {
+                isOpen.value = !isOpen.value;
+                if (isOpen.value) {
+                    fetchNotifications();
                 }
-            }
+            };
 
-            // Navigate to action URL if provided
-            if (notification.data.action_url) {
-                closeDropdown()
-                router.visit(notification.data.action_url)
-            }
-        }
+            const closeDropdown = () => {
+                isOpen.value = false;
+            };
 
-        const getIconBgClass = (color) => {
-            const colors = {
-                purple: 'bg-purple-500',
-                blue: 'bg-blue-500',
-                green: 'bg-green-500',
-                indigo: 'bg-indigo-500',
-                gray: 'bg-gray-500',
-                orange: 'bg-orange-500',
-                red: 'bg-red-500'
-            }
-            return colors[color] || 'bg-gray-500'
-        }
+            const fetchNotifications = async () => {
+                loading.value = true;
+                try {
+                    const response = await axios.get('/notifications/unread');
+                    notifications.value = response.data.notifications;
+                    unreadCount.value = response.data.unread_count;
+                } catch (error) {
+                    console.error('Failed to fetch notifications:', error);
+                } finally {
+                    loading.value = false;
+                }
+            };
 
-        const formatTime = (timestamp) => {
-            const date = new Date(timestamp)
-            const now = new Date()
-            const diffMs = now - date
-            const diffMins = Math.floor(diffMs / 60000)
-            const diffHours = Math.floor(diffMs / 3600000)
-            const diffDays = Math.floor(diffMs / 86400000)
+            const markAllAsRead = async () => {
+                try {
+                    await axios.patch('/notifications/mark-all-read');
+                    notifications.value.forEach(n => (n.read_at = new Date().toISOString()));
+                    unreadCount.value = 0;
+                } catch (error) {
+                    console.error('Failed to mark notifications as read:', error);
+                }
+            };
 
-            if (diffMins < 1) return 'Just now'
-            if (diffMins < 60) return `${diffMins}m ago`
-            if (diffHours < 24) return `${diffHours}h ago`
-            if (diffDays < 7) return `${diffDays}d ago`
-            return date.toLocaleDateString()
-        }
+            const handleNotificationClick = async notification => {
+                // Mark as read if unread
+                if (!notification.read_at) {
+                    try {
+                        await axios.patch(`/notifications/${notification.id}/read`);
+                        notification.read_at = new Date().toISOString();
+                        unreadCount.value = Math.max(0, unreadCount.value - 1);
+                    } catch (error) {
+                        console.error('Failed to mark notification as read:', error);
+                    }
+                }
 
-        // Handle clicks outside dropdown
-        const handleClickOutside = (event) => {
-            if (dropdown.value && !dropdown.value.contains(event.target)) {
-                closeDropdown()
-            }
-        }
+                // Navigate to action URL if provided
+                if (notification.data.action_url) {
+                    closeDropdown();
+                    router.visit(notification.data.action_url);
+                }
+            };
 
-        onMounted(() => {
-            document.addEventListener('click', handleClickOutside)
-            fetchNotifications() // Initial load for count
-        })
+            const getIconBgClass = color => {
+                const colors = {
+                    purple: 'bg-purple-500',
+                    blue: 'bg-blue-500',
+                    green: 'bg-green-500',
+                    indigo: 'bg-indigo-500',
+                    gray: 'bg-gray-500',
+                    orange: 'bg-orange-500',
+                    red: 'bg-red-500',
+                };
+                return colors[color] || 'bg-gray-500';
+            };
 
-        onUnmounted(() => {
-            document.removeEventListener('click', handleClickOutside)
-        })
+            const formatTime = timestamp => {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
 
-        return {
-            isOpen,
-            loading,
-            notifications,
-            unreadCount,
-            hasUnread,
-            dropdown,
-            toggleDropdown,
-            closeDropdown,
-            fetchNotifications,
-            markAllAsRead,
-            handleNotificationClick,
-            getIconBgClass,
-            formatTime
-        }
-    }
-}
-</script> 
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                return date.toLocaleDateString();
+            };
+
+            // Handle clicks outside dropdown
+            const handleClickOutside = event => {
+                if (dropdown.value && !dropdown.value.contains(event.target)) {
+                    closeDropdown();
+                }
+            };
+
+            onMounted(() => {
+                document.addEventListener('click', handleClickOutside);
+                fetchNotifications(); // Initial load for count
+            });
+
+            onUnmounted(() => {
+                document.removeEventListener('click', handleClickOutside);
+            });
+
+            return {
+                isOpen,
+                loading,
+                notifications,
+                unreadCount,
+                hasUnread,
+                dropdown,
+                toggleDropdown,
+                closeDropdown,
+                fetchNotifications,
+                markAllAsRead,
+                handleNotificationClick,
+                getIconBgClass,
+                formatTime,
+            };
+        },
+    };
+</script>

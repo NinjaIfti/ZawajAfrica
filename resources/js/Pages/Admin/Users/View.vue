@@ -1,43 +1,69 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
-import AdminLayout from '@/Layouts/AdminLayout.vue';
+    import { Head, Link, router } from '@inertiajs/vue3';
+    import AdminLayout from '@/Layouts/AdminLayout.vue';
 
-const props = defineProps({
-    user: Object,
-});
-
-const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+    const props = defineProps({
+        user: Object,
     });
-};
 
-const calculateAge = (user) => {
-    if (!user.dob_day || !user.dob_month || !user.dob_year) {
-        return 'N/A';
-    }
-    
-    const monthMap = {
-        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 
-        'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 
-        'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    const formatDate = dateString => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
     };
-    
-    const month = monthMap[user.dob_month];
-    const birthDate = new Date(user.dob_year, month, user.dob_day);
-    const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        return age - 1;
-    }
-    
-    return age;
-};
+
+    const calculateAge = user => {
+        if (!user.dob_day || !user.dob_month || !user.dob_year) {
+            return 'N/A';
+        }
+
+        const monthMap = {
+            Jan: 0,
+            Feb: 1,
+            Mar: 2,
+            Apr: 3,
+            May: 4,
+            Jun: 5,
+            Jul: 6,
+            Aug: 7,
+            Sep: 8,
+            Oct: 9,
+            Nov: 10,
+            Dec: 11,
+        };
+
+        const month = monthMap[user.dob_month];
+        const birthDate = new Date(user.dob_year, month, user.dob_day);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            return age - 1;
+        }
+
+        return age;
+    };
+
+    const deleteUser = () => {
+        if (
+            confirm(
+                `Are you sure you want to delete ${props.user.name}? This will permanently delete the user and ALL their data including photos, messages, bookings, and cannot be undone.`
+            )
+        ) {
+            router.delete(route('admin.users.delete', { userId: props.user.id }), {
+                onSuccess: () => {
+                    // The user will be redirected to the users list page
+                },
+                onError: errors => {
+                    alert('Failed to delete user: ' + (errors.message || 'Unknown error'));
+                },
+            });
+        }
+    };
 </script>
 
 <template>
@@ -46,13 +72,20 @@ const calculateAge = (user) => {
     <AdminLayout>
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
-                
                 <!-- Header -->
                 <div class="flex items-center justify-between">
                     <h1 class="text-2xl font-bold text-gray-900">{{ user.name }}'s Profile</h1>
-                    <Link :href="route('admin.users')" class="text-indigo-600 hover:text-indigo-900">
-                        ← Back to Users
-                    </Link>
+                    <div class="flex items-center space-x-4">
+                        <button
+                            @click="deleteUser"
+                            class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                        >
+                            Delete User
+                        </button>
+                        <Link :href="route('admin.users')" class="text-indigo-600 hover:text-indigo-900">
+                            ← Back to Users
+                        </Link>
+                    </div>
                 </div>
 
                 <!-- Basic Info Card -->
@@ -92,13 +125,17 @@ const calculateAge = (user) => {
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Verification Status</label>
-                                <span class="mt-1 inline-flex rounded-full px-2 py-1 text-xs font-medium"
-                                      :class="{
-                                          'bg-green-100 text-green-800': user.is_verified,
-                                          'bg-yellow-100 text-yellow-800': !user.is_verified && user.verification?.status === 'pending',
-                                          'bg-red-100 text-red-800': !user.is_verified && user.verification?.status === 'rejected',
-                                          'bg-gray-100 text-gray-800': !user.is_verified && !user.verification
-                                      }">
+                                <span
+                                    class="mt-1 inline-flex rounded-full px-2 py-1 text-xs font-medium"
+                                    :class="{
+                                        'bg-green-100 text-green-800': user.is_verified,
+                                        'bg-yellow-100 text-yellow-800':
+                                            !user.is_verified && user.verification?.status === 'pending',
+                                        'bg-red-100 text-red-800':
+                                            !user.is_verified && user.verification?.status === 'rejected',
+                                        'bg-gray-100 text-gray-800': !user.is_verified && !user.verification,
+                                    }"
+                                >
                                     <template v-if="user.is_verified">Verified</template>
                                     <template v-else-if="user.verification?.status === 'pending'">Pending</template>
                                     <template v-else-if="user.verification?.status === 'rejected'">Rejected</template>
@@ -110,13 +147,16 @@ const calculateAge = (user) => {
                 </div>
 
                 <!-- Photos Section -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg" v-if="user.photos && user.photos.length > 0">
+                <div
+                    class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
+                    v-if="user.photos && user.photos.length > 0"
+                >
                     <div class="p-6 bg-white border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Photos ({{ user.photos.length }})</h3>
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <div v-for="photo in user.photos" :key="photo.id" class="relative">
-                                <img 
-                                    :src="photo.url" 
+                                <img
+                                    :src="photo.url"
                                     :alt="`Photo ${photo.id}`"
                                     class="w-full h-48 object-cover rounded-lg shadow-sm"
                                 />
@@ -167,14 +207,15 @@ const calculateAge = (user) => {
                 </div>
 
                 <!-- No Data Message -->
-                <div v-if="!user.photos?.length && !user.about && !user.appearance" 
-                     class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div
+                    v-if="!user.photos?.length && !user.about && !user.appearance"
+                    class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
+                >
                     <div class="p-6 text-center">
                         <p class="text-gray-500">This user hasn't completed their profile yet.</p>
                     </div>
                 </div>
-
             </div>
         </div>
     </AdminLayout>
-</template> 
+</template>

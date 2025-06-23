@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\MatchController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Middleware\TierAccessMiddleware;
+use Illuminate\Http\Request;
 
 // Include admin routes
 require __DIR__.'/admin.php';
@@ -45,12 +48,10 @@ Route::get('/dashboard', function () {
         $user->profile_photo = asset('storage/' . $user->profile_photo);
     }
     
-    // Get all users except the current user as potential matches
-    $potentialMatches = \App\Models\User::where('id', '!=', $user->id)
-        ->where('email', '!=', 'admin@zawagafrica.com') // Exclude admin user
-        ->with('photos') // Include photos relationship if available
-        ->take(10) // Limit to 10 matches for now
-        ->get();
+    // Get potential matches using the MatchingService for real compatibility scores
+    $matchingService = app(\App\Services\MatchingService::class);
+    $matchResults = $matchingService->getMatches($user, [], 10);
+    $potentialMatches = $matchResults['matches']; // Use the formatted matches directly
     
     // Get active therapists for the widget
     $therapists = \App\Models\Therapist::where('status', 'active')
@@ -61,19 +62,8 @@ Route::get('/dashboard', function () {
             return $therapist;
         });
     
-    // Format photos URLs for potential matches
-    foreach ($potentialMatches as $potentialMatch) {
-        if ($potentialMatch->profile_photo) {
-            $potentialMatch->profile_photo = asset('storage/' . $potentialMatch->profile_photo);
-        }
-        
-        // Format photos URLs
-        if ($potentialMatch->photos) {
-            foreach ($potentialMatch->photos as $photo) {
-                $photo->url = asset('storage/' . $photo->photo_path);
-            }
-        }
-    }
+    // Photos are already formatted by the MatchingService
+    // No additional processing needed for potential matches
     
     // Get tier information
     $tierService = app(App\Services\UserTierService::class);
@@ -144,7 +134,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/me/faqs/update', [App\Http\Controllers\Me\FAQsController::class, 'update'])->name('me.faqs.update');
     
     // Matches routes (API only - no index page)
-    Route::post('/matches/like', [App\Http\Controllers\MatchController::class, 'like'])->name('matches.like');
     Route::post('/matches/pass', [App\Http\Controllers\MatchController::class, 'pass'])->name('matches.pass');
     Route::get('/matches/filters', [App\Http\Controllers\MatchController::class, 'getFilters'])->name('matches.filters');
     Route::get('/matches/ai-suggestions', [App\Http\Controllers\MatchController::class, 'getAISuggestions'])->name('matches.ai-suggestions');
@@ -179,7 +168,37 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications/settings', [App\Http\Controllers\NotificationController::class, 'getSettings'])->name('notifications.settings.get');
     Route::post('/notifications/settings', [App\Http\Controllers\NotificationController::class, 'updateSettings'])->name('notifications.settings.update');
 
-
+    // Tier usage API
+    Route::get('/api/tier-usage', function () {
+        $user = Auth::user();
+        $tierService = app(\App\Services\UserTierService::class);
+        
+        $tier = $tierService->getUserTier($user);
+        $tierInfo = $tierService->getTierInfo($tier);
+        $limits = $tierService->getUserLimits($user);
+        $dailyUsage = $tierService->getDailyUsageSummary($user);
+        
+        // Get profile view status
+        $profileViewStatus = $tierService->canViewProfile($user);
+        
+        // Get messaging status
+        $messagingStatus = $tierService->canSendMessage($user);
+        
+        return response()->json([
+            'tier' => $tier,
+            'tier_info' => $tierInfo,
+            'limits' => $limits,
+            'daily_usage' => [
+                'profile_views' => $profileViewStatus,
+                'messages' => $messagingStatus
+            ],
+            'today_count' => [
+                'profile_views' => $tierService->getTodayCount($user, 'profile_views'),
+                'messages_sent' => $tierService->getTodayCount($user, 'messages_sent')
+            ],
+            'upgrade_suggestions' => $tierService->getUpgradeSuggestions($user)
+        ]);
+    })->name('api.tier-usage');
 });
 
 // Verification routes
@@ -197,6 +216,8 @@ Route::get('/profile/{id}', [ProfileController::class, 'show'])->name('profile.s
 
 // Profile view for matches
 Route::get('/matches/profile/{id}', function($id) {
+    $currentUser = auth()->user();
+    
     // Get the user by ID with all related data
     $user = \App\Models\User::with([
         'photos', 
@@ -207,11 +228,31 @@ Route::get('/matches/profile/{id}', function($id) {
         'about',
         'interests',
         'personality',
-        'overview'
+        'overview',
+        'others'
     ])->findOrFail($id);
     
-    // Calculate compatibility (mock for now)
-    $compatibility = rand(70, 99);
+    // Calculate real compatibility using MatchingService
+    $matchingService = app(\App\Services\MatchingService::class);
+    $compatibilityScore = 85; // Default fallback
+    
+    try {
+        // Use the same scoring logic from MatchingService
+        $reflection = new ReflectionClass($matchingService);
+        $scoreMatches = $reflection->getMethod('scoreMatches');
+        $scoreMatches->setAccessible(true);
+        
+        // Create a collection with just this user to calculate compatibility
+        $userCollection = collect([$user]);
+        $scoredUsers = $scoreMatches->invokeArgs($matchingService, [$currentUser, $userCollection]);
+        
+        if ($scoredUsers->isNotEmpty()) {
+            $compatibilityScore = $scoredUsers->first()->compatibility_score ?? 85;
+        }
+    } catch (\Exception $e) {
+        // Fallback to default score if calculation fails
+        $compatibilityScore = 85;
+    }
     
     // Format profile photo URL if it exists
     if ($user->profile_photo) {
@@ -225,10 +266,19 @@ Route::get('/matches/profile/{id}', function($id) {
         }
     }
     
+    // Get user tier information
+    $tierService = app(\App\Services\UserTierService::class);
+    $userTier = $tierService->getUserTier($currentUser);
+    
+    // Check if users are matched
+    $isMatched = \App\Models\UserMatch::areMatched($currentUser->id, $id);
+    
     return Inertia::render('Profile/View', [
         'id' => $id,
         'userData' => $user,
-        'compatibility' => $compatibility
+        'compatibility' => $compatibilityScore,
+        'userTier' => $userTier,
+        'isMatched' => $isMatched
     ]);
 })->middleware(['auth'])->name('profile.view');
 
@@ -335,6 +385,7 @@ Route::get('/test-therapist-booking', function () {
 })->name('test.therapist.booking');
 
 Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook');
+Route::post('/monnify/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('monnify.webhook');
 
 // Test route for payment success modal
 Route::get('/test-payment-success', function () {
@@ -494,28 +545,8 @@ Route::get('/test-zoho-bookings', function () {
     }
 })->middleware('auth')->name('test.zoho.bookings');
 
-// API endpoint for tier usage information
-Route::middleware('auth')->get('/api/tier-usage', function () {
-    $user = Auth::user();
-    $tierService = app(\App\Services\UserTierService::class);
-    
-    return response()->json([
-        'tier' => $tierService->getUserTier($user),
-        'tier_info' => $tierService->getTierInfo($tierService->getUserTier($user)),
-        'limits' => $tierService->getUserLimits($user),
-        'daily_usage' => [
-            'profile_views' => $tierService->canViewProfile($user),
-            'messages' => $tierService->canSendMessage($user),
-        ],
-        'today_count' => [
-            'profile_views' => $tierService->getTodayCount($user, 'profile_views'),
-            'messages_sent' => $tierService->getTodayCount($user, 'messages_sent'),
-        ]
-    ]);
-});
-
 // Matches routes (for authenticated users)
-Route::middleware(['auth', 'verified', TierAccessMiddleware::class])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Like/Pass functionality (API endpoints)
     Route::post('/api/matches/{user}/like', [MatchController::class, 'like'])->name('matches.like');
     Route::post('/api/matches/{user}/pass', [MatchController::class, 'pass'])->name('matches.pass');
@@ -525,6 +556,74 @@ Route::middleware(['auth', 'verified', TierAccessMiddleware::class])->group(func
     Route::post('/api/matches/filter', [MatchController::class, 'filter'])->name('matches.filter');
 });
 
+// API route to get fresh CSRF token
+Route::get('/api/csrf-token', function () {
+    return response()->json([
+        'csrf_token' => csrf_token(),
+        'timestamp' => now()->toISOString()
+    ]);
+})->name('api.csrf-token');
 
+// Test route for verification notifications (admin only)
+Route::get('/test-verification-emails', function () {
+    try {
+        // Check if user is admin
+        $currentUser = auth()->user();
+        if (!$currentUser || $currentUser->email !== 'admin@zawagafrica.com') {
+            return response()->json([
+                'error' => 'Access denied. Admin only.'
+            ], 403);
+        }
+
+        // Get Zoho Mail service status
+        $zohoMailService = app(\App\Services\ZohoMailService::class);
+        $mailStatus = $zohoMailService->getStatus();
+        
+        // Get user verification statistics
+        $verificationStats = [
+            'total_users' => \App\Models\User::count(),
+            'pending_verifications' => \App\Models\Verification::where('status', 'pending')->count(),
+            'approved_verifications' => \App\Models\Verification::where('status', 'approved')->count(),
+            'rejected_verifications' => \App\Models\Verification::where('status', 'rejected')->count(),
+        ];
+        
+        // Get a test user (first non-admin user)
+        $testUser = \App\Models\User::where('email', '!=', 'admin@zawagafrica.com')->first();
+        
+        $response = [
+            'mail_service' => [
+                'configured' => $mailStatus['configured'],
+                'smtp_host' => $mailStatus['smtp_host'],
+                'from_address' => $mailStatus['from_address'],
+                'from_name' => $mailStatus['from_name']
+            ],
+            'verification_stats' => $verificationStats,
+            'test_user' => $testUser ? [
+                'id' => $testUser->id,
+                'name' => $testUser->name,
+                'email' => $testUser->email,
+                'is_verified' => $testUser->is_verified ?? false,
+                'has_verification_record' => $testUser->verification ? true : false,
+                'verification_status' => $testUser->verification->status ?? 'none'
+            ] : null,
+            'notification_classes' => [
+                'approval' => 'App\\Notifications\\VerificationApproved',
+                'rejection' => 'App\\Notifications\\VerificationRejected'
+            ],
+            'test_commands' => [
+                'Test approval email' => 'php artisan verification:test-email --user-id=1 --type=approved',
+                'Test rejection email' => 'php artisan verification:test-email --user-id=1 --type=rejected'
+            ]
+        ];
+        
+        return response()->json($response, 200, [], JSON_PRETTY_PRINT);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Test failed: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+})->middleware('auth')->name('test.verification.emails');
 
 require __DIR__.'/auth.php';

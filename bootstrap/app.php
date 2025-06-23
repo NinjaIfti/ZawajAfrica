@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\EnsureFreshCsrfToken::class,
         ]);
         
         // Register admin middleware
@@ -21,11 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'verified.user' => \App\Http\Middleware\VerifiedUserMiddleware::class,
             'tier.access' => \App\Http\Middleware\TierAccessMiddleware::class,
+            'fresh.csrf' => \App\Http\Middleware\EnsureFreshCsrfToken::class,
         ]);
         
         // Exclude webhook from CSRF protection
         $middleware->validateCsrfTokens(except: [
             'paystack/webhook',
+            'monnify/webhook',
         ]);
 
         //
