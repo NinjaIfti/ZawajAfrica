@@ -143,10 +143,8 @@ class MatchingService
             ->where('email', '!=', 'admin@zawagafrica.com')
             ->whereNotNull('profile_photo');
 
-        // REMOVED: Restrict elite member visibility to Platinum users only
-        // This was causing asymmetric visibility where free users couldn't see platinum users
-        // but platinum users could see everyone. Commenting out for symmetric matching.
-        
+        // Restrict elite member visibility to Platinum users only
+        // COMMENTED OUT: Allow all users to see all users regardless of tier
         /*
         if ($userTier !== UserTierService::TIER_PLATINUM) {
             $query->where(function($q) {

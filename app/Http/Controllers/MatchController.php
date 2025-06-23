@@ -161,15 +161,60 @@ class MatchController extends Controller
         }
 
         // Send notifications outside transaction
-        $senderUserTier = $this->tierService->getUserTier($currentUser);
-        $canRevealLiker = in_array($senderUserTier, [UserTierService::TIER_BASIC, UserTierService::TIER_GOLD, UserTierService::TIER_PLATINUM]);
-        
         if ($matchCreated) {
             // Send match notifications to both users
-            $currentUser->notify(new NewMatchFound($targetUser));
-            $targetUser->notify(new NewMatchFound($currentUser));
+            try {
+                // Send notification to first user (current user)
+                $currentUser->notify(new NewMatchFound($targetUser));
+                \Log::info('Match notification sent to first user', [
+                    'user_id' => $currentUser->id,
+                    'user_name' => $currentUser->name,
+                    'user_email' => $currentUser->email,
+                    'match_with' => $targetUser->name
+                ]);
+                
+                // Send notification to second user (target user)
+                $targetUser->notify(new NewMatchFound($currentUser));
+                \Log::info('Match notification sent to second user', [
+                    'user_id' => $targetUser->id,
+                    'user_name' => $targetUser->name,
+                    'user_email' => $targetUser->email,
+                    'match_with' => $currentUser->name
+                ]);
+                
+                \Log::info('Both match notifications sent successfully', [
+                    'user_1' => $currentUser->id,
+                    'user_2' => $targetUserId
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send match notifications', [
+                    'user_1' => $currentUser->id,
+                    'user_2' => $targetUserId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
         } else {
-            $targetUser->notify(new NewLikeReceived($currentUser, $canRevealLiker));
+            // Send like notification (will auto-determine if name should be revealed based on receiver's tier)
+            try {
+                $targetUser->notify(new NewLikeReceived($currentUser, $targetUser));
+                \Log::info('Like notification sent successfully', [
+                    'liker_id' => $currentUser->id,
+                    'liker_name' => $currentUser->name,
+                    'receiver_id' => $targetUserId,
+                    'receiver_name' => $targetUser->name,
+                    'receiver_email' => $targetUser->email,
+                    'receiver_tier' => $this->tierService->getUserTier($targetUser)
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send like notification', [
+                    'liker_id' => $currentUser->id,
+                    'receiver_id' => $targetUserId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Don't throw here - we want the like to still be processed even if notification fails
+            }
         }
 
         // Increment rate limiting counter after successful operation

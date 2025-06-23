@@ -11,7 +11,7 @@ use App\Services\ZohoMailService;
 use App\Services\UserTierService;
 use App\Traits\ZohoMailTemplate;
 
-class NewLikeReceived extends Notification implements ShouldQueue
+class NewLikeReceived extends Notification // Remove ShouldQueue for immediate processing
 {
     use Queueable, ZohoMailTemplate;
 
@@ -89,10 +89,11 @@ class NewLikeReceived extends Notification implements ShouldQueue
             $message->action('Upgrade Now', url('/subscription'));
         }
 
-        return $message
-            ->line('Don\'t miss out on potential connections!')
-            ->addIslamicBlessing($message)
-            ->addProfessionalFooter($message);
+        return $this->addIslamicBlessing(
+            $this->addProfessionalFooter(
+                $message->line('Don\'t miss out on potential connections!')
+            )
+        );
     }
 
     /**
@@ -102,19 +103,25 @@ class NewLikeReceived extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        if ($this->canReveal) {
+        $canReveal = $this->canRevealLiker();
+        
+        if ($canReveal) {
+            // For paid users - show actual liker's name and photo
             return [
                 'title' => 'New Like Received! 💕',
                 'message' => $this->liker->name . ' liked your profile!',
                 'icon' => 'heart',
                 'color' => 'pink',
-                'action_text' => null, // No clickable action
-                'action_url' => null,  // Not clickable
+                'action_text' => 'View Profile',
+                'action_url' => route('profile.view', ['id' => $this->liker->id]),
                 'liker_id' => $this->liker->id,
                 'liker_name' => $this->liker->name,
-                'liker_photo' => $this->liker->profile_photo ? asset('storage/' . $this->liker->profile_photo) : null
+                'liker_photo' => $this->liker->profile_photo ? asset('storage/' . $this->liker->profile_photo) : null,
+                'can_reveal' => true,
+                'receiver_tier' => $this->receiverTier
             ];
         } else {
+            // For free users - anonymous message with upgrade prompt
             return [
                 'title' => 'Someone likes you! 💕',
                 'message' => 'Someone liked your profile! Upgrade to see who it was.',
@@ -124,7 +131,9 @@ class NewLikeReceived extends Notification implements ShouldQueue
                 'action_url' => route('subscription.index'),
                 'liker_id' => null,
                 'liker_name' => null,
-                'liker_photo' => null
+                'liker_photo' => null,
+                'can_reveal' => false,
+                'receiver_tier' => $this->receiverTier
             ];
         }
     }

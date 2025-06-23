@@ -7,10 +7,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\User;
+use App\Services\ZohoMailService;
+use App\Traits\ZohoMailTemplate;
 
-class NewMatchFound extends Notification implements ShouldQueue
+class NewMatchFound extends Notification // Remove ShouldQueue for immediate processing
 {
-    use Queueable;
+    use Queueable, ZohoMailTemplate;
 
     private User $match;
 
@@ -37,14 +39,43 @@ class NewMatchFound extends Notification implements ShouldQueue
      */
     public function toMail($notifiable)
     {
-        return (new MailMessage)
-            ->subject('🌟 New Match Found on ZawajAfrica!')
-            ->greeting('Salam Alaikum ' . $notifiable->name . '!')
-            ->line('Great news! We found a new potential match for you.')
-            ->line('**' . $this->match->name . '** has joined ZawajAfrica and matches your preferences.')
-            ->action('View Profile', url('/matches/profile/' . $this->match->id))
-            ->line('Don\'t miss this opportunity to connect with someone special!')
-            ->salutation('Best wishes for your journey, The ZawajAfrica Team');
+        // Log the email sending attempt
+        \Log::info('NewMatchFound toMail called', [
+            'recipient_id' => $notifiable->id,
+            'recipient_name' => $notifiable->name,
+            'recipient_email' => $notifiable->email,
+            'match_with' => $this->match->name
+        ]);
+
+        // Configure Zoho Mail before sending
+        $zohoMailService = app(ZohoMailService::class);
+        $zohoMailService->configureMailer();
+
+        $subject = '🌟 It\'s a Match! You and ' . $this->match->name . ' liked each other!';
+
+        $message = $this->createMatchEmail($subject, $notifiable->name)
+            ->line('🎉 **Congratulations!** You have a new match!')
+            ->line('You and **' . $this->match->name . '** both liked each other!')
+            ->line('')
+            ->line('This means you can now start messaging each other and get to know one another better.')
+            ->action('Start Messaging', url('/messages'))
+            ->line('**Next Steps:**')
+            ->line('• Send a thoughtful first message')
+            ->line('• Be genuine and respectful in your conversations')
+            ->line('• Take your time to get to know each other')
+            ->line('')
+            ->line('We\'re excited to see where this connection leads!');
+
+        $finalMessage = $this->addIslamicBlessing(
+            $this->addProfessionalFooter($message)
+        );
+
+        \Log::info('NewMatchFound email prepared successfully', [
+            'recipient_email' => $notifiable->email,
+            'subject' => $subject
+        ]);
+
+        return $finalMessage;
     }
 
     /**
