@@ -144,9 +144,24 @@ class UserTierService
     /**
      * Check if user can send messages
      */
-    public function canSendMessage(User $user): array
+    public function canSendMessage(User $user, User $receiver = null): array
     {
+        // If user is free tier, check additional conditions
         if ($this->getUserTier($user) === self::TIER_FREE) {
+            // If receiver is provided, check if they're matched
+            if ($receiver) {
+                $isMatched = \App\Models\UserMatch::areMatched($user->id, $receiver->id);
+                if ($isMatched) {
+                    // Matched users can message each other regardless of tier
+                    return [
+                        'allowed' => true,
+                        'reason' => 'matched_users',
+                        'message' => 'You can message this user because you are matched.'
+                    ];
+                }
+            }
+            
+            // Free users without matches cannot send messages
             return [
                 'allowed' => false,
                 'reason' => 'free_tier_restriction',
@@ -341,15 +356,20 @@ class UserTierService
         $senderTier = $this->getUserTier($sender);
         $recipientTier = $this->getUserTier($recipient);
         
-        // Free users cannot message other free users
+        // Free users cannot message other free users UNLESS they are matched
         if ($senderTier === self::TIER_FREE && $recipientTier === self::TIER_FREE) {
+            // Check if they have an active match
+            $hasMatch = \App\Models\UserMatch::areMatched($sender->id, $recipient->id);
+            
+            if (!$hasMatch) {
             return [
                 'requires_upgrade' => true,
-                'message' => 'Free users cannot message other free users. Upgrade to Basic to start conversations!',
+                    'message' => 'Free users can only message matched users. Upgrade to Basic to message anyone!',
                 'upgrade_url' => route('subscription.index'),
                 'suggested_tier' => self::TIER_BASIC,
-                'reason' => 'free_to_free_restriction'
+                    'reason' => 'free_to_free_no_match_restriction'
             ];
+            }
         }
         
         // Free sender trying to message paid user - check if they have match

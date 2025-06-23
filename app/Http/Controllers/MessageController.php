@@ -142,7 +142,7 @@ class MessageController extends Controller
         $receiver = User::findOrFail($request->receiver_id);
 
         // Check if sender can send messages
-        $canSend = $this->tierService->canSendMessage($sender);
+        $canSend = $this->tierService->canSendMessage($sender, $receiver);
         if (!$canSend['allowed']) {
             \Log::info("Message attempt blocked by tier restriction", [
                 'sender_id' => $sender->id,

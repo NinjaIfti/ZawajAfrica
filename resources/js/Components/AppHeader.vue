@@ -73,27 +73,7 @@
             <slot name="title"></slot>
         </div>
         <div class="flex items-center space-x-2 md:space-x-3">
-            <!-- Language Selector - Only visible on desktop -->
-            <div
-                class="hidden md:flex items-center rounded-lg border border-gray-300 bg-white px-3 md:px-4 py-2 text-sm font-medium cursor-pointer"
-                @click="toggleLanguageModal"
-            >
-                <span class="mr-2">{{ selectedLanguage.name }}</span>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-gray-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                </svg>
-            </div>
+           
 
             <!-- Notifications -->
             <NotificationBell />
@@ -120,14 +100,7 @@
                         {{ user.name }}
                     </div>
 
-                    <!-- Language Selector - Only visible on mobile/tablet within dropdown -->
-                    <div
-                        class="md:hidden px-4 py-2 flex justify-between items-center text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                        @click="toggleLanguageModal"
-                    >
-                        <span>Change Language</span>
-                        <span class="text-purple-600 font-medium">{{ selectedLanguage.name }}</span>
-                    </div>
+                   
 
                     <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         Your Profile
@@ -147,44 +120,5 @@
         </div>
     </div>
 
-    <!-- Language Selection Modal -->
-    <div v-if="showLanguageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="relative max-w-xs md:max-w-md mx-4 md:mx-auto rounded-lg bg-white p-4 md:p-6 shadow-xl">
-            <!-- Modal Header -->
-            <div class="mb-4 md:mb-6 flex items-center justify-between">
-                <h3 class="text-lg md:text-xl font-bold text-gray-900">Change Language</h3>
-                <button @click="toggleLanguageModal" class="text-gray-400 hover:text-gray-500">
-                    <svg class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Language Options -->
-            <div class="space-y-3 md:space-y-4">
-                <div
-                    v-for="lang in languages"
-                    :key="lang.id"
-                    @click="selectLanguage(lang)"
-                    class="flex cursor-pointer items-center justify-between rounded-lg py-2 md:py-3 hover:bg-gray-50"
-                >
-                    <span class="text-base md:text-lg font-medium text-gray-900">{{ lang.name }}</span>
-                    <div
-                        class="flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full border-2 border-gray-300"
-                        :class="{ 'border-purple-600': selectedLanguage.id === lang.id }"
-                    >
-                        <div
-                            v-if="selectedLanguage.id === lang.id"
-                            class="h-2.5 w-2.5 md:h-3 md:w-3 rounded-full bg-purple-600"
-                        ></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+  
 </template>

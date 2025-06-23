@@ -92,7 +92,7 @@
 
     // Handle message button click
     const handleMessage = () => {
-        window.location.href = route('messages');
+        window.location.href = route('messages.show', props.id);
     };
 
     // Close like modal

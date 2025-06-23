@@ -2,44 +2,62 @@
     <Head :title="`${therapist.name} - Therapist Profile`" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-    <div class="flex h-screen bg-gray-50">
-        <!-- Mobile Sidebar Overlay -->
-        <div v-if="mobileMenuOpen" class="fixed inset-0 z-50 lg:hidden">
-            <div class="absolute inset-0 bg-black bg-opacity-50" @click="mobileMenuOpen = false"></div>
-            <div
-                class="fixed top-0 left-0 h-full w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out"
-            >
-                <Sidebar :user="$page.props.auth.user" />
-            </div>
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-50 relative">
+        <!-- Mobile header with hamburger menu - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
+                <svg
+                    class="h-6 w-6 text-gray-700"
+                    :class="{ hidden: mobileMenuOpen }"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg
+                    class="h-6 w-6 text-gray-700"
+                    :class="{ hidden: !mobileMenuOpen }"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <!-- Back Button -->
+            <button @click="goBack" class="p-1 mr-3 hover:bg-gray-100 rounded-full">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+
+            <h1 class="text-lg font-bold">Therapist Profile</h1>
         </div>
 
-        <!-- Left Sidebar - Hidden on mobile/tablet -->
-        <div class="hidden lg:block">
+        <!-- Mobile Menu Overlay -->
+        <div
+            v-if="mobileMenuOpen"
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="mobileMenuOpen = false"
+        ></div>
+
+        <!-- Left Sidebar Component - Fixed position -->
+        <aside
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0"
+            :class="{ 'translate-x-0': mobileMenuOpen, '-translate-x-full': !mobileMenuOpen }"
+        >
             <Sidebar :user="$page.props.auth.user" />
-        </div>
+        </aside>
 
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Header with AppHeader component -->
-            <div class="border-b border-gray-200 px-4 lg:px-6 py-4">
+        <!-- Main Content - Add left margin on desktop to account for fixed sidebar -->
+        <div class="flex-1 flex flex-col overflow-hidden mt-16 md:mt-0 md:ml-64">
+            <!-- Header with AppHeader component - Only visible on desktop -->
+            <div class="hidden md:block border-b border-gray-200 px-4 lg:px-6 py-4">
                 <AppHeader :user="$page.props.auth.user">
                     <template #title>
                         <div class="flex items-center">
-                            <!-- Mobile Menu Button -->
-                            <button
-                                @click="mobileMenuOpen = true"
-                                class="lg:hidden mr-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-                            >
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                </svg>
-                            </button>
-
                             <!-- Back Button -->
                             <button @click="goBack" class="mr-2 lg:mr-3 p-1 hover:bg-gray-100 rounded-full">
                                 <svg

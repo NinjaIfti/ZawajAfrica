@@ -5,7 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
+        <title>{{ config('app.name', 'Zawaj Africa') }}</title>
         
+        <!-- Favicon -->
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        <link rel="icon" type="image/jpeg" href="{{ asset('images/fav.jpg') }}">
+        <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/fav.jpg') }}">
+        <link rel="apple-touch-icon" href="{{ asset('images/fav.jpg') }}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/fav.jpg') }}">
+        <meta name="msapplication-TileImage" content="{{ asset('images/fav.jpg') }}">
+        <meta name="theme-color" content="#ffffff">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

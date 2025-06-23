@@ -12,6 +12,7 @@
 
     const showCancelModal = ref(false);
     const selectedBooking = ref(null);
+    const mobileMenuOpen = ref(false);
 
     const cancelForm = useForm({
         cancellation_reason: '',
@@ -128,19 +129,67 @@
 <template>
     <Head title="My Bookings" />
 
-    <div class="flex h-screen bg-gray-50">
+    <div class="flex flex-col md:flex-row min-h-screen bg-gray-50 relative">
+        <!-- Mobile header with hamburger menu - Only visible on mobile -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
+                <svg
+                    class="h-6 w-6 text-gray-700"
+                    :class="{ hidden: mobileMenuOpen }"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg
+                    class="h-6 w-6 text-gray-700"
+                    :class="{ hidden: !mobileMenuOpen }"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <h1 class="text-lg font-bold">My Bookings</h1>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div
+            v-if="mobileMenuOpen"
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            @click="mobileMenuOpen = false"
+        ></div>
+
+        <!-- Left Sidebar Component - Fixed position -->
+        <aside
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0"
+            :class="{ 'translate-x-0': mobileMenuOpen, '-translate-x-full': !mobileMenuOpen }"
+        >
         <Sidebar :user="$page.props.auth.user" />
+        </aside>
 
-        <div class="flex-1 overflow-hidden">
-            <AppHeader :user="$page.props.auth.user" />
+        <!-- Main Content - Add left margin on desktop to account for fixed sidebar -->
+        <div class="flex-1 flex flex-col overflow-hidden mt-16 md:mt-0 md:ml-64">
+            <!-- Header with AppHeader component - Only visible on desktop -->
+            <div class="hidden md:block border-b border-gray-200 px-4 lg:px-6 py-4">
+                <AppHeader :user="$page.props.auth.user">
+                    <template #title>
+                        <h1 class="text-xl lg:text-2xl font-bold text-gray-900">My Bookings</h1>
+                    </template>
+                </AppHeader>
+            </div>
 
-            <main class="flex-1 overflow-y-auto p-6">
+            <!-- Main Content Area -->
+            <div class="flex-1 overflow-y-auto p-4 lg:p-6">
                 <div class="mx-auto max-w-7xl">
                     <!-- Header -->
                     <div class="mb-8">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h1 class="text-2xl font-bold text-gray-900">My Bookings</h1>
+                                <h1 class="text-2xl font-bold text-gray-900 md:hidden">My Bookings</h1>
                                 <p class="mt-2 text-sm text-gray-600">Manage all your therapy sessions in one place</p>
                             </div>
                             <Link
@@ -694,7 +743,7 @@
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     </div>
 

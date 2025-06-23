@@ -239,16 +239,16 @@
             @click="toggleMobileMenu"
         ></div>
 
-        <!-- Left Sidebar Component - Slides in from left on mobile -->
+        <!-- Left Sidebar Component - Fixed position -->
         <aside
-            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0"
             :class="{ 'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen }"
         >
             <Sidebar :user="$page.props.auth.user" />
         </aside>
 
-        <!-- Main Content -->
-        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
+        <!-- Main Content - Add left margin on desktop to account for fixed sidebar -->
+        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0 md:ml-64">
             <div class="container mx-auto max-w-6xl">
                 <!-- Profile Header Component - Only visible on desktop -->
                 <ProfileHeader :user="props.user" activeTab="photos" class="hidden md:block" />

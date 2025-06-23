@@ -106,38 +106,22 @@
             @click="toggleMobileMenu"
         ></div>
 
-        <!-- Left Sidebar Component - Slides in from left on mobile -->
+        <!-- Left Sidebar Component - Fixed position -->
         <aside
-            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:relative md:z-0 md:translate-x-0"
+            class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0"
             :class="{ 'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen }"
         >
             <Sidebar :user="user" />
         </aside>
 
-        <!-- Main Content - Messages List -->
-        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0">
+        <!-- Main Content - Messages List - Add left margin on desktop to account for fixed sidebar -->
+        <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0 md:ml-64">
             <!-- Header with language selector and profile dropdown -->
             <div class="hidden md:block mb-6">
                 <div class="flex justify-between items-center">
                     <h1 class="text-2xl font-bold">Messages</h1>
                     <div class="flex items-center space-x-4">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-gray-700">English</span>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5 text-gray-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M19 9l-7 7-7-7"
-                                />
-                            </svg>
-                        </div>
+                       
                         <div class="h-8 w-8 rounded-full bg-gray-300 overflow-hidden">
                             <img
                                 :src="user.profile_photo || '/images/placeholder.jpg'"
@@ -274,11 +258,20 @@
                 <!-- Message Content Area - Empty State -->
                 <div class="hidden md:flex md:w-2/3 md:flex-col md:items-center md:justify-center md:p-8">
                     <div class="text-center">
-                        <img
-                            src="/images/message-empty.svg"
-                            alt="No message selected"
-                            class="mx-auto h-32 w-32 opacity-50"
-                        />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="mx-auto h-32 w-32 opacity-50 text-gray-400"
+                        >
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            <circle cx="9" cy="10" r="1"></circle>
+                            <circle cx="15" cy="10" r="1"></circle>
+                        </svg>
                         <h3 class="mt-4 text-lg font-medium text-gray-700">Open a conversation to see messages</h3>
                     </div>
                 </div>

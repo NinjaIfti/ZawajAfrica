@@ -235,7 +235,7 @@
 
                                     <div>
                                         <label for="hourly_rate" class="block text-sm font-medium text-gray-700">
-                                            Hourly Rate ($)
+                                            Hourly Rate (₦)
                                         </label>
                                         <input
                                             v-model="form.hourly_rate"

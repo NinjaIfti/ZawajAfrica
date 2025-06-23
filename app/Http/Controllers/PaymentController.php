@@ -437,12 +437,39 @@ class PaymentController extends Controller
         $user = User::find($metadata['user_id']);
         
         if ($user) {
+            $expiresAt = now()->addMonth();
+            
             // Update user subscription
             $user->update([
                 'subscription_plan' => $metadata['plan'],
                 'subscription_status' => 'active',
-                'subscription_expires_at' => now()->addMonth()
+                'subscription_expires_at' => $expiresAt
             ]);
+
+            // Send subscription confirmation notification
+            try {
+                $user->notify(new \App\Notifications\SubscriptionPurchased(
+                    $metadata['plan'],
+                    $paymentData['amount'] / 100,
+                    $paymentData['reference'],
+                    $expiresAt->toDateTime()
+                ));
+                
+                Log::info('Subscription confirmation email sent successfully', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'plan' => $metadata['plan'],
+                    'amount' => $paymentData['amount'] / 100
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send subscription confirmation email', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Don't throw here - we want the subscription to still be processed even if email fails
+            }
 
             Log::info('Subscription payment processed', [
                 'user_id' => $user->id,
