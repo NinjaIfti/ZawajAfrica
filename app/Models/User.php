@@ -48,6 +48,16 @@ class User extends Authenticatable
         'subscription_plan',
         'subscription_status',
         'subscription_expires_at',
+        // Monnify KYC fields
+        'bvn',
+        'nin',
+        'monnify_account_reference',
+        'monnify_reserved_accounts',
+        'kyc_status',
+        'kyc_verified_at',
+        'kyc_failure_reason',
+        'kyc_bvn_verified',
+        'kyc_nin_verified',
     ];
 
     /**
@@ -78,6 +88,10 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_verified' => 'boolean',
         'subscription_expires_at' => 'datetime',
+        'kyc_verified_at' => 'datetime',
+        'kyc_bvn_verified' => 'boolean',
+        'kyc_nin_verified' => 'boolean',
+        'monnify_reserved_accounts' => 'array',
     ];
 
     /**
@@ -304,10 +318,79 @@ class User extends Authenticatable
     }
 
     /**
-     * Get therapist bookings made by this user.
+     * Get therapist bookings for this user.
      */
     public function therapistBookings()
     {
-        return $this->hasMany(\App\Models\TherapistBooking::class);
+        return $this->hasMany(TherapistBooking::class);
+    }
+
+    /**
+     * Check if user has completed KYC verification
+     */
+    public function isKycVerified(): bool
+    {
+        return $this->kyc_status === 'verified';
+    }
+
+    /**
+     * Check if user has partial KYC (either BVN or NIN verified)
+     */
+    public function hasPartialKyc(): bool
+    {
+        return $this->kyc_bvn_verified || $this->kyc_nin_verified;
+    }
+
+    /**
+     * Check if user needs to complete KYC
+     */
+    public function needsKyc(): bool
+    {
+        return $this->kyc_status === 'pending' || $this->kyc_status === 'failed';
+    }
+
+    /**
+     * Get formatted BVN (masked for security)
+     */
+    public function getMaskedBvnAttribute(): ?string
+    {
+        if (!$this->bvn) {
+            return null;
+        }
+        return '*******' . substr($this->bvn, -4);
+    }
+
+    /**
+     * Get formatted NIN (masked for security)
+     */
+    public function getMaskedNinAttribute(): ?string
+    {
+        if (!$this->nin) {
+            return null;
+        }
+        return '*******' . substr($this->nin, -4);
+    }
+
+    /**
+     * Check if user is eligible for higher transaction limits
+     */
+    public function isEligibleForHigherLimits(): bool
+    {
+        return $this->isKycVerified() && !empty($this->monnify_account_reference);
+    }
+
+    /**
+     * Get KYC completion percentage
+     */
+    public function getKycCompletionPercentage(): int
+    {
+        $completed = 0;
+        $total = 3; // BVN, NIN, Account Creation
+
+        if ($this->kyc_bvn_verified) $completed++;
+        if ($this->kyc_nin_verified) $completed++;
+        if (!empty($this->monnify_account_reference)) $completed++;
+
+        return (int) (($completed / $total) * 100);
     }
 }

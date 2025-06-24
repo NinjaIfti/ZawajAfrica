@@ -6,6 +6,8 @@ use App\Models\Therapist;
 use App\Models\TherapistBooking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use App\Notifications\TherapistBookingCancelled;
 use App\Notifications\TherapistBookingReminder;
@@ -278,6 +280,14 @@ class TherapistBookingController extends Controller
     }
 
     /**
+     * Public wrapper for createBookingWithZoho to allow access from other controllers
+     */
+    public function createBookingForPayment(array $validatedData, Therapist $therapist, string $paymentReference = null): array
+    {
+        return $this->createBookingWithZoho($validatedData, $therapist, $paymentReference);
+    }
+
+    /**
      * Store a new booking and redirect to payment (with Zoho Bookings integration).
      */
     public function store(Request $request)
@@ -287,17 +297,18 @@ class TherapistBookingController extends Controller
             'appointment_datetime' => [
                 'required',
                 'date',
-                'after:' . now()->addHours(2), // Minimum 2 hours advance booking
-                'before:' . now()->addMonths(3), // Maximum 3 months ahead
+                'after:' . now()->addHours(2)->format('Y-m-d H:i:s'), // Minimum 2 hours advance booking
+                'before:' . now()->addMonths(3)->format('Y-m-d H:i:s'), // Maximum 3 months ahead
                 function ($attribute, $value, $fail) {
-                    $appointmentTime = \Carbon\Carbon::parse($value);
+                    // Parse datetime with timezone consideration
+                    $appointmentTime = \Carbon\Carbon::parse($value, config('app.timezone', 'UTC'));
                     
                     // Check if it's a weekday (Monday-Friday)
                     if ($appointmentTime->isWeekend()) {
                         $fail('Appointments are only available Monday through Friday.');
                     }
                     
-                    // Check business hours (8 AM to 8 PM)
+                    // Check business hours (8 AM to 8 PM) in local timezone
                     $hour = $appointmentTime->hour;
                     if ($hour < 8 || $hour >= 20) {
                         $fail('Appointments are only available between 8:00 AM and 8:00 PM.');
@@ -307,6 +318,11 @@ class TherapistBookingController extends Controller
                     $minute = $appointmentTime->minute;
                     if (!in_array($minute, [0, 30])) {
                         $fail('Appointments must be scheduled on the hour or half hour (e.g., 9:00 AM, 9:30 AM).');
+                    }
+                    
+                    // Ensure it's not in the past (with timezone consideration)
+                    if ($appointmentTime->isPast()) {
+                        $fail('Appointment time cannot be in the past.');
                     }
                 }
             ],
@@ -341,82 +357,108 @@ class TherapistBookingController extends Controller
                 return redirect()->back()->with('error', 'This time slot is already booked. Please choose another time.');
             }
 
-        // Check Zoho availability if integration is enabled
-        if ($this->isZohoBookingsEnabled()) {
-            try {
-                $appointmentDate = \Carbon\Carbon::parse($validated['appointment_datetime'])->format('Y-m-d');
-                $zohoService = $this->getZohoBookingsService();
-                $availabilityResult = $zohoService->getAvailableSlots($therapist->zoho_service_id, $appointmentDate);
-                
-                if ($availabilityResult['success']) {
-                    $availableSlots = $availabilityResult['data']['slots'] ?? [];
-                    $requestedTime = \Carbon\Carbon::parse($validated['appointment_datetime'])->format('H:i');
+            // Check Zoho availability if integration is enabled
+            if ($this->isZohoBookingsEnabled()) {
+                try {
+                    $appointmentDate = \Carbon\Carbon::parse($validated['appointment_datetime'])->format('Y-m-d');
+                    $zohoService = $this->getZohoBookingsService();
+                    $availabilityResult = $zohoService->getAvailableSlots($therapist->zoho_service_id, $appointmentDate);
                     
-                    $slotAvailable = collect($availableSlots)->contains(function ($slot) use ($requestedTime) {
-                        return $slot['time'] === $requestedTime && $slot['available'] === true;
-                    });
-                    
-                    if (!$slotAvailable) {
-                        return redirect()->back()->with('error', 'This time slot is no longer available in our scheduling system. Please choose another time.');
+                    if ($availabilityResult['success']) {
+                        $availableSlots = $availabilityResult['data']['slots'] ?? [];
+                        $requestedTime = \Carbon\Carbon::parse($validated['appointment_datetime'])->format('H:i');
+                        
+                        $slotAvailable = collect($availableSlots)->contains(function ($slot) use ($requestedTime) {
+                            return $slot['time'] === $requestedTime && $slot['available'] === true;
+                        });
+                        
+                        if (!$slotAvailable) {
+                            return redirect()->back()->with('error', 'This time slot is no longer available in our scheduling system. Please choose another time.');
+                        }
                     }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to check Zoho availability, proceeding with local check only', [
+                        'therapist_id' => $validated['therapist_id'],
+                        'datetime' => $validated['appointment_datetime'],
+                        'error' => $e->getMessage()
+                    ]);
                 }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to check Zoho availability, proceeding with local check only', [
-                    'therapist_id' => $validated['therapist_id'],
-                    'datetime' => $validated['appointment_datetime'],
-                    'error' => $e->getMessage()
-                ]);
             }
-        }
 
-        // Generate unique payment reference first
-        $reference = 'booking_' . $validated['payment_gateway'] . '_' . time() . '_' . \Illuminate\Support\Str::random(8);
-        
-        // Use database transaction to ensure data consistency
-        return DB::transaction(function () use ($validated, $therapist, $reference) {
+            // Generate unique payment reference first
+            $reference = 'booking_' . $validated['payment_gateway'] . '_' . time() . '_' . \Illuminate\Support\Str::random(8);
+            
+            // Use database transaction to ensure data consistency
+            $errorMessage = null;
+            $redirectUrl = null;
+            
             try {
-                // Create booking with Zoho integration
-                $bookingResult = $this->createBookingWithZoho($validated, $therapist, $reference);
-                
-                if (!$bookingResult['success']) {
-                    throw new \Exception('Unable to create booking: ' . ($bookingResult['error'] ?? 'Unknown error'));
-                }
-
-                $booking = $bookingResult['booking'];
-
-                // Map payment gateway selection to actual service
-                $gateway = $validated['payment_gateway'];
-
-                // Format data for payment initialization
-                $appointmentDateTime = \Carbon\Carbon::parse($validated['appointment_datetime']);
-                
-                $paymentData = [
-                    'therapist_id' => $validated['therapist_id'],
-                    'booking_id' => $booking->id, // Include the booking ID
-                    'booking_date' => $appointmentDateTime->format('Y-m-d'),
-                    'booking_time' => $appointmentDateTime->format('g:i A'),
-                    'notes' => $validated['user_message'],
-                    'platform' => $validated['platform'],
-                    'payment_gateway' => $gateway,
-                    'payment_reference' => $reference
-                ];
-
-                // Initialize payment through PaymentController
-                $paymentController = app(PaymentController::class);
-                $paymentRequest = new Request($paymentData);
-                $paymentResponse = $paymentController->initializeTherapistBooking($paymentRequest);
-
-                if ($paymentResponse->getStatusCode() === 200) {
-                    $responseData = json_decode($paymentResponse->getContent(), true);
-                    if ($responseData['status']) {
-                        return redirect($responseData['authorization_url']);
-                    } else {
-                        throw new \Exception('Payment initialization failed: ' . ($responseData['message'] ?? 'Unknown error'));
+                DB::transaction(function () use ($validated, $therapist, $reference, &$redirectUrl) {
+                    // Create booking with Zoho integration
+                    $bookingResult = $this->createBookingWithZoho($validated, $therapist, $reference);
+                    
+                    if (!$bookingResult['success']) {
+                        throw new \Exception('Unable to create booking: ' . ($bookingResult['error'] ?? 'Unknown error'));
                     }
-                } else {
-                    throw new \Exception('Payment service error: HTTP ' . $paymentResponse->getStatusCode());
-                }
 
+                    $booking = $bookingResult['booking'];
+
+                    // Map payment gateway selection to actual service
+                    $gateway = $validated['payment_gateway'];
+
+                    // Format data for payment initialization
+                    $appointmentDateTime = \Carbon\Carbon::parse($validated['appointment_datetime']);
+                    
+                    $paymentData = [
+                        'therapist_id' => $validated['therapist_id'],
+                        'id' => $booking->id, // Use 'id' to match database field
+                        'booking_date' => $appointmentDateTime->format('Y-m-d'),
+                        'booking_time' => $appointmentDateTime->format('g:i A'),
+                        
+                        'platform' => $validated['platform'],
+                        'session_type' => $validated['session_type'],
+                        'payment_gateway' => $gateway,
+                        'payment_reference' => $reference
+                    ];
+
+                    // Debug log the payment data being sent
+                    \Log::info('Sending payment data to PaymentController', [
+                        'payment_data' => $paymentData,
+                        'booking_id' => $booking->id,
+                        'has_id_field' => isset($paymentData['id'])
+                    ]);
+
+                    // Initialize payment through PaymentController
+                    $paymentController = app(PaymentController::class);
+                    $paymentRequest = new Request();
+                    $paymentRequest->replace($paymentData); // Use replace to completely set the request data
+                    
+                    // Debug log to verify request data after replace
+                    \Log::info('After replace - PaymentRequest data', [
+                        'all_data' => $paymentRequest->all(),
+                        'has_id' => $paymentRequest->has('id'),
+                        'id_value' => $paymentRequest->input('id'),
+                        'original_payment_data' => $paymentData
+                    ]);
+                    
+                    $paymentResponse = $paymentController->initializeTherapistBooking($paymentRequest);
+
+                    if ($paymentResponse->getStatusCode() === 200) {
+                        $responseData = json_decode($paymentResponse->getContent(), true);
+                        if ($responseData['status']) {
+                            $redirectUrl = $responseData['authorization_url'];
+                        } else {
+                            throw new \Exception('Payment initialization failed: ' . ($responseData['message'] ?? 'Unknown error'));
+                        }
+                    } else {
+                        throw new \Exception('Payment service error: HTTP ' . $paymentResponse->getStatusCode());
+                    }
+                });
+                
+                if ($redirectUrl) {
+                    return redirect($redirectUrl);
+                }
+                
             } catch (\Exception $e) {
                 // Log the error for debugging
                 \Log::error('Booking creation failed', [
@@ -427,10 +469,12 @@ class TherapistBookingController extends Controller
                     'trace' => $e->getTraceAsString()
                 ]);
 
-                // Transaction will be rolled back automatically
-                return redirect()->back()->with('error', 'Unable to process booking: ' . $e->getMessage());
+                $errorMessage = 'Unable to process booking: ' . $e->getMessage();
             }
-        });
+            
+            if ($errorMessage) {
+                return redirect()->back()->with('error', $errorMessage);
+            }
 
         } finally {
             // Always release the lock
@@ -507,8 +551,6 @@ class TherapistBookingController extends Controller
             ],
         ]);
     }
-
-
 
     /**
      * Cancel a booking (with Zoho Bookings integration).

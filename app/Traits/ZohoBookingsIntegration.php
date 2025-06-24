@@ -28,8 +28,17 @@ trait ZohoBookingsIntegration
      */
     protected function isZohoBookingsEnabled(): bool
     {
-        return config('services.zoho_bookings.enabled') && 
+        $enabled = config('services.zoho_bookings.enabled') && 
                $this->getZohoBookingsService()->isConfigured();
+               
+        Log::info('Zoho Bookings availability check', [
+            'enabled_config' => config('services.zoho_bookings.enabled'),
+            'is_configured' => $this->getZohoBookingsService()->isConfigured(),
+            'final_enabled' => $enabled,
+            'config_status' => $this->getZohoBookingsService()->getStatus()
+        ]);
+        
+        return $enabled;
     }
 
     /**
@@ -38,48 +47,72 @@ trait ZohoBookingsIntegration
     protected function createBookingWithZoho(array $validatedData, Therapist $therapist, string $paymentReference = null): array
     {
         $user = Auth::user();
+        $localBooking = null;
+        $zohoBookingId = null;
         
-        // Create local booking first
+        // If Zoho Bookings is enabled, try creating the booking there first
+        if ($this->isZohoBookingsEnabled()) {
+            // Create a temporary booking object for Zoho (without saving to DB yet)
+            $tempBooking = new TherapistBooking([
+                'user_id' => $user->id,
+                'therapist_id' => $therapist->id,
+                'appointment_datetime' => $validatedData['appointment_datetime'],
+                'session_type' => $validatedData['session_type'],
+                'platform' => $validatedData['platform'] ?? null,
+                'amount' => $therapist->hourly_rate
+            ]);
+            
+            $zohoResult = $this->createZohoBooking($tempBooking, $therapist, $user);
+            
+            if (!$zohoResult['success']) {
+                Log::error('Failed to create booking in Zoho Bookings', [
+                    'therapist_id' => $therapist->id,
+                    'user_id' => $user->id,
+                    'error' => $zohoResult['error']
+                ]);
+                
+                // If Zoho is critical for your business, fail the entire booking
+                // Otherwise, proceed with local booking only
+                $zohoFailureAction = config('services.zoho_bookings.failure_action', 'continue');
+                
+                if ($zohoFailureAction === 'fail') {
+                    return [
+                        'success' => false,
+                        'error' => 'Unable to book appointment in scheduling system: ' . $zohoResult['error']
+                    ];
+                }
+            } else {
+                $zohoBookingId = $zohoResult['zoho_booking_id'];
+            }
+        }
+        
+        // Create local booking
         $localBooking = TherapistBooking::create([
             'user_id' => $user->id,
             'therapist_id' => $therapist->id,
             'appointment_datetime' => $validatedData['appointment_datetime'],
             'session_type' => $validatedData['session_type'],
             'platform' => $validatedData['platform'] ?? null,
-            'user_message' => $validatedData['user_message'] ?? null,
             'status' => 'pending',
             'payment_reference' => $paymentReference,
-            'amount' => $therapist->hourly_rate
+            'amount' => $therapist->hourly_rate,
+            'zoho_booking_id' => $zohoBookingId,
+            'zoho_last_sync' => $zohoBookingId ? now() : null
         ]);
 
-        // If Zoho Bookings is enabled, create booking there too
-        if ($this->isZohoBookingsEnabled()) {
-            $zohoResult = $this->createZohoBooking($localBooking, $therapist, $user);
-            
-            if ($zohoResult['success']) {
-                // Update local booking with Zoho details
-                $localBooking->update([
-                    'zoho_booking_id' => $zohoResult['zoho_booking_id'],
-                    'zoho_data' => $zohoResult['zoho_data'],
-                    'zoho_last_sync' => now()
-                ]);
-
-                Log::info('Booking created in both local DB and Zoho Bookings', [
-                    'local_booking_id' => $localBooking->id,
-                    'zoho_booking_id' => $zohoResult['zoho_booking_id']
-                ]);
-            } else {
-                Log::warning('Failed to create booking in Zoho Bookings, but local booking created', [
-                    'local_booking_id' => $localBooking->id,
-                    'zoho_error' => $zohoResult['error']
-                ]);
-            }
-        }
+        Log::info('Booking created successfully', [
+            'local_booking_id' => $localBooking->id,
+            'platform' => $localBooking->platform,
+            'session_type' => $localBooking->session_type,
+            'user_message' => $localBooking->user_message,
+            'zoho_booking_id' => $zohoBookingId,
+            'zoho_enabled' => $this->isZohoBookingsEnabled()
+        ]);
 
         return [
             'success' => true,
             'booking' => $localBooking,
-            'zoho_created' => $this->isZohoBookingsEnabled()
+            'zoho_created' => $zohoBookingId !== null
         ];
     }
 
@@ -88,79 +121,136 @@ trait ZohoBookingsIntegration
      */
     private function createZohoBooking(TherapistBooking $booking, Therapist $therapist, $user): array
     {
-        $zohoService = $this->getZohoBookingsService();
-
-        // Prepare booking data for Zoho
-        $bookingData = [
-            'service_id' => $therapist->zoho_service_id ?? $this->getOrCreateZohoService($therapist),
-            'staff_id' => $therapist->zoho_staff_id,
-            'appointment_datetime' => $booking->appointment_datetime->toISOString(),
-            'customer_name' => $user->name,
-            'customer_email' => $user->email,
-            'customer_phone' => $user->phone ?? null,
-            'notes' => $booking->user_message ?? ''
-        ];
-
-        $result = $zohoService->createBooking($bookingData);
-
-        if ($result['success']) {
+        $serviceId = $this->getOrCreateZohoService($therapist);
+        $staffId = $this->ensureTherapistAsStaff($therapist);
+        
+        // If no service ID or staff ID is available, skip Zoho integration
+        if (!$serviceId || !$staffId) {
+            Log::info('Skipping Zoho booking creation - missing service or staff ID', [
+                'therapist_id' => $therapist->id,
+                'booking_id' => $booking->id,
+                'service_id' => $serviceId,
+                'staff_id' => $staffId
+            ]);
+            
             return [
-                'success' => true,
-                'zoho_booking_id' => $result['data']['booking_id'],
-                'zoho_data' => $result['data']
+                'success' => false,
+                'error' => 'Missing Zoho service or staff ID'
             ];
         }
 
+        $zohoService = $this->getZohoBookingsService();
+
+        // Prepare booking data for Zoho Bookings API
+        $customerDetails = [
+            'name' => $user->name,
+            'email' => $user->email
+        ];
+        
+        // Always include phone_number as Zoho requires it
+        if (!empty($user->phone) && trim($user->phone) !== '') {
+            $customerDetails['phone_number'] = trim($user->phone);
+            Log::info('Including user phone number in Zoho booking', ['phone' => $user->phone]);
+        } else {
+            // Use dummy phone number when user doesn't have one
+            $customerDetails['phone_number'] = '+1234567890';
+            Log::info('Using dummy phone number for Zoho booking', ['user_phone' => $user->phone ?? 'NULL']);
+        }
+
+        $bookingData = [
+            'service_id' => $serviceId,
+            'staff_id' => $staffId,
+            'from_time' => \Carbon\Carbon::parse($booking->appointment_datetime)->format('d-M-Y H:i:s'),
+            'timezone' => config('app.timezone', 'UTC'),
+            'customer_details' => json_encode($customerDetails),
+            'notes' => ''
+        ];
+
+        Log::info('Creating Zoho booking with data', [
+            'booking_data' => $bookingData,
+            'local_booking_id' => $booking->id,
+            'original_datetime' => $booking->appointment_datetime,
+            'formatted_datetime' => \Carbon\Carbon::parse($booking->appointment_datetime)->format('d-M-Y H:i:s'),
+            'carbon_parsed' => \Carbon\Carbon::parse($booking->appointment_datetime)->toISOString()
+        ]);
+
+        $result = $zohoService->createBooking($bookingData);
+        
+        if ($result['success'] && isset($result['data']['response']['returnvalue']['booking_id'])) {
+            $zohoBookingId = $result['data']['response']['returnvalue']['booking_id'];
+            
+            // Update local booking with Zoho booking ID
+            $booking->update([
+                'zoho_booking_id' => $zohoBookingId,
+                'zoho_last_sync' => now()
+            ]);
+            
+            Log::info('Successfully created Zoho booking', [
+                'local_booking_id' => $booking->id,
+                'zoho_booking_id' => $zohoBookingId
+            ]);
+            
+            return [
+                'success' => true,
+                'zoho_booking_id' => $zohoBookingId
+            ];
+        }
+
+        Log::error('Failed to create Zoho booking', [
+            'local_booking_id' => $booking->id,
+            'error' => $result['error'] ?? 'Unknown error',
+            'response' => $result['data'] ?? null
+        ]);
+
         return [
             'success' => false,
-            'error' => $result['error'] ?? 'Unknown error'
+            'error' => $result['error'] ?? 'Failed to create Zoho booking'
         ];
     }
 
     /**
-     * Get or create Zoho service for therapist
+     * Get or create Zoho service for therapist and ensure staff exists
      */
     private function getOrCreateZohoService(Therapist $therapist): ?string
     {
+        // Use configured service ID or default one
         if ($therapist->zoho_service_id) {
             return $therapist->zoho_service_id;
         }
 
-        // Auto-create service in Zoho for therapist
-        $zohoService = $this->getZohoBookingsService();
+        // Use default service ID from config or hardcoded
+        $defaultServiceId = config('services.zoho_bookings.default_service_id', '4777370000000046052');
         
-        $therapistData = [
-            'name' => $therapist->name . ' - Therapy Session',
-            'bio' => $therapist->bio,
-            'hourly_rate' => $therapist->hourly_rate,
-            'status' => $therapist->status
-        ];
-
-        $result = $zohoService->syncTherapistWithZoho($therapistData);
-        
-        if ($result['success']) {
-            $serviceId = $result['data']['service_id'];
-            
-            // Update therapist with Zoho service ID
-            $therapist->update([
-                'zoho_service_id' => $serviceId,
-                'zoho_last_sync' => now()
-            ]);
-
-            Log::info('Created Zoho service for therapist', [
-                'therapist_id' => $therapist->id,
-                'zoho_service_id' => $serviceId
-            ]);
-
-            return $serviceId;
-        }
-
-        Log::error('Failed to create Zoho service for therapist', [
+        Log::info('Using default Zoho service ID for therapist', [
             'therapist_id' => $therapist->id,
-            'error' => $result['error'] ?? 'Unknown error'
+            'service_id' => $defaultServiceId
         ]);
 
-        return null;
+        return $defaultServiceId;
+    }
+
+    /**
+     * Ensure therapist exists as staff in Zoho Bookings
+     */
+    private function ensureTherapistAsStaff(Therapist $therapist): ?string
+    {
+        // Use configured staff ID or default one
+        if ($therapist->zoho_staff_id) {
+            return $therapist->zoho_staff_id;
+        }
+
+        // Use default staff ID from config or hardcoded
+        $defaultStaffId = config('services.zoho_bookings.default_staff_id', '4777370000000046014');
+        
+        // Update therapist with default staff ID for future use
+        $therapist->update(['zoho_staff_id' => $defaultStaffId]);
+        
+        Log::info('Using default Zoho staff ID for therapist', [
+            'therapist_id' => $therapist->id,
+            'staff_id' => $defaultStaffId
+        ]);
+
+        return $defaultStaffId;
     }
 
     /**

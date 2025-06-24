@@ -24,7 +24,7 @@ class ZohoBookingsService
         $this->refreshToken = config('services.zoho_bookings.refresh_token');
         $this->organizationId = config('services.zoho_bookings.organization_id');
         $this->dataCenter = config('services.zoho_bookings.data_center', 'com');
-        $this->apiBaseUrl = "https://bookings.zoho.{$this->dataCenter}/api/v1";
+        $this->apiBaseUrl = "https://www.zohoapis.{$this->dataCenter}/bookings/v1/json";
     }
 
     /**
@@ -111,10 +111,8 @@ class ZohoBookingsService
 
         try {
             $response = Http::timeout(30)
-                ->withToken($accessToken)
                 ->withHeaders([
-                    'orgId' => $this->organizationId,
-                    'Content-Type' => 'application/json'
+                    'Authorization' => 'Zoho-oauthtoken ' . $accessToken,
                 ]);
 
             $url = $this->apiBaseUrl . $endpoint;
@@ -124,10 +122,11 @@ class ZohoBookingsService
                     $httpResponse = $response->get($url, $data);
                     break;
                 case 'POST':
-                    $httpResponse = $response->post($url, $data);
+                    // Zoho Bookings API expects form data for POST requests
+                    $httpResponse = $response->asForm()->post($url, $data);
                     break;
                 case 'PUT':
-                    $httpResponse = $response->put($url, $data);
+                    $httpResponse = $response->asForm()->put($url, $data);
                     break;
                 case 'DELETE':
                     $httpResponse = $response->delete($url, $data);
@@ -225,8 +224,9 @@ class ZohoBookingsService
      */
     public function getAvailableSlots(string $serviceId, string $date): array
     {
-        $endpoint = "/services/{$serviceId}/freeslots";
+        $endpoint = "/freeslots";
         $params = [
+            'service_id' => $serviceId,
             'selected_date' => $date,
             'timezone' => config('app.timezone', 'UTC')
         ];
@@ -239,32 +239,45 @@ class ZohoBookingsService
      */
     public function createBooking(array $bookingData): array
     {
-        $endpoint = '/bookings';
+        $endpoint = '/appointment';
         
-        // Format booking data for Zoho API
-        $zohoBookingData = [
+        // Format the booking data according to Zoho Bookings API requirements
+        $formData = [
             'service_id' => $bookingData['service_id'],
-            'staff_id' => $bookingData['staff_id'] ?? null,
-            'from_time' => $bookingData['appointment_datetime'],
-            'customer_details' => [
-                'name' => $bookingData['customer_name'],
-                'email' => $bookingData['customer_email'],
-                'phone' => $bookingData['customer_phone'] ?? null
-            ],
-            'additional_info' => $bookingData['notes'] ?? '',
-            'timezone' => config('app.timezone', 'UTC')
+            'staff_id' => $bookingData['staff_id'], // Required - we need to handle this
+            'from_time' => $bookingData['from_time'], // Format: dd-MMM-yyyy HH:mm:ss
+            'timezone' => $bookingData['timezone'] ?? config('app.timezone', 'UTC'),
+            'customer_details' => $bookingData['customer_details'], // Already JSON formatted
+            'notes' => $bookingData['notes'] ?? ''
         ];
 
-        $result = $this->makeApiRequest('POST', $endpoint, $zohoBookingData);
+        return $this->makeApiRequest('POST', $endpoint, $formData);
+    }
 
-        if ($result['success']) {
-            Log::info('Zoho booking created successfully', [
-                'booking_id' => $result['data']['booking_id'] ?? null,
-                'customer' => $bookingData['customer_name']
-            ]);
-        }
+    /**
+     * Create or sync therapist as staff in Zoho Bookings
+     */
+    public function createStaff(array $staffData): array
+    {
+        $endpoint = '/addstaff';
+        
+        // Format staff data according to Zoho Bookings API
+        $formData = [
+            'staffMap' => json_encode([
+                'data' => [
+                    [
+                        'name' => $staffData['name'],
+                        'email' => $staffData['email'],
+                        'role' => 'Staff', // Can be Admin, Manager, or Staff
+                        'phone' => $staffData['phone'] ?? '',
+                        'designation' => $staffData['designation'] ?? 'Therapist',
+                        'assigned_services' => $staffData['assigned_services'] ?? []
+                    ]
+                ]
+            ])
+        ];
 
-        return $result;
+        return $this->makeApiRequest('POST', $endpoint, $formData);
     }
 
     /**
@@ -272,8 +285,9 @@ class ZohoBookingsService
      */
     public function updateBooking(string $bookingId, array $updateData): array
     {
-        $endpoint = "/bookings/{$bookingId}";
-        return $this->makeApiRequest('PUT', $endpoint, $updateData);
+        $endpoint = "/updateappointment";
+        $data = array_merge(['booking_id' => $bookingId], $updateData);
+        return $this->makeApiRequest('POST', $endpoint, $data);
     }
 
     /**
@@ -281,10 +295,10 @@ class ZohoBookingsService
      */
     public function cancelBooking(string $bookingId, string $reason = ''): array
     {
-        $endpoint = "/bookings/{$bookingId}/cancel";
+        $endpoint = "/cancelappointment";
         $data = [
-            'reason' => $reason,
-            'send_notification' => true
+            'booking_id' => $bookingId,
+            'reason' => $reason
         ];
 
         return $this->makeApiRequest('POST', $endpoint, $data);
@@ -295,8 +309,8 @@ class ZohoBookingsService
      */
     public function getBooking(string $bookingId): array
     {
-        $endpoint = "/bookings/{$bookingId}";
-        return $this->makeApiRequest('GET', $endpoint);
+        $endpoint = "/getappointment";
+        return $this->makeApiRequest('GET', $endpoint, ['booking_id' => $bookingId]);
     }
 
     /**
@@ -304,7 +318,7 @@ class ZohoBookingsService
      */
     public function getBookings(array $filters = []): array
     {
-        $endpoint = '/bookings';
+        $endpoint = '/getappointments';
         return $this->makeApiRequest('GET', $endpoint, $filters);
     }
 
@@ -314,21 +328,16 @@ class ZohoBookingsService
     public function syncTherapistWithZoho(array $therapistData): array
     {
         $serviceData = [
-            'name' => $therapistData['name'],
-            'description' => $therapistData['bio'],
+            'service_name' => $therapistData['name'],
+            'service_description' => $therapistData['bio'],
             'duration' => 60, // 1 hour sessions
             'price' => $therapistData['hourly_rate'],
             'currency' => 'NGN', // Nigerian Naira
-            'is_active' => $therapistData['status'] === 'active',
             'category' => 'Therapy Sessions'
         ];
 
-        // Check if service already exists
-        if (isset($therapistData['zoho_service_id'])) {
-            return $this->makeApiRequest('PUT', "/services/{$therapistData['zoho_service_id']}", $serviceData);
-        } else {
-            return $this->makeApiRequest('POST', '/services', $serviceData);
-        }
+        // For now, create new service (Zoho API for creating services may be different)
+        return $this->makeApiRequest('POST', '/service', $serviceData);
     }
 
     /**

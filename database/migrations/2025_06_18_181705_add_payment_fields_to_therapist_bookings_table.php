@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('therapist_bookings', function (Blueprint $table) {
             $table->date('booking_date')->nullable()->after('appointment_datetime');
             $table->string('booking_time')->nullable()->after('booking_date');
-            $table->text('notes')->nullable()->after('booking_time');
+            
             $table->decimal('amount', 10, 2)->nullable()->after('notes');
             $table->string('payment_reference')->nullable()->after('amount');
             $table->string('payment_status')->default('pending')->after('payment_reference');

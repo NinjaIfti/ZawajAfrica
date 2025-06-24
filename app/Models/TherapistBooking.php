@@ -35,6 +35,10 @@ class TherapistBooking extends Model
         'confirmed_at',
         'cancelled_at',
         'completed_at',
+        'platform',
+        'zoho_booking_id',
+        'zoho_data',
+        'zoho_last_sync',
     ];
 
     /**
@@ -47,7 +51,26 @@ class TherapistBooking extends Model
         'confirmed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'amount' => 'decimal:2',
+        'zoho_data' => 'array',
+        'zoho_last_sync' => 'datetime',
     ];
+
+    /**
+     * Boot the model and add event listeners.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // Automatically set booking_date and booking_time when appointment_datetime is set
+        static::saving(function ($booking) {
+            if ($booking->appointment_datetime && $booking->isDirty('appointment_datetime')) {
+                $booking->booking_date = $booking->appointment_datetime->format('Y-m-d');
+                $booking->booking_time = $booking->appointment_datetime->format('g:i A');
+            }
+        });
+    }
 
     /**
      * Get the user who made the booking.

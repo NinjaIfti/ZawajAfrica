@@ -285,4 +285,236 @@ class MonnifyService
             ]
         ];
     }
+
+    /**
+     * Create a reserved account for the user
+     */
+    public function createReservedAccount(array $customerData)
+    {
+        try {
+            Log::info('Monnify: Creating reserved account', [
+                'customer_email' => $customerData['customerEmail']
+            ]);
+
+            $accessToken = $this->getAccessToken();
+            
+            $payload = [
+                'accountReference' => $customerData['accountReference'],
+                'accountName' => $customerData['accountName'],
+                'currencyCode' => 'NGN',
+                'contractCode' => $this->contractCode,
+                'customerEmail' => $customerData['customerEmail'],
+                'customerName' => $customerData['customerName'],
+                'getAllAvailableBanks' => true
+            ];
+
+            $createUrl = rtrim($this->baseUrl, '/') . '/api/v2/bank-transfer/reserved-accounts';
+            
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type' => 'application/json'
+            ])->post($createUrl, $payload);
+
+            Log::info('Monnify: Reserved account creation response', [
+                'customer_email' => $customerData['customerEmail'],
+                'status_code' => $response->status(),
+                'response_body' => $response->json()
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if ($data['requestSuccessful']) {
+                    return [
+                        'status' => true,
+                        'data' => $data['responseBody']
+                    ];
+                }
+            }
+
+            // Handle the case where account already exists
+            $responseData = $response->json();
+            if (isset($responseData['responseMessage']) && 
+                strpos($responseData['responseMessage'], 'cannot reserve more than') !== false) {
+                
+                Log::info('Monnify: Account already exists, attempting to retrieve existing account', [
+                    'customer_email' => $customerData['customerEmail'],
+                    'account_reference' => $customerData['accountReference']
+                ]);
+                
+                // Try to get the existing account details
+                $existingAccount = $this->getReservedAccountDetails($customerData['accountReference']);
+                if ($existingAccount['status']) {
+                    Log::info('Monnify: Retrieved existing reserved account', [
+                        'customer_email' => $customerData['customerEmail'],
+                        'account_reference' => $customerData['accountReference']
+                    ]);
+                    
+                    return [
+                        'status' => true,
+                        'data' => $existingAccount['data'],
+                        'message' => 'Using existing reserved account'
+                    ];
+                }
+                
+                return [
+                    'status' => false,
+                    'message' => 'Account limit reached. Please use a different email or contact support.'
+                ];
+            }
+
+            return [
+                'status' => false,
+                'message' => $responseData['responseMessage'] ?? 'Failed to create reserved account'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Monnify: Reserved account creation exception', [
+                'customer_email' => $customerData['customerEmail'] ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'status' => false,
+                'message' => 'Reserved account service temporarily unavailable'
+            ];
+        }
+    }
+
+    /**
+     * Update customer KYC information for reserved account
+     */
+    public function updateKycInfo(string $accountReference, array $kycData)
+    {
+        try {
+            $accessToken = $this->getAccessToken();
+            
+            Log::info('Monnify: Updating KYC info', [
+                'account_reference' => $accountReference,
+                'has_bvn' => isset($kycData['bvn']),
+                'has_nin' => isset($kycData['nin'])
+            ]);
+
+            $endpoint = "/api/v1/bank-transfer/reserved-accounts/{$accountReference}/kyc-info";
+            
+            $response = Http::timeout(60) // 60 seconds timeout for KYC operations
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json',
+                ])
+                ->put($this->baseUrl . $endpoint, $kycData);
+
+            $responseData = $response->json();
+
+            Log::info('Monnify: KYC update response', [
+                'account_reference' => $accountReference,
+                'status_code' => $response->status(),
+                'response_body' => $responseData
+            ]);
+
+            if ($response->successful() && isset($responseData['requestSuccessful']) && $responseData['requestSuccessful']) {
+                return [
+                    'status' => true,
+                    'message' => 'KYC information updated successfully',
+                    'data' => $responseData['responseBody'] ?? null
+                ];
+            }
+
+            return [
+                'status' => false,
+                'message' => $responseData['responseMessage'] ?? 'Failed to update KYC information',
+                'error' => $responseData
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Monnify: KYC update failed', [
+                'account_reference' => $accountReference,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'status' => false,
+                'message' => 'KYC update failed: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get reserved account details including KYC status
+     */
+    public function getReservedAccountDetails(string $accountReference)
+    {
+        try {
+            Log::info('Monnify: Getting reserved account details', [
+                'account_reference' => $accountReference
+            ]);
+
+            $accessToken = $this->getAccessToken();
+            
+            $detailsUrl = rtrim($this->baseUrl, '/') . '/api/v2/bank-transfer/reserved-accounts/' . $accountReference;
+            
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type' => 'application/json'
+            ])->get($detailsUrl);
+
+            Log::info('Monnify: Reserved account details response', [
+                'account_reference' => $accountReference,
+                'status_code' => $response->status(),
+                'response_body' => $response->json()
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if ($data['requestSuccessful']) {
+                    return [
+                        'status' => true,
+                        'data' => $data['responseBody']
+                    ];
+                }
+            }
+
+            return [
+                'status' => false,
+                'message' => $response->json()['responseMessage'] ?? 'Failed to get account details'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Monnify: Get account details exception', [
+                'account_reference' => $accountReference,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'status' => false,
+                'message' => 'Account details service temporarily unavailable'
+            ];
+        }
+    }
+
+    /**
+     * Generate a unique account reference for a user
+     */
+    public function generateAccountReference(int $userId): string
+    {
+        return 'zawaj_user_' . $userId;
+    }
+
+    /**
+     * Validate BVN format (11 digits)
+     */
+    public function validateBvn(string $bvn): bool
+    {
+        return preg_match('/^\d{11}$/', $bvn);
+    }
+
+    /**
+     * Validate NIN format (11 digits)
+     */
+    public function validateNin(string $nin): bool
+    {
+        return preg_match('/^\d{11}$/', $nin);
+    }
 } 

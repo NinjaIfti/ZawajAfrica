@@ -29,6 +29,10 @@ class Therapist extends Model
         'languages',
         'status',
         'additional_info',
+        'zoho_service_id',
+        'zoho_staff_id',
+        'zoho_settings',
+        'zoho_last_sync',
     ];
 
     /**
@@ -40,6 +44,8 @@ class Therapist extends Model
         'specializations' => 'array',
         'availability' => 'array',
         'hourly_rate' => 'decimal:2',
+        'zoho_settings' => 'array',
+        'zoho_last_sync' => 'datetime',
     ];
 
     /**

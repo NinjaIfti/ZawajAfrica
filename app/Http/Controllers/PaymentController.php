@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use App\Notifications\TherapistBookingPaid;
+use App\Models\Therapist;
 
 class PaymentController extends Controller
 {
@@ -136,30 +137,96 @@ class PaymentController extends Controller
     public function initializeTherapistBooking(Request $request)
     {
         try {
-            // Validate the request
-            $validated = $request->validate([
-                'therapist_id' => 'required|exists:therapists,id',
-                'booking_date' => 'required|date|after_or_equal:today',
-                'booking_time' => 'required|string',
-                'notes' => 'nullable|string|max:500',
-                'platform' => 'nullable|string',
-                'payment_gateway' => 'required|in:paystack,monnify'
+            // Debug log the received data
+            Log::info('PaymentController received data', [
+                'all_data' => $request->all(),
+                'has_id' => $request->has('id'),
+                'id_value' => $request->input('id', 'NOT_SET'),
+                'request_method' => $request->method()
             ]);
 
-            $user = Auth::user();
+            // Check if we have an existing booking ID or need to create a new booking
+            if ($request->has('id')) {
+                // Validate the request for existing booking
+                $validated = $request->validate([
+                    'therapist_id' => 'required|exists:therapists,id',
+                    'id' => 'required|exists:therapist_bookings,id', // Existing booking with Zoho integration
+                    'booking_date' => 'required|date|after_or_equal:today',
+                    'booking_time' => 'required|string',
+                    'platform' => 'nullable|string',
+                    'payment_gateway' => 'required|in:paystack,monnify'
+                ]);
+
+                $user = Auth::user();
+                
+                // Find the existing booking that already has Zoho integration
+                $booking = TherapistBooking::with('therapist')
+                    ->where('id', $validated['id'])
+                    ->where('user_id', $user->id) // Ensure user owns this booking
+                    ->where('status', 'pending') // Only process pending bookings
+                    ->firstOrFail();
+            } else {
+                // Create new booking first, then process payment
+                $validated = $request->validate([
+                    'therapist_id' => 'required|exists:therapists,id',
+                    'booking_date' => 'required|date|after_or_equal:today',
+                    'booking_time' => 'required|string',
+                    
+                    'platform' => 'nullable|string',
+                    'payment_gateway' => 'required|in:paystack,monnify'
+                ]);
+
+                $user = Auth::user();
+                
+                // Convert booking_date and booking_time to appointment_datetime
+                $appointmentDateTime = \Carbon\Carbon::createFromFormat(
+                    'Y-m-d g:i A', 
+                    $validated['booking_date'] . ' ' . $validated['booking_time']
+                );
+
+                // Create the booking with Zoho integration using TherapistBookingController logic
+                $therapist = Therapist::where('id', $validated['therapist_id'])
+                    ->where('status', 'active')
+                    ->firstOrFail();
+
+                // Generate unique payment reference
+                $reference = 'booking_' . $validated['payment_gateway'] . '_' . time() . '_' . \Illuminate\Support\Str::random(8);
+                
+                // Create booking data for Zoho integration
+                $bookingData = [
+                    'therapist_id' => $validated['therapist_id'],
+                    'appointment_datetime' => $appointmentDateTime->format('Y-m-d H:i:s'),
+                    'session_type' => 'online',
+                    'platform' => $validated['platform'],
+                    'payment_gateway' => $validated['payment_gateway'],
+                ];
+
+                // Use the TherapistBookingController's Zoho integration
+                $bookingController = app(\App\Http\Controllers\TherapistBookingController::class);
+                $bookingResult = $bookingController->createBookingForPayment($bookingData, $therapist, $reference);
+                
+                if (!$bookingResult['success']) {
+                    throw new \Exception('Unable to create booking: ' . ($bookingResult['error'] ?? 'Unknown error'));
+                }
+
+                $booking = $bookingResult['booking'];
+                
+                Log::info('Created new booking for payment', [
+                    'booking_id' => $booking->id,
+                    'therapist_id' => $booking->therapist_id,
+                    'appointment_datetime' => $booking->appointment_datetime
+                ]);
+            }
+
+            $therapist = $booking->therapist;
             
-            // Check if therapist exists and has hourly_rate
-            $therapist = \App\Models\Therapist::find($request->therapist_id);
             if (!$therapist || !$therapist->hourly_rate) {
                 throw new \Exception('Therapist not found or rate not configured');
             }
             
             $gateway = $validated['payment_gateway'];
-            $reference = 'booking_' . $gateway . '_' . \Illuminate\Support\Str::random(12);
+            $reference = $booking->payment_reference; // Use existing reference from Zoho booking
             $amount = $therapist->hourly_rate * 100; // Convert to kobo (assuming rate is in Naira)
-
-            // Combine date and time into appointment_datetime
-            $appointmentDatetime = Carbon::createFromFormat('Y-m-d g:i A', $request->booking_date . ' ' . $request->booking_time);
 
             // Validate payment amount matches therapist rate
             $expectedAmount = $therapist->hourly_rate;
@@ -167,18 +234,9 @@ class PaymentController extends Controller
                 throw new \Exception('Payment amount mismatch. Expected: ₦' . number_format($expectedAmount, 2));
             }
 
-            // Create booking record
-            $booking = TherapistBooking::create([
-                'user_id' => $user->id,
-                'therapist_id' => $request->therapist_id,
-                'appointment_datetime' => $appointmentDatetime,
-                'booking_date' => $request->booking_date,
-                'booking_time' => $request->booking_time,
-                'notes' => $request->notes,
-                'status' => 'pending',
-                'amount' => $expectedAmount, // Use therapist's rate, not user input
-                'payment_reference' => $reference,
-                'payment_gateway' => $gateway
+            // Update existing booking with payment gateway (don't create new booking)
+            $booking->update([
+                'payment_gateway' => $gateway,
             ]);
 
             // Initialize payment based on selected gateway
@@ -193,7 +251,7 @@ class PaymentController extends Controller
                     'metadata' => [
                         'type' => 'therapist_booking',
                         'booking_id' => $booking->id,
-                        'therapist_id' => $request->therapist_id,
+                        'therapist_id' => $booking->therapist_id,
                         'user_id' => $user->id,
                         'gateway' => 'monnify'
                     ]
@@ -201,21 +259,21 @@ class PaymentController extends Controller
 
                 $response = $this->monnifyService->initializePayment($paymentData);
             } else {
-            $paymentData = [
-                'email' => $user->email,
+                $paymentData = [
+                    'email' => $user->email,
                     'amount' => $amount, // Paystack expects amount in kobo
-                'reference' => $reference,
-                'callback_url' => route('payment.callback'),
-                'metadata' => [
-                    'type' => 'therapist_booking',
-                    'booking_id' => $booking->id,
-                    'therapist_id' => $request->therapist_id,
+                    'reference' => $reference,
+                    'callback_url' => route('payment.callback'),
+                    'metadata' => [
+                        'type' => 'therapist_booking',
+                        'booking_id' => $booking->id,
+                        'therapist_id' => $booking->therapist_id,
                         'user_id' => $user->id,
                         'gateway' => 'paystack'
-                ]
-            ];
+                    ]
+                ];
 
-            $response = $this->paystackService->initializePayment($paymentData);
+                $response = $this->paystackService->initializePayment($paymentData);
             }
 
             if ($response['status'] === true) {
@@ -227,8 +285,11 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Delete the booking if payment initialization fails
-            $booking->delete();
+            // If payment initialization fails, mark booking as failed but don't delete it
+            $booking->update([
+                'status' => 'failed',
+                'admin_notes' => 'Payment initialization failed: ' . ($response['message'] ?? 'Unknown error')
+            ]);
             
             return response()->json([
                 'status' => false,
@@ -580,4 +641,4 @@ class PaymentController extends Controller
             'amount' => $chargeData['amount'] / 100
         ]);
     }
-} 
+}

@@ -62,8 +62,6 @@ Route::get('/dashboard', function () {
             return $therapist;
         });
     
-    // Photos are already formatted by the MatchingService
-    // No additional processing needed for potential matches
     
     // Get tier information
     $tierService = app(App\Services\UserTierService::class);
@@ -85,8 +83,6 @@ Route::get('/dashboard', function () {
         'userTier' => $userTier, // Pass the calculated tier directly
     ]);
 })->middleware(['auth', 'verified', 'verified.user'])->name('dashboard');
-
-
 
 Route::middleware('auth')->group(function () {
     // Basic profile routes
@@ -199,6 +195,15 @@ Route::middleware('auth')->group(function () {
             'upgrade_suggestions' => $tierService->getUpgradeSuggestions($user)
         ]);
     })->name('api.tier-usage');
+
+    // KYC Routes for Monnify verification
+    Route::prefix('kyc')->name('kyc.')->group(function () {
+        Route::get('/', [App\Http\Controllers\KycController::class, 'index'])->name('index');
+        Route::post('/bvn', [App\Http\Controllers\KycController::class, 'submitBvn'])->name('submit.bvn');
+        Route::post('/nin', [App\Http\Controllers\KycController::class, 'submitNin'])->name('submit.nin');
+        Route::post('/both', [App\Http\Controllers\KycController::class, 'submitBoth'])->name('submit.both');
+        Route::get('/status', [App\Http\Controllers\KycController::class, 'getStatus'])->name('status');
+    });
 });
 
 // Verification routes
@@ -282,29 +287,6 @@ Route::get('/matches/profile/{id}', function($id) {
     ]);
 })->middleware(['auth'])->name('profile.view');
 
-// Test route for debugging
-Route::get('/admin/test-verification', function () {
-    return Inertia::render('Admin/TestVerification');
-})->middleware(['auth'])->name('admin.test-verification');
-
-// Debug route to check user tier
-Route::get('/debug/tier', function () {
-    $user = Auth::user();
-    $tierService = app(\App\Services\UserTierService::class);
-    $userTier = $tierService->getUserTier($user);
-    
-    return response()->json([
-        'user_id' => $user->id,
-        'subscription_plan' => $user->subscription_plan,
-        'subscription_status' => $user->subscription_status,
-        'subscription_expires_at' => $user->subscription_expires_at,
-        'calculated_tier' => $userTier,
-        'tier_limits' => $tierService->getUserLimits($user)
-    ]);
-})->middleware(['auth'])->name('debug.tier');
-
-
-
 // Debug route to simulate payment completion
 Route::get('/debug/simulate-payment/{bookingId}', function ($bookingId) {
     $user = Auth::user();
@@ -364,197 +346,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/payment/callback', [App\Http\Controllers\PaymentController::class, 'handleCallback'])->name('payment.callback');
 });
 
-// Test route for debugging therapist booking
-Route::get('/test-therapist-booking', function () {
-    try {
-        $therapist = \App\Models\Therapist::first();
-        if (!$therapist) {
-            return response()->json(['error' => 'No therapist found in database']);
-        }
-        
-        return response()->json([
-            'therapist_id' => $therapist->id,
-            'name' => $therapist->name,
-            'hourly_rate' => $therapist->hourly_rate,
-            'hourly_rate_type' => gettype($therapist->hourly_rate),
-            'all_fields' => $therapist->toArray()
-        ]);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-    }
-})->name('test.therapist.booking');
-
 Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook');
 Route::post('/monnify/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('monnify.webhook');
-
-// Test route for payment success modal
-Route::get('/test-payment-success', function () {
-    return redirect()->route('dashboard')->with([
-        'payment_success' => true,
-        'payment_type' => 'subscription'
-    ]);
-})->middleware('auth')->name('test.payment.success');
-
-// Test route specifically for subscription payment success
-Route::get('/test-subscription-success', function () {
-    return redirect()->route('subscription.index')->with([
-        'payment_success' => true,
-        'payment_type' => 'subscription'
-    ]);
-})->middleware('auth')->name('test.subscription.success');
-
-// Test route specifically for therapist booking payment success
-Route::get('/test-therapist-success', function () {
-    return redirect()->route('therapists.index')->with([
-        'payment_success' => true,
-        'payment_type' => 'therapist_booking'
-    ]);
-})->middleware('auth')->name('test.therapist.success');
-
-// Test route for OpenAI integration
-Route::get('/test-openai', function () {
-    try {
-        $openAI = app(\App\Services\OpenAIService::class);
-        
-        // Check if service is available
-        if (!$openAI->isAvailable()) {
-            return response()->json([
-                'error' => 'OpenAI service not available',
-                'config' => [
-                    'enabled' => config('services.openai.enabled'),
-                    'api_key_set' => !empty(config('services.openai.api_key')),
-                    'api_key_length' => strlen(config('services.openai.api_key') ?? ''),
-                    'model' => config('services.openai.model'),
-                ]
-            ]);
-        }
-        
-        // Test simple message
-        $messages = [
-            ['role' => 'user', 'content' => 'Hello, can you help me?']
-        ];
-        
-        $response = $openAI->chat($messages, auth()->id());
-        
-        return response()->json([
-            'success' => $response['success'],
-            'response' => $response,
-            'config' => [
-                'model' => config('services.openai.model'),
-                'api_url' => config('services.openai.api_url'),
-            ]
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-            'config' => [
-                'enabled' => config('services.openai.enabled'),
-                'api_key_set' => !empty(config('services.openai.api_key')),
-                'model' => config('services.openai.model'),
-            ]
-        ]);
-    }
-})->middleware('auth')->name('test.openai');
-
-// Test route for Zoho Mail integration (admin only)
-Route::get('/test-zoho-mail', function () {
-    try {
-        $zohoMailService = app(\App\Services\ZohoMailService::class);
-        
-        // Check configuration status
-        $status = $zohoMailService->getStatus();
-        
-        if (!$status['configured']) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Zoho Mail not configured. Please add environment variables.',
-                'config_status' => $status,
-                'required_env_vars' => [
-                    'ZOHO_MAIL_ENABLED=true',
-                    'ZOHO_MAIL_USERNAME=support@yourdomain.com',
-                    'ZOHO_MAIL_PASSWORD=your_app_password',
-                    'ZOHO_MAIL_FROM_ADDRESS=support@yourdomain.com'
-                ],
-                'recommended_addresses' => $zohoMailService->getRecommendedEmailAddresses()
-            ], 400);
-        }
-        
-        // Test email sending
-        $testResult = $zohoMailService->testConnection();
-        
-        return response()->json([
-            'status' => $testResult['status'] ? 'success' : 'error',
-            'message' => $testResult['message'],
-            'config_status' => $status,
-            'recommended_addresses' => $zohoMailService->getRecommendedEmailAddresses(),
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Error testing Zoho Mail: ' . $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-    }
-})->middleware('auth')->name('test.zoho.mail');
-
-// Test route for Zoho Bookings integration (admin only)
-Route::get('/test-zoho-bookings', function () {
-    try {
-        $zohoBookingsService = app(\App\Services\ZohoBookingsService::class);
-        
-        // Check configuration status
-        $status = $zohoBookingsService->getStatus();
-        
-        if (!$status['configured']) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Zoho Bookings not configured. Please add environment variables.',
-                'config_status' => $status,
-                'required_env_vars' => [
-                    'ZOHO_BOOKINGS_ENABLED=true',
-                    'ZOHO_BOOKINGS_CLIENT_ID=your_client_id',
-                    'ZOHO_BOOKINGS_CLIENT_SECRET=your_client_secret',
-                    'ZOHO_BOOKINGS_REFRESH_TOKEN=your_refresh_token',
-                    'ZOHO_BOOKINGS_ORGANIZATION_ID=your_org_id',
-                    'ZOHO_BOOKINGS_DATA_CENTER=com'
-                ]
-            ], 400);
-        }
-        
-        // Test connection
-        $testResult = $zohoBookingsService->testConnection();
-        
-        return response()->json([
-            'status' => $testResult['success'] ? 'success' : 'error',
-            'message' => $testResult['message'],
-            'config_status' => $status,
-            'services_count' => $testResult['services_count'] ?? 0,
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Error testing Zoho Bookings: ' . $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-    }
-})->middleware('auth')->name('test.zoho.bookings');
-
-// Matches routes (for authenticated users)
-Route::middleware(['auth', 'verified'])->group(function () {
-    // Like/Pass functionality (API endpoints)
-    Route::post('/api/matches/{user}/like', [MatchController::class, 'like'])->name('matches.like');
-    Route::post('/api/matches/{user}/pass', [MatchController::class, 'pass'])->name('matches.pass');
-    
-    // Search and filter routes
-    Route::get('/api/matches/search', [MatchController::class, 'search'])->name('matches.search');
-    Route::post('/api/matches/filter', [MatchController::class, 'filter'])->name('matches.filter');
-});
 
 // API route to get fresh CSRF token
 Route::get('/api/csrf-token', function () {
@@ -564,66 +357,24 @@ Route::get('/api/csrf-token', function () {
     ]);
 })->name('api.csrf-token');
 
-// Test route for verification notifications (admin only)
-Route::get('/test-verification-emails', function () {
-    try {
-        // Check if user is admin
-        $currentUser = auth()->user();
-        if (!$currentUser || $currentUser->email !== 'admin@zawagafrica.com') {
-            return response()->json([
-                'error' => 'Access denied. Admin only.'
-            ], 403);
-        }
-
-        // Get Zoho Mail service status
-        $zohoMailService = app(\App\Services\ZohoMailService::class);
-        $mailStatus = $zohoMailService->getStatus();
-        
-        // Get user verification statistics
-        $verificationStats = [
-            'total_users' => \App\Models\User::count(),
-            'pending_verifications' => \App\Models\Verification::where('status', 'pending')->count(),
-            'approved_verifications' => \App\Models\Verification::where('status', 'approved')->count(),
-            'rejected_verifications' => \App\Models\Verification::where('status', 'rejected')->count(),
-        ];
-        
-        // Get a test user (first non-admin user)
-        $testUser = \App\Models\User::where('email', '!=', 'admin@zawagafrica.com')->first();
-        
-        $response = [
-            'mail_service' => [
-                'configured' => $mailStatus['configured'],
-                'smtp_host' => $mailStatus['smtp_host'],
-                'from_address' => $mailStatus['from_address'],
-                'from_name' => $mailStatus['from_name']
-            ],
-            'verification_stats' => $verificationStats,
-            'test_user' => $testUser ? [
-                'id' => $testUser->id,
-                'name' => $testUser->name,
-                'email' => $testUser->email,
-                'is_verified' => $testUser->is_verified ?? false,
-                'has_verification_record' => $testUser->verification ? true : false,
-                'verification_status' => $testUser->verification->status ?? 'none'
-            ] : null,
-            'notification_classes' => [
-                'approval' => 'App\\Notifications\\VerificationApproved',
-                'rejection' => 'App\\Notifications\\VerificationRejected'
-            ],
-            'test_commands' => [
-                'Test approval email' => 'php artisan verification:test-email --user-id=1 --type=approved',
-                'Test rejection email' => 'php artisan verification:test-email --user-id=1 --type=rejected'
-            ]
-        ];
-        
-        return response()->json($response, 200, [], JSON_PRETTY_PRINT);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => 'Test failed: ' . $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ], 500);
-    }
-})->middleware('auth')->name('test.verification.emails');
+// Test Zoho Bookings connection
+Route::get('/test-zoho-bookings', function () {
+    $zohoService = app(\App\Services\ZohoBookingsService::class);
+    
+    $status = $zohoService->getStatus();
+    $connection = $zohoService->testConnection();
+    
+    return response()->json([
+        'status' => $status,
+        'connection_test' => $connection,
+        'config' => [
+            'enabled' => config('services.zoho_bookings.enabled'),
+            'client_id_set' => !empty(config('services.zoho_bookings.client_id')),
+            'client_secret_set' => !empty(config('services.zoho_bookings.client_secret')),
+            'refresh_token_set' => !empty(config('services.zoho_bookings.refresh_token')),
+            'organization_id_set' => !empty(config('services.zoho_bookings.organization_id')),
+        ]
+    ], 200, [], JSON_PRETTY_PRINT);
+})->name('test.zoho.bookings');
 
 require __DIR__.'/auth.php';
