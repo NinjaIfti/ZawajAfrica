@@ -163,6 +163,9 @@ trait ZohoBookingsIntegration
             'from_time' => \Carbon\Carbon::parse($booking->appointment_datetime)->format('d-M-Y H:i:s'),
             'timezone' => config('app.timezone', 'UTC'),
             'customer_details' => json_encode($customerDetails),
+            'payment_info' => json_encode([
+                'cost_paid' => number_format($booking->amount, 2, '.', '')
+            ]),
             'notes' => ''
         ];
 

@@ -248,8 +248,11 @@
     };
 
     const socialLogin = provider => {
-        // Implement social login logic here
-        console.log(`Signup with ${provider}`);
+        if (provider === 'google') {
+            window.location.href = route('auth.google');
+        } else if (provider === 'apple') {
+            window.location.href = route('auth.apple');
+        }
     };
 
     // Function to select gender

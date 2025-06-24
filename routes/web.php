@@ -287,52 +287,6 @@ Route::get('/matches/profile/{id}', function($id) {
     ]);
 })->middleware(['auth'])->name('profile.view');
 
-// Debug route to simulate payment completion
-Route::get('/debug/simulate-payment/{bookingId}', function ($bookingId) {
-    $user = Auth::user();
-    
-    $booking = \App\Models\TherapistBooking::with(['user', 'therapist'])
-        ->where('id', $bookingId)
-        ->where('user_id', $user->id)
-        ->first();
-    
-    if (!$booking) {
-        return response()->json([
-            'error' => 'Booking not found or not owned by current user',
-            'booking_id' => $bookingId,
-            'user_id' => $user->id
-        ]);
-    }
-    
-    try {
-        // Simulate payment completion
-        $booking->update([
-            'status' => 'confirmed',
-            'payment_status' => 'paid',
-            'payment_reference' => 'DEBUG_' . time()
-        ]);
-        
-        // Send notification
-        $user->notify(new \App\Notifications\TherapistBookingPaid($booking));
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment simulated and notification sent',
-            'booking_id' => $booking->id,
-            'booking_status' => $booking->status,
-            'payment_status' => $booking->payment_status,
-            'therapist_name' => $booking->therapist->name,
-            'notification_sent' => true
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => 'Failed to simulate payment',
-            'message' => $e->getMessage(),
-            'booking_id' => $booking->id
-        ]);
-    }
-})->middleware(['auth'])->name('debug.simulate-payment');
-
 // Subscription routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/subscription', [App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription.index');
@@ -357,24 +311,6 @@ Route::get('/api/csrf-token', function () {
     ]);
 })->name('api.csrf-token');
 
-// Test Zoho Bookings connection
-Route::get('/test-zoho-bookings', function () {
-    $zohoService = app(\App\Services\ZohoBookingsService::class);
-    
-    $status = $zohoService->getStatus();
-    $connection = $zohoService->testConnection();
-    
-    return response()->json([
-        'status' => $status,
-        'connection_test' => $connection,
-        'config' => [
-            'enabled' => config('services.zoho_bookings.enabled'),
-            'client_id_set' => !empty(config('services.zoho_bookings.client_id')),
-            'client_secret_set' => !empty(config('services.zoho_bookings.client_secret')),
-            'refresh_token_set' => !empty(config('services.zoho_bookings.refresh_token')),
-            'organization_id_set' => !empty(config('services.zoho_bookings.organization_id')),
-        ]
-    ], 200, [], JSON_PRETTY_PRINT);
-})->name('test.zoho.bookings');
+
 
 require __DIR__.'/auth.php';

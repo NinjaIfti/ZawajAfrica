@@ -2,6 +2,7 @@
     import { Head, Link, useForm } from '@inertiajs/vue3';
     import { ref } from 'vue';
     import InputError from '@/Components/InputError.vue';
+    import TermsAndConditionsModal from '@/Components/TermsAndConditionsModal.vue';
 
     defineProps({
         canResetPassword: {
@@ -17,6 +18,8 @@
         password: '',
         remember: false,
     });
+
+    const showTermsModal = ref(false);
 
     const submit = () => {
         // Refresh CSRF token before login attempt
@@ -40,8 +43,19 @@
     };
 
     const socialLogin = provider => {
-        // Implement social login logic here
-        console.log(`Login with ${provider}`);
+        if (provider === 'google') {
+            window.location.href = route('auth.google');
+        } else if (provider === 'apple') {
+            window.location.href = route('auth.apple');
+        }
+    };
+
+    const openTermsModal = () => {
+        showTermsModal.value = true;
+    };
+
+    const closeTermsModal = () => {
+        showTermsModal.value = false;
     };
 </script>
 
@@ -79,7 +93,7 @@
 
             <!-- Terms & Conditions -->
             <div class="absolute bottom-[5%] left-1/2 -translate-x-1/2 text-center text-white z-10">
-                <a href="#" class="text-white underline">Terms & Conditions</a>
+                <button @click="openTermsModal" class="text-white underline hover:text-gray-200 cursor-pointer">Terms & Conditions</button>
             </div>
         </div>
 
@@ -241,5 +255,11 @@
                 </div>
             </div>
         </div>
+
+        <!-- Terms and Conditions Modal -->
+        <TermsAndConditionsModal 
+            :show="showTermsModal" 
+            @close="closeTermsModal" 
+        />
     </div>
 </template>
