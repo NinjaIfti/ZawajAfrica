@@ -413,6 +413,13 @@
     const availableCities = computed(() => {
         return form.state ? nigerianCities[form.state] || [] : [];
     });
+
+    // Social login function
+    const socialLogin = (provider) => {
+        if (provider === 'google') {
+            window.location.href = route('auth.google');
+        }
+    };
 </script>
 
 <template>

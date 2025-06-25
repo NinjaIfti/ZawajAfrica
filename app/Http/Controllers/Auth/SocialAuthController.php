@@ -41,26 +41,26 @@ class SocialAuthController extends Controller
                 }
                 
                 return redirect()->intended(route('dashboard'))->with('csrf_token', csrf_token());
-            } else {
-                // Create new user
-                $user = User::create([
-                    'name' => $googleUser->getName(),
-                    'email' => $googleUser->getEmail(),
-                    'email_verified_at' => now(),
-                    'password' => Hash::make(Str::random(24)), // Random password since they're using OAuth
-                    'is_verified' => false,
-                ]);
-                
-                // Create a blank profile for the user
-                $user->profile()->create([
-                    'religion' => 'Muslim', // Default, they can update later
-                ]);
-                
-                Auth::login($user);
-                
-                // Redirect to verification process for new users
-                return redirect()->route('verification.intro');
             }
+            
+            // Create new user
+            $user = User::create([
+                'name' => $googleUser->getName(),
+                'email' => $googleUser->getEmail(),
+                'email_verified_at' => now(),
+                'password' => Hash::make(Str::random(24)), // Random password since they're using OAuth
+                'is_verified' => false,
+            ]);
+            
+            // Create a blank profile for the user
+            $user->profile()->create([
+                'religion' => 'Muslim', // Default, they can update later
+            ]);
+            
+            Auth::login($user);
+            
+            // Redirect to verification process for new users
+            return redirect()->route('verification.intro');
             
         } catch (\Exception $e) {
             return redirect()->route('login')->withErrors(['error' => 'Unable to login with Google. Please try again.']);
