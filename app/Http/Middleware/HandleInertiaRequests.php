@@ -4,9 +4,17 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Services\AdSenseService;
 
 class HandleInertiaRequests extends Middleware
 {
+    protected AdSenseService $adSenseService;
+
+    public function __construct(AdSenseService $adSenseService)
+    {
+        $this->adSenseService = $adSenseService;
+    }
+
     /**
      * The root template that is loaded on the first page visit.
      *
@@ -65,6 +73,12 @@ class HandleInertiaRequests extends Middleware
             'csrf' => [
                 'token' => csrf_token(),
                 'header' => 'X-CSRF-TOKEN',
+            ],
+            // AdSense configuration for frontend
+            'adsense' => [
+                'config' => $this->adSenseService->getAdSenseConfig($user),
+                'show_on_page' => $this->adSenseService->shouldShowAdsOnPage($request),
+                'consent' => $this->adSenseService->getConsentStatus($request),
             ],
         ];
     }

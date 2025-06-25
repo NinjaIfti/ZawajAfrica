@@ -34,6 +34,13 @@ class NewPasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        \Log::info('Password reset attempt', [
+            'email' => $request->email,
+            'token' => $request->token ? 'provided' : 'missing',
+            'password_length' => strlen($request->password ?? ''),
+            'has_confirmation' => !empty($request->password_confirmation)
+        ]);
+
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',
@@ -46,6 +53,11 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user) use ($request) {
+                \Log::info('Password reset successful for user', [
+                    'user_id' => $user->id,
+                    'email' => $user->email
+                ]);
+
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
@@ -55,12 +67,24 @@ class NewPasswordController extends Controller
             }
         );
 
+        \Log::info('Password reset status', [
+            'status' => $status,
+            'email' => $request->email,
+            'success' => $status == Password::PASSWORD_RESET
+        ]);
+
         // If the password was successfully reset, we will redirect the user back to
         // the application's home authenticated view. If there is an error we can
         // redirect them back to where they came from with their error message.
         if ($status == Password::PASSWORD_RESET) {
             return redirect()->route('login')->with('status', __($status));
         }
+
+        \Log::error('Password reset failed', [
+            'status' => $status,
+            'email' => $request->email,
+            'translated_message' => trans($status)
+        ]);
 
         throw ValidationException::withMessages([
             'email' => [trans($status)],

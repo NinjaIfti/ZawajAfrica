@@ -62,6 +62,40 @@ Route::get('/dashboard', function () {
             return $therapist;
         });
     
+    // Get recent messages for the widget
+    $conversations = $user->conversations()->take(5);
+    $recentMessages = $conversations->map(function ($conversationUser) use ($user) {
+        // Get the latest message between these users
+        $latestMessage = \App\Models\Message::where(function ($query) use ($user, $conversationUser) {
+            $query->where('sender_id', $user->id)
+                  ->where('receiver_id', $conversationUser->id);
+        })->orWhere(function ($query) use ($user, $conversationUser) {
+            $query->where('sender_id', $conversationUser->id)
+                  ->where('receiver_id', $user->id);
+        })
+        ->latest()
+        ->first();
+        
+        // Count unread messages
+        $unreadCount = \App\Models\Message::where('sender_id', $conversationUser->id)
+                             ->where('receiver_id', $user->id)
+                             ->where('is_read', false)
+                             ->count();
+        
+        // Format profile photo URL
+        $profilePhoto = $conversationUser->profile_photo 
+            ? asset('storage/' . $conversationUser->profile_photo) 
+            : '/images/placeholder.jpg';
+        
+        return [
+            'id' => $conversationUser->id,
+            'name' => $conversationUser->name,
+            'image' => $profilePhoto, // MessagesWidget expects 'image' not 'profile_photo'
+            'message' => $latestMessage ? $latestMessage->content : '',
+            'time' => $latestMessage ? $latestMessage->created_at->format('H:i') : '',
+            'unread' => $unreadCount > 0,
+        ];
+    });
     
     // Get tier information
     $tierService = app(App\Services\UserTierService::class);
@@ -78,6 +112,7 @@ Route::get('/dashboard', function () {
         'profileCompletion' => $profileCompletion,
         'potentialMatches' => $potentialMatches,
         'therapists' => $therapists,
+        'recentMessages' => $recentMessages,
         'tierInfo' => $tierInfo,
         'dailyUsage' => $dailyUsage,
         'userTier' => $userTier, // Pass the calculated tier directly
@@ -195,6 +230,48 @@ Route::middleware('auth')->group(function () {
             'upgrade_suggestions' => $tierService->getUpgradeSuggestions($user)
         ]);
     })->name('api.tier-usage');
+
+    // AdSense API routes
+    Route::prefix('api/adsense')->name('api.adsense.')->group(function () {
+        Route::post('/consent', function (Request $request) {
+            $adSenseService = app(\App\Services\AdSenseService::class);
+            
+            $request->validate([
+                'consent' => 'required|boolean',
+                'personalized_ads' => 'boolean',
+                'data_processing' => 'boolean'
+            ]);
+            
+            $adSenseService->updateConsent($request, $request->only([
+                'consent', 'personalized_ads', 'data_processing'
+            ]));
+            
+            return response()->json(['success' => true]);
+        })->name('consent');
+        
+        Route::get('/config', function (Request $request) {
+            $adSenseService = app(\App\Services\AdSenseService::class);
+            $user = Auth::user();
+            
+            return response()->json([
+                'config' => $adSenseService->getAdSenseConfig($user),
+                'show_on_page' => $adSenseService->shouldShowAdsOnPage($request),
+                'consent' => $adSenseService->getConsentStatus($request)
+            ]);
+        })->name('config');
+        
+        Route::post('/impression', function (Request $request) {
+            $adSenseService = app(\App\Services\AdSenseService::class);
+            $user = Auth::user();
+            
+            if ($user) {
+                $adSenseService->logAdImpression($user, $request->input('ad_type', 'auto'), 
+                    $request->input('metadata', []));
+            }
+            
+            return response()->json(['success' => true]);
+        })->name('impression');
+    });
 
     // KYC Routes for Monnify verification
     Route::prefix('kyc')->name('kyc.')->group(function () {

@@ -26,9 +26,13 @@
 
     const submit = () => {
         form.post(route('password.store'), {
-            onFinish: () => {
+            onSuccess: () => {
                 form.reset('password', 'password_confirmation');
                 resetSuccess.value = true;
+            },
+            onError: () => {
+                // Reset success flag on error
+                resetSuccess.value = false;
             },
         });
     };
@@ -271,13 +275,12 @@
 
                         <!-- Success title -->
                         <h2 class="text-3xl font-bold font-display text-[#04060A] mb-6">
-                            Password reset email sent successfully.
+                            Password Reset Successful!
                         </h2>
 
                         <!-- Success message -->
                         <p class="text-lg text-gray-600 mb-10">
-                            A password reset email has been sent your email. You can now reset the password to the
-                            email.
+                            Your password has been successfully updated. You can now log in with your new password.
                         </p>
 
                         <!-- Login button -->

@@ -220,7 +220,8 @@ class UserTierService
         'messages_sent',
         'likes_sent',
         'matches_created',
-        'profile_updates'
+        'profile_updates',
+        'ads_viewed'
     ];
 
     /**

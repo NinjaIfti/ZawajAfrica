@@ -1,5 +1,21 @@
 <template>
-    <div class="min-h-screen bg-gray-100">
+    <div class="min-h-screen bg-gray-50">
+        <!-- AdSense Manager Component -->
+        <AdSenseManager 
+            :adsense-config="$page.props.adsense.config"
+            :show-on-page="$page.props.adsense.show_on_page"
+            :consent-data="$page.props.adsense.consent"
+        />
+        
+        <!-- AdSense Notice for Free Users -->
+        <AdSenseNotice 
+            :user-tier="getUserTier()"
+            :current-page="getCurrentPageName()"
+        />
+        
+        <!-- Header -->
+        <AppHeader />
+        
         <Head :title="title" />
         
         <!-- Top Navigation Bar -->
@@ -80,7 +96,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link, router, usePage } from '@inertiajs/vue3'
+import AdSenseManager from '@/Components/AdSenseManager.vue'
+import AdSenseNotice from '@/Components/AdSenseNotice.vue'
 
 defineProps({
     title: {
@@ -112,4 +130,22 @@ document.addEventListener('click', (event) => {
         showProfileDropdown.value = false;
     }
 });
+
+// Helper methods for AdSense components
+const getUserTier = () => {
+    const user = usePage().props.auth.user
+    if (!user?.subscription_plan || user?.subscription_status !== 'active') {
+        return 'free'
+    }
+    return user.subscription_plan.toLowerCase()
+}
+
+const getCurrentPageName = () => {
+    const component = usePage().component
+    if (component.includes('Dashboard')) return 'dashboard'
+    if (component.includes('Messages')) return 'messages'
+    if (component.includes('Match')) return 'matches'
+    if (component.includes('Profile')) return 'profile'
+    return 'other'
+}
 </script> 
