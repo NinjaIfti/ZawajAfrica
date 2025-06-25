@@ -9,7 +9,7 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import axios from 'axios';
 import csrfUtils from './utils/csrf.js';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'ZawajAfrica';
 
 // Set up axios CSRF handling
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
@@ -52,7 +52,7 @@ axios.interceptors.response.use(
 );
 
 createInertiaApp({
-    title: title => title,
+    title: title => title ? `${title} - ${appName}` : appName,
     resolve: name => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         return createApp({ render: () => h(App, props) })
