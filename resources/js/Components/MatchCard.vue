@@ -137,7 +137,7 @@
                         <img
                             :src="match.image"
                             :alt="match.name"
-                            class="h-full w-full object-cover object-top"
+                            class="h-full w-full object-cover "
                             @error="$event.target.src = '/images/placeholder.jpg'"
                         />
 
