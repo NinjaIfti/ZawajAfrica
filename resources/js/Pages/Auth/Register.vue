@@ -2,6 +2,7 @@
     import { Head, Link, useForm } from '@inertiajs/vue3';
     import { ref, computed, onMounted } from 'vue';
     import InputError from '@/Components/InputError.vue';
+    import { africanCountries, africanCitiesData, getCitiesForCountry } from '@/data/africanCountries.js';
 
     const currentStep = ref(1);
     const totalSteps = 5;
@@ -16,7 +17,7 @@
         dob_day: '10',
         dob_month: 'Feb',
         dob_year: '1994',
-        country: 'Nigeria',
+        country: '',
         state: '',
         city: '',
         // Additional fields can be added here
@@ -247,8 +248,6 @@
         });
     };
 
-  
-
     // Function to select gender
     const selectGender = gender => {
         form.gender = gender;
@@ -316,103 +315,16 @@
         }
     };
 
-    // Add Nigeria states and cities data
-    const nigerianStates = [
-        'Abia',
-        'Adamawa',
-        'Akwa Ibom',
-        'Anambra',
-        'Bauchi',
-        'Bayelsa',
-        'Benue',
-        'Borno',
-        'Cross River',
-        'Delta',
-        'Ebonyi',
-        'Edo',
-        'Ekiti',
-        'Enugu',
-        'FCT (Abuja)',
-        'Gombe',
-        'Imo',
-        'Jigawa',
-        'Kaduna',
-        'Kano',
-        'Katsina',
-        'Kebbi',
-        'Kogi',
-        'Kwara',
-        'Lagos',
-        'Nasarawa',
-        'Niger',
-        'Ogun',
-        'Ondo',
-        'Osun',
-        'Oyo',
-        'Plateau',
-        'Rivers',
-        'Sokoto',
-        'Taraba',
-        'Yobe',
-        'Zamfara',
-    ];
-
-    // Nigerian cities by state
-    const nigerianCities = {
-        Abia: ['Aba', 'Arochukwu', 'Umuahia', 'Ohafia', 'Isuikwuato'],
-        Adamawa: ['Yola', 'Mubi', 'Jimeta', 'Numan', 'Ganye'],
-        'Akwa Ibom': ['Uyo', 'Eket', 'Ikot Ekpene', 'Oron', 'Abak'],
-        Anambra: ['Awka', 'Onitsha', 'Nnewi', 'Ekwulobia', 'Aguata'],
-        Bauchi: ['Bauchi', 'Azare', 'Misau', "Jama'are", 'Katagum'],
-        Bayelsa: ['Yenagoa', 'Brass', 'Nembe', 'Ogbia', 'Sagbama'],
-        Benue: ['Makurdi', 'Gboko', 'Otukpo', 'Katsina-Ala', 'Vandeikya'],
-        Borno: ['Maiduguri', 'Bama', 'Gwoza', 'Dikwa', 'Monguno'],
-        'Cross River': ['Calabar', 'Ogoja', 'Ugep', 'Obudu', 'Ikom'],
-        Delta: ['Asaba', 'Warri', 'Ughelli', 'Sapele', 'Agbor'],
-        Ebonyi: ['Abakaliki', 'Afikpo', 'Onueke', 'Ishieke', 'Uburu'],
-        Edo: ['Benin City', 'Auchi', 'Ekpoma', 'Uromi', 'Sabongida-Ora'],
-        Ekiti: ['Ado Ekiti', 'Ikere', 'Ikole', 'Ijero', 'Oye'],
-        Enugu: ['Enugu', 'Nsukka', 'Oji River', 'Awgu', 'Udi'],
-        'FCT (Abuja)': ['Abuja', 'Gwagwalada', 'Kuje', 'Bwari', 'Kwali'],
-        Gombe: ['Gombe', 'Billiri', 'Dukku', 'Kaltungo', 'Bajoga'],
-        Imo: ['Owerri', 'Orlu', 'Okigwe', 'Mbaise', 'Oguta'],
-        Jigawa: ['Dutse', 'Hadejia', 'Gumel', 'Kazaure', 'Ringim'],
-        Kaduna: ['Kaduna', 'Zaria', 'Kafanchan', 'Kagoro', 'Birnin Gwari'],
-        Kano: ['Kano', 'Dala', 'Nassarawa', 'Ungogo', 'Rano'],
-        Katsina: ['Katsina', 'Funtua', 'Daura', 'Jibia', 'Dutsin-Ma'],
-        Kebbi: ['Birnin Kebbi', 'Argungu', 'Yauri', 'Zuru', 'Jega'],
-        Kogi: ['Lokoja', 'Okene', 'Kabba', 'Idah', 'Ankpa'],
-        Kwara: ['Ilorin', 'Offa', 'Omu-Aran', 'Pategi', 'Lafiagi'],
-        Lagos: [
-            'Lagos Island',
-            'Ikeja',
-            'Lekki',
-            'Badagry',
-            'Epe',
-            'Ikorodu',
-            'Mushin',
-            'Surulere',
-            'Alimosho',
-            'Agege',
-        ],
-        Nasarawa: ['Lafia', 'Keffi', 'Akwanga', 'Nasarawa', 'Karu'],
-        Niger: ['Minna', 'Bida', 'Kontagora', 'Suleja', 'Lapai'],
-        Ogun: ['Abeokuta', 'Ijebu Ode', 'Sagamu', 'Ilaro', 'Ota'],
-        Ondo: ['Akure', 'Ondo', 'Owo', 'Ikare', 'Okitipupa'],
-        Osun: ['Osogbo', 'Ife', 'Ilesa', 'Ede', 'Iwo'],
-        Oyo: ['Ibadan', 'Ogbomosho', 'Oyo', 'Iseyin', 'Saki'],
-        Plateau: ['Jos', 'Bukuru', 'Pankshin', 'Shendam', 'Langtang'],
-        Rivers: ['Port Harcourt', 'Bonny', 'Buguma', 'Degema', 'Eleme'],
-        Sokoto: ['Sokoto', 'Tambuwal', 'Wurno', 'Gwadabawa', 'Illela'],
-        Taraba: ['Jalingo', 'Wukari', 'Bali', 'Gembu', 'Ibi'],
-        Yobe: ['Damaturu', 'Potiskum', 'Gashua', 'Nguru', 'Geidam'],
-        Zamfara: ['Gusau', 'Kaura Namoda', 'Anka', 'Talata Mafara', 'Tsafe'],
-    };
-
-    // Computed property to get cities based on selected state
+    // Computed property to get cities based on selected country
     const availableCities = computed(() => {
-        return form.state ? nigerianCities[form.state] || [] : [];
+        return form.country ? getCitiesForCountry(form.country) : [];
     });
+
+    // Function to handle country selection and reset city/state
+    const handleCountryChange = () => {
+        form.state = ''; // Reset state when country changes
+        form.city = ''; // Reset city when country changes
+    };
 
     // Social login function
     const socialLogin = (provider) => {
@@ -800,46 +712,19 @@
 
                         <div class="mb-[30px]">
                             <div class="space-y-6">
-                                <!-- Country input (Fixed to Nigeria) -->
+                                <!-- Country dropdown -->
                                 <div>
                                     <label for="country" class="mb-3 block text-lg text-[#41465a]">Country</label>
-                                    <div class="flex items-center rounded-lg bg-[#F5F5F5] px-5 py-5">
-                                        <div class="mr-3 h-5 w-5 flex-shrink-0">
-                                            <!-- Nigeria flag icon -->
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 36 36">
-                                                <path
-                                                    fill="#186648"
-                                                    d="M36 27c0 2.209-1.791 4-4 4H4c-2.209 0-4-1.791-4-4V9c0-2.209 1.791-4 4-4h28c2.209 0 4 1.791 4 4v18z"
-                                                ></path>
-                                                <path
-                                                    fill="#FFFFFF"
-                                                    d="M4 5h8v26H4c-2.209 0-4-1.791-4-4V9c0-2.209 1.791-4 4-4zm20 0h8c2.209 0 4 1.791 4 4v18c0 2.209-1.791 4-4 4h-8V5z"
-                                                ></path>
-                                            </svg>
-                                        </div>
-                                        <input
-                                            id="country"
-                                            type="text"
-                                            class="w-full bg-transparent text-lg text-gray-700 focus:outline-none cursor-default"
-                                            v-model="form.country"
-                                            readonly
-                                        />
-                                    </div>
-                                    <InputError class="mt-2" :message="form.errors.country" />
-                                </div>
-
-                                <!-- State dropdown -->
-                                <div>
-                                    <label for="state" class="mb-3 block text-lg text-[#41465a]">State</label>
                                     <div class="relative">
                                         <select
-                                            id="state"
-                                            v-model="form.state"
+                                            id="country"
+                                            v-model="form.country"
+                                            @change="handleCountryChange"
                                             class="w-full appearance-none rounded-lg bg-[#F5F5F5] px-5 py-5 text-lg text-gray-700 focus:outline-none custom-select"
                                         >
-                                            <option value="" disabled selected>Select your state</option>
-                                            <option v-for="state in nigerianStates" :key="state" :value="state">
-                                                {{ state }}
+                                            <option value="" disabled selected>Select your country</option>
+                                            <option v-for="country in africanCountries" :key="country" :value="country">
+                                                {{ country }}
                                             </option>
                                         </select>
                                         <div
@@ -859,21 +744,21 @@
                                             </svg>
                                         </div>
                                     </div>
-                                    <InputError class="mt-2" :message="form.errors.state" />
+                                    <InputError class="mt-2" :message="form.errors.country" />
                                 </div>
 
-                                <!-- City dropdown (dependent on state selection) -->
+                                <!-- State/Region dropdown (dependent on country selection) -->
                                 <div>
-                                    <label for="city" class="mb-3 block text-lg text-[#41465a]">City</label>
+                                    <label for="state" class="mb-3 block text-lg text-[#41465a]">State/Region</label>
                                     <div class="relative">
                                         <select
-                                            id="city"
-                                            v-model="form.city"
+                                            id="state"
+                                            v-model="form.state"
                                             class="w-full appearance-none rounded-lg bg-[#F5F5F5] px-5 py-5 text-lg text-gray-700 focus:outline-none custom-select"
-                                            :disabled="!form.state"
+                                            :disabled="!form.country"
                                         >
                                             <option value="" disabled selected>
-                                                {{ form.state ? 'Select your city' : 'Please select a state first' }}
+                                                {{ form.country ? 'Select your state/region' : 'Please select a country first' }}
                                             </option>
                                             <option v-for="city in availableCities" :key="city" :value="city">
                                                 {{ city }}
@@ -896,8 +781,10 @@
                                             </svg>
                                         </div>
                                     </div>
-                                    <InputError class="mt-2" :message="form.errors.city" />
+                                    <InputError class="mt-2" :message="form.errors.state" />
                                 </div>
+
+
                             </div>
                         </div>
                     </div>
