@@ -102,8 +102,11 @@ class OpenAIService
     {
         $conversation = [];
 
+        // Check if this is a new conversation (no previous history)
+        $isNewConversation = $userId ? empty($this->getConversationHistory($userId)) : true;
+
         // Add system prompt with user persona
-        $systemMessage = $this->buildSystemPrompt($userId, $userPreferences);
+        $systemMessage = $this->buildSystemPrompt($userId, $userPreferences, $isNewConversation);
         $conversation[] = [
             'role' => 'system',
             'content' => $systemMessage,
@@ -123,7 +126,7 @@ class OpenAIService
     /**
      * Build personalized system prompt based on user data and preferences
      */
-    private function buildSystemPrompt(?int $userId = null, array $userPreferences = []): string
+    private function buildSystemPrompt(?int $userId = null, array $userPreferences = [], bool $isNewConversation = true): string
     {
         $basePrompt = $this->systemPrompt;
         
@@ -131,6 +134,11 @@ class OpenAIService
         $currentHour = now()->format('H');
         $timeContext = "\n\nCurrent time context: It is currently " . now()->format('g:i A') . " (24-hour format: {$currentHour}:00).";
         $basePrompt .= $timeContext;
+
+        // Add conversation context
+        if (!$isNewConversation) {
+            $basePrompt .= "\n\nConversation Context: This is a continuing conversation. Do not repeat greetings or introductions. Respond naturally to the user's current message.";
+        }
 
         if ($userId) {
                     // Get user data for personalization
@@ -143,6 +151,12 @@ class OpenAIService
             }
         }
 
+        // Add therapist information to the context
+        $therapistContext = $this->getTherapistContext();
+        if (!empty($therapistContext)) {
+            $basePrompt .= "\n\nAvailable Therapists:\n" . $therapistContext;
+        }
+
         // Add ZawajAfrica specific guidelines
         $basePrompt .= "\n\nPlatform Guidelines:";
         $basePrompt .= "\n- Focus on meaningful relationships and cultural compatibility";
@@ -151,6 +165,8 @@ class OpenAIService
         $basePrompt .= "\n- Be respectful of Islamic values and African cultural diversity";
         $basePrompt .= "\n- Help users navigate the platform features";
         $basePrompt .= "\n- Encourage healthy communication and relationship building";
+        $basePrompt .= "\n- When suggesting therapists, use the available therapist information provided";
+        $basePrompt .= "\n- You can help users book therapy sessions by providing therapist details and directing them to the booking page";
 
         return $basePrompt;
     }
@@ -285,6 +301,8 @@ class OpenAIService
             "What should I include in my bio to stand out?",
             "How do I start a meaningful conversation with someone?",
             "What are some good first date ideas in my area?",
+            "Can you recommend a therapist for relationship counseling?",
+            "I need help with communication in my relationship.",
         ];
 
         // Add personalized starters based on user data
@@ -298,6 +316,88 @@ class OpenAIService
             }
         }
 
+        // Add therapist-related starters based on available therapists
+        $therapistCount = \App\Models\Therapist::where('status', 'active')->count();
+        if ($therapistCount > 0) {
+            $starters[] = "Show me available therapists on the platform.";
+            $starters[] = "I'm looking for couples therapy. Who do you recommend?";
+        }
+
         return array_slice($starters, 0, 6); // Return max 6 starters
+    }
+
+    /**
+     * Get therapist context information for AI to use
+     */
+    private function getTherapistContext(): string
+    {
+        // Cache therapist data for performance
+        $cacheKey = 'chatbot_therapist_context';
+        $cachedData = Cache::get($cacheKey);
+        
+        if ($cachedData !== null) {
+            return $cachedData;
+        }
+
+        $therapists = \App\Models\Therapist::where('status', 'active')
+            ->select([
+                'id', 
+                'name', 
+                'bio', 
+                'specializations', 
+                'degree', 
+                'years_of_experience', 
+                'hourly_rate', 
+                'availability',
+                'languages'
+            ])
+            ->get();
+
+        if ($therapists->isEmpty()) {
+            return '';
+        }
+
+        $context = [];
+        foreach ($therapists as $therapist) {
+            $specializations = is_string($therapist->specializations) 
+                ? json_decode($therapist->specializations, true) 
+                : $therapist->specializations;
+            
+            $specializationsList = is_array($specializations) 
+                ? implode(', ', $specializations) 
+                : 'General counseling';
+
+            $therapistInfo = [];
+            $therapistInfo[] = "Name: {$therapist->name}";
+            $therapistInfo[] = "ID: {$therapist->id}";
+            $therapistInfo[] = "Specializations: {$specializationsList}";
+            $therapistInfo[] = "Experience: {$therapist->years_of_experience} years";
+            $therapistInfo[] = "Rate: ${$therapist->hourly_rate}/hour";
+            
+            if ($therapist->languages) {
+                $therapistInfo[] = "Languages: {$therapist->languages}";
+            }
+            
+            if ($therapist->bio) {
+                $therapistInfo[] = "Bio: " . substr($therapist->bio, 0, 200) . (strlen($therapist->bio) > 200 ? '...' : '');
+            }
+
+            $context[] = "- " . implode(" | ", $therapistInfo);
+        }
+
+        $contextString = implode("\n", $context);
+        
+        // Cache for 1 hour
+        Cache::put($cacheKey, $contextString, 60 * 60);
+        
+        return $contextString;
+    }
+
+    /**
+     * Clear therapist context cache (useful when therapists are updated)
+     */
+    public function clearTherapistCache(): void
+    {
+        Cache::forget('chatbot_therapist_context');
     }
 } 

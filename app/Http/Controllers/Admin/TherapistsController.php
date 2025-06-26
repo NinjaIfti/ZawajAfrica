@@ -5,12 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Therapist;
 use App\Models\TherapistBooking;
+use App\Services\OpenAIService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class TherapistsController extends Controller
 {
+    protected $openAIService;
+
+    public function __construct(OpenAIService $openAIService)
+    {
+        $this->openAIService = $openAIService;
+    }
     /**
      * Display a listing of therapists.
      */
@@ -69,6 +76,9 @@ class TherapistsController extends Controller
         }
 
         Therapist::create($validated);
+
+        // Clear therapist cache for AI chatbot
+        $this->openAIService->clearTherapistCache();
 
         return redirect()->route('admin.therapists.index')->with('success', 'Therapist created successfully');
     }
@@ -139,6 +149,9 @@ class TherapistsController extends Controller
 
         $therapist->update($validated);
 
+        // Clear therapist cache for AI chatbot
+        $this->openAIService->clearTherapistCache();
+
         return redirect()->route('admin.therapists.index')->with('success', 'Therapist updated successfully');
     }
 
@@ -155,6 +168,9 @@ class TherapistsController extends Controller
         }
 
         $therapist->delete();
+
+        // Clear therapist cache for AI chatbot
+        $this->openAIService->clearTherapistCache();
 
         return redirect()->route('admin.therapists.index')->with('success', 'Therapist deleted successfully');
     }
