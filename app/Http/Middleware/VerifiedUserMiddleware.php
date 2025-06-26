@@ -20,17 +20,10 @@ class VerifiedUserMiddleware
             return $next($request);
         }
         
-        // If user is not verified, redirect to verification intro
-        if ($request->user() && !$request->user()->is_verified) {
-            // If user has a pending verification, show a message
-            if ($request->user()->verification && $request->user()->verification->status === 'pending') {
-                return redirect()->route('verification.pending');
-            }
-            
-            // Otherwise, start the verification process
-            return redirect()->route('verification.intro');
-        }
-
+        // Allow all users to proceed regardless of verification status
+        // Verification is now optional - users can skip it and still access the site
+        // Admin can still review submitted verification documents
+        
         return $next($request);
     }
 } 

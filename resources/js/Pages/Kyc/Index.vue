@@ -316,6 +316,122 @@
                     </div>
                 </div>
 
+                <!-- Identity Document Verification Section -->
+                <div v-if="!user.is_verified && !user.verification" class="bg-white overflow-hidden shadow-xl sm:rounded-lg mt-8">
+                    <div class="p-6">
+                        <div class="text-center mb-6">
+                            <div class="bg-orange-100 rounded-lg p-3 inline-block mb-4">
+                                <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Document Verification</h3>
+                            <p class="text-gray-600 mb-6">
+                                For additional identity verification, you can upload your government-issued documents. 
+                                This step is optional but helps build trust on your profile.
+                            </p>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <p class="text-sm text-blue-700">
+                                    <strong>Note:</strong> Document verification is completely optional. You can continue using all platform features without it, 
+                                    but it may help increase trust with other users.
+                                </p>
+                            </div>
+
+                            <Link
+                                :href="route('verification.intro')"
+                                class="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                            >
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                                </svg>
+                                Upload Verification Documents
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verification Status Section for users who have submitted documents -->
+                <div v-else-if="user.verification" class="bg-white overflow-hidden shadow-xl sm:rounded-lg mt-8">
+                    <div class="p-6">
+                        <div class="text-center">
+                            <!-- Pending verification -->
+                            <div v-if="user.verification.status === 'pending'" class="mb-6">
+                                <div class="bg-yellow-100 rounded-lg p-3 inline-block mb-4">
+                                    <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-900 mb-2">Document Verification Pending</h3>
+                                <p class="text-gray-600 mb-4">
+                                    Your verification documents are currently being reviewed by our team. This typically takes 24-48 hours.
+                                </p>
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                    <p class="text-sm text-green-700">
+                                        You can continue using all platform features while your verification is being reviewed.
+                                    </p>
+                                </div>
+                                <Link
+                                    :href="route('verification.pending')"
+                                    class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white font-medium rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                                >
+                                    Check Status
+                                </Link>
+                            </div>
+
+                            <!-- Rejected verification -->
+                            <div v-else-if="user.verification.status === 'rejected'" class="mb-6">
+                                <div class="bg-red-100 rounded-lg p-3 inline-block mb-4">
+                                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-900 mb-2">Document Verification Needs Attention</h3>
+                                <p class="text-gray-600 mb-4">
+                                    Your previous verification submission needs some corrections. You can resubmit new documents.
+                                </p>
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                    <p class="text-sm text-green-700">
+                                        <strong>Remember:</strong> You can continue using all platform features regardless of verification status.
+                                    </p>
+                                </div>
+                                <div class="space-x-3">
+                                    <Link
+                                        :href="route('verification.intro')"
+                                        class="inline-flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                    >
+                                        Resubmit Documents
+                                    </Link>
+                                    <Link
+                                        :href="route('verification.pending')"
+                                        class="inline-flex items-center px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                                    >
+                                        View Details
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <!-- Approved verification -->
+                            <div v-else-if="user.is_verified" class="mb-6">
+                                <div class="bg-green-100 rounded-lg p-3 inline-block mb-4">
+                                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-900 mb-2">Document Verification Complete</h3>
+                                <p class="text-gray-600 mb-4">
+                                    Your identity documents have been successfully verified! Your profile now has enhanced credibility.
+                                </p>
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <p class="text-sm text-green-700">
+                                        ✓ Your profile is now verified and shows enhanced trust to other users.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Information Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-8">
                     <div class="flex items-start">
@@ -340,7 +456,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({

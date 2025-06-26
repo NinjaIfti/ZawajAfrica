@@ -16,11 +16,8 @@ class VerificationController extends Controller
      */
     public function intro(): Response
     {
-        // If user is already verified, redirect to dashboard
-        if (auth()->user()->is_verified) {
-            return redirect()->route('dashboard');
-        }
-
+        // Allow all users to access verification intro regardless of status
+        // They can verify even if already verified or if previously rejected
         return Inertia::render('Verification/Intro');
     }
 
@@ -29,11 +26,7 @@ class VerificationController extends Controller
      */
     public function documentTypeSelection(): Response
     {
-        // If user is already verified, redirect to dashboard
-        if (auth()->user()->is_verified) {
-            return redirect()->route('dashboard');
-        }
-
+        // Allow all users to access document type selection
         return Inertia::render('Verification/DocumentTypeSelection');
     }
 
@@ -42,11 +35,7 @@ class VerificationController extends Controller
      */
     public function documentUpload(Request $request): Response
     {
-        // If user is already verified, redirect to dashboard
-        if (auth()->user()->is_verified) {
-            return redirect()->route('dashboard');
-        }
-
+        // Allow all users to access document upload
         $documentType = $request->query('type', 'passport');
         
         return Inertia::render('Verification/DocumentUpload', [
@@ -75,7 +64,7 @@ class VerificationController extends Controller
 
         $user = auth()->user();
         
-        // Delete any previous verification records
+        // Delete any previous verification records (allowing resubmission)
         if ($user->verification) {
             // Delete old files if they exist
             if ($user->verification->front_image) {
@@ -104,9 +93,10 @@ class VerificationController extends Controller
             'status' => 'pending',
         ]);
 
-        // Update user record
+        // Update user record with verification type but keep them unverified until admin approval
         $user->update([
             'verification_type' => $request->document_type,
+            'is_verified' => false, // Reset verification status, admin must approve
         ]);
 
         return redirect()->route('verification.complete');
@@ -127,15 +117,8 @@ class VerificationController extends Controller
     {
         $user = auth()->user();
         
-        // If user is verified, redirect to dashboard
-        if ($user->is_verified) {
-            return redirect()->route('dashboard');
-        }
-        
-        // If user doesn't have a pending verification, redirect to intro
-        if (!$user->verification || $user->verification->status !== 'pending') {
-            return redirect()->route('verification.intro');
-        }
+        // Allow users to see pending status but they can still navigate away
+        // No forced redirects - verification is optional
         
         return Inertia::render('Verification/Pending');
     }

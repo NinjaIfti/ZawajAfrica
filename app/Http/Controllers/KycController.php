@@ -43,6 +43,9 @@ class KycController extends Controller
                 'is_eligible_for_higher_limits' => $user->isEligibleForHigherLimits(),
                 'kyc_verified_at' => $user->kyc_verified_at,
                 'kyc_failure_reason' => $user->kyc_failure_reason,
+                // Add verification status for document verification link
+                'is_verified' => $user->is_verified,
+                'verification' => $user->verification,
             ]
         ]);
     }

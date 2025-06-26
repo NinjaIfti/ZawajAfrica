@@ -39,8 +39,10 @@
                 <h1 class="text-xl sm:text-2xl lg:text-2xl font-bold text-black text-center">Verify Your Identity</h1>
 
                 <p class="mx-auto max-w-md text-center text-gray-800 text-sm sm:text-base lg:text-base px-2 sm:px-0">
-                    Confirm your identity with a valid government-issued ID to continue.
+                    You can verify your identity with a valid government-issued ID for enhanced trust and credibility on your profile.
                 </p>
+
+               
 
                 <p class="text-center text-xs sm:text-sm lg:text-sm text-red-600 px-2 sm:px-0">
                     All your data will not be shared with anyone. It's just for verification purpose.
@@ -48,20 +50,19 @@
             </div>
 
             <div class="flex flex-col space-y-3 sm:space-y-4 lg:space-y-4">
-                <Link
-                    :href="route('verification.document-type')"
-                    class="flex w-full items-center justify-center rounded-lg bg-purple-700 py-2.5 sm:py-3 lg:py-3 text-white transition duration-150 hover:bg-purple-800 text-sm sm:text-base lg:text-base"
-                >
-                    Start Verification
-                </Link>
-
                 <button
                     @click="skipVerification"
-                    class="text-purple-700 text-center font-medium hover:underline text-sm sm:text-base lg:text-base"
+                    class="flex w-full items-center justify-center rounded-lg bg-purple-700 py-2.5 sm:py-3 lg:py-3 text-white transition duration-150 hover:bg-purple-800 text-sm sm:text-base lg:text-base font-medium"
                 >
-                    I will do it later,
-                    <span class="text-purple-700 font-bold">Skip Now</span>
+                    Continue to Dashboard
                 </button>
+
+                <Link
+                    :href="route('verification.document-type')"
+                    class="flex w-full items-center justify-center rounded-lg border border-purple-700 py-2.5 sm:py-3 lg:py-3 text-purple-700 transition duration-150 hover:bg-purple-50 text-sm sm:text-base lg:text-base font-medium"
+                >
+                    Verify My Identity 
+                </Link>
             </div>
         </div>
     </div>

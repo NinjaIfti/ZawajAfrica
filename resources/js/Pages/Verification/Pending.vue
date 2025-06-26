@@ -34,27 +34,32 @@
             </h1>
 
             <p
-                class="mx-auto max-w-md text-center text-gray-800 mb-6 sm:mb-7 lg:mb-8 text-sm sm:text-base lg:text-base px-2 sm:px-0"
+                class="mx-auto max-w-md text-center text-gray-800 mb-4 text-sm sm:text-base lg:text-base px-2 sm:px-0"
             >
                 Your documents have been submitted successfully and are currently being reviewed by our team. This
                 process typically takes 24-48 hours. You'll be notified once your verification is approved.
             </p>
 
+            <div class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4">
+                <p class="text-sm text-green-700">
+                    <strong>Great news!</strong> You can continue using all features of our platform while your verification is being reviewed. 
+                    No need to wait - start exploring now!
+                </p>
+            </div>
+
             <div class="flex flex-col space-y-3 sm:space-y-4 lg:space-y-4">
                 <Link
-                    :href="route('verification.intro')"
-                    class="block w-full rounded-lg bg-purple-700 py-2.5 sm:py-3 lg:py-3 text-white transition duration-150 hover:bg-purple-800 text-sm sm:text-base lg:text-base"
+                    :href="route('dashboard')"
+                    class="block w-full rounded-lg bg-purple-700 py-2.5 sm:py-3 lg:py-3 text-white transition duration-150 hover:bg-purple-800 text-sm sm:text-base lg:text-base font-medium"
                 >
-                    Submit Different Documents
+                    Continue to Dashboard
                 </Link>
 
                 <Link
-                    :href="route('logout')"
-                    method="post"
-                    as="button"
-                    class="text-purple-700 text-center font-medium hover:underline text-sm sm:text-base lg:text-base"
+                    :href="route('verification.intro')"
+                    class="block w-full rounded-lg border border-gray-300 py-2.5 sm:py-3 lg:py-3 text-gray-700 transition duration-150 hover:bg-gray-50 text-sm sm:text-base lg:text-base font-medium"
                 >
-                    Logout
+                    Submit Different Documents
                 </Link>
             </div>
         </div>

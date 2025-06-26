@@ -395,6 +395,11 @@ class AdminController extends Controller
             'status' => 'rejected',
             'rejection_reason' => $rejectionReason,
         ]);
+
+        // Ensure user is_verified remains false but user can still access the site
+        $user->update([
+            'is_verified' => false,
+        ]);
         
         // Send rejection notification using Zoho Mail
         try {
