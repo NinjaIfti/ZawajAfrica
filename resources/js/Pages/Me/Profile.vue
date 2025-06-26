@@ -1487,7 +1487,7 @@
                                             >
                                                 <option value="">Min Age</option>
                                                 <option
-                                                    v-for="age in Array.from({ length: 43 }, (_, i) => i + 18)"
+                                                    v-for="age in Array.from({ length: 83 }, (_, i) => i + 18)"
                                                     :key="age"
                                                     :value="age"
                                                 >
@@ -1501,7 +1501,7 @@
                                             >
                                                 <option value="">Max Age</option>
                                                 <option
-                                                    v-for="age in Array.from({ length: 43 }, (_, i) => i + 18)"
+                                                    v-for="age in Array.from({ length: 83 }, (_, i) => i + 18)"
                                                     :key="age"
                                                     :value="age"
                                                 >
