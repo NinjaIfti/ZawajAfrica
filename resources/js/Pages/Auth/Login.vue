@@ -202,7 +202,7 @@
                         <div class="text-center text-lg">
                             <span>Don't have account?</span>
                             <Link :href="route('register')" class="text-[#654396] font-medium hover:underline">
-                                Join Now!
+                                Sign Up!
                             </Link>
                         </div>
                     </form>

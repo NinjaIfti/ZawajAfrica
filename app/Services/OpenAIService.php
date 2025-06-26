@@ -372,7 +372,7 @@ class OpenAIService
             $therapistInfo[] = "ID: {$therapist->id}";
             $therapistInfo[] = "Specializations: {$specializationsList}";
             $therapistInfo[] = "Experience: {$therapist->years_of_experience} years";
-            $therapistInfo[] = "Rate: ${$therapist->hourly_rate}/hour";
+            $therapistInfo[] = "Rate: $" . $therapist->hourly_rate . "/hour";
             
             if ($therapist->languages) {
                 $therapistInfo[] = "Languages: {$therapist->languages}";
