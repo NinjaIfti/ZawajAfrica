@@ -1,6 +1,7 @@
 <script setup>
     import { Link } from '@inertiajs/vue3';
     import AppHeader from '@/Components/AppHeader.vue';
+    import TierBadge from '@/Components/TierBadge.vue';
 
     const props = defineProps({
         user: Object,
@@ -43,7 +44,10 @@
                     />
                 </div>
 
-                <h2 class="text-xl font-bold mb-1">{{ user?.name || 'User' }}</h2>
+                <div class="flex items-center justify-center gap-2 mb-1">
+                    <h2 class="text-xl font-bold">{{ user?.name || 'User' }}</h2>
+                    <TierBadge :tier="user?.tier || 'free'" size="sm" />
+                </div>
                 <p class="text-gray-500 text-sm">
                     {{ user?.location !== 'Location not set' ? user?.location : user?.country || 'Location not set' }}
                 </p>

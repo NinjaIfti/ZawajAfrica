@@ -24,6 +24,11 @@ class ProfileController extends Controller
             $user->profile_photo = asset('storage/' . $user->profile_photo);
         }
         
+        // Get user tier information
+        $tierService = app(\App\Services\UserTierService::class);
+        $userTier = $tierService->getUserTier($user);
+        $user->tier = $userTier;
+        
         return Inertia::render('Me/Profile', [
             'user' => $user
         ]);

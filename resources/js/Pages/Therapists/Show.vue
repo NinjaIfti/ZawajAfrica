@@ -177,7 +177,7 @@
                                         <p class="text-lg lg:text-2xl font-bold text-gray-900">
                                             ₦{{ Number(therapist.hourly_rate).toLocaleString() }}
                                         </p>
-                                    </div>
+                                    </div>              
                                     <!-- Book Appointment Button -->
                                     <button
                                         @click="showBookingSlider = true"

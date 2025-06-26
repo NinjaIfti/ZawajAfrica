@@ -15,7 +15,7 @@
     const mobileMenuOpen = ref(false);
 
     const cancelForm = useForm({
-        cancellation_reason: '',
+        cancellation_reason: '',    
     });
 
     // Filter form
@@ -131,7 +131,7 @@
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-50 relative">
         <!-- Mobile header with hamburger menu - Only visible on mobile -->
-        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center md:hidden">
             <button @click="mobileMenuOpen = !mobileMenuOpen" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
                 <svg
                     class="h-6 w-6 text-gray-700"
@@ -153,7 +153,7 @@
                 </svg>
             </button>
 
-            <h1 class="text-lg font-bold">My Bookings</h1>
+            <h1 class="text-lg text-white font-bold">My Bookings</h1>
         </div>
 
         <!-- Mobile Menu Overlay -->

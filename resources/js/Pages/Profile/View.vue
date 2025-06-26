@@ -4,6 +4,8 @@
     import Sidebar from '@/Components/Sidebar.vue';
     import ReportModal from '@/Components/ReportModal.vue';
     import LikeSuccessModal from '@/Components/LikeSuccessModal.vue';
+    import TierBadge from '@/Components/TierBadge.vue';
+    import PhotoBlurControl from '@/Components/PhotoBlurControl.vue';
 
     // Modal and state management
     const showReportModal = ref(false);
@@ -116,6 +118,25 @@
         // If user is Platinum or Gold, show message button
         const userTier = props.userTier || 'free';
         return userTier === 'platinum' || userTier === 'gold';
+    });
+
+    // Check if user can unblur photos based on the target user's blur settings
+    const canUnblurPhotos = computed(() => {
+        const user = props.userData;
+        if (!user) return true;
+        
+        // If photos are not blurred, always allow viewing
+        if (!user.photos_blurred) {
+            return true;
+        }
+        
+        // If blur mode is 'auto', allow unblurring
+        if (user.photo_blur_mode === 'auto') {
+            return true;
+        }
+        
+        // If blur mode is 'manual' or not set, don't allow automatic unblurring
+        return false;
     });
 
     const props = defineProps({
@@ -344,6 +365,32 @@
         }
     };
 
+    // Handle photo unblurred event
+    const handlePhotoUnblurred = (userId) => {
+        console.log(`Photo unblurred for user ${userId}`);
+        // You might want to update UI state or show a message
+    };
+
+    // Privacy modal state
+    const showPrivacyModal = ref(false);
+
+    // Handle photo click - check if should open gallery or show privacy message
+    const handlePhotoClick = (index = 0) => {
+        // Check if photos are blurred and mode is manual - show warning instead
+        if (props.userData?.photos_blurred && props.userData?.photo_blur_mode === 'manual') {
+            showPrivacyModal.value = true;
+            return;
+        }
+        
+        // If photos are not blurred or mode is auto, allow gallery viewing
+        openPhotoGallery(index);
+    };
+
+    // Close privacy modal
+    const closePrivacyModal = () => {
+        showPrivacyModal.value = false;
+    };
+
     // Toggle sections - only apply on mobile/tablet
     const toggleSection = sectionId => {
         // Only apply toggle behavior on mobile/tablet screens
@@ -560,11 +607,14 @@
                             <!-- Mobile: Image with overlay info -->
                             <div class="md:hidden relative">
                                 <div class="w-full h-80 bg-gray-200 relative">
-                                    <img
-                                        :src="profile.image"
-                                        alt="Profile Image"
-                                        class="w-full h-full object-cover object-center"
-                                        @click="openPhotoGallery(0)"
+                                    <PhotoBlurControl
+                                        :imageUrl="profile.image"
+                                        :isBlurred="userData?.photos_blurred || false"
+                                        :canUnblur="canUnblurPhotos"
+                                        :userId="profile.id"
+                                        size="full"
+                                        @unblurred="handlePhotoUnblurred"
+                                        @click="handlePhotoClick(0)"
                                     />
 
                                     <!-- Online Status -->
@@ -597,7 +647,7 @@
                                     <div
                                         v-if="profile.photos && profile.photos.length > 1"
                                         class="absolute bottom-4 right-4 bg-white bg-opacity-80 rounded-full p-2 cursor-pointer"
-                                        @click="openPhotoGallery(0)"
+                                        @click="handlePhotoClick(0)"
                                     >
                                         <svg
                                             class="h-5 w-5 text-gray-800"
@@ -617,7 +667,10 @@
                                     <!-- Mobile: Name and Info Overlay -->
                                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
                                         <div class="text-white">
-                                            <h2 class="text-xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
+                                            <div class="flex items-center gap-2">
+                                                <h2 class="text-xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
+                                                <TierBadge :tier="userData?.tier || targetUserTier?.name?.toLowerCase() || 'free'" size="xs" />
+                                            </div>
                                             <p class="text-gray-200 text-sm">{{ profile.location }}</p>
                                         </div>
                                     </div>
@@ -639,11 +692,14 @@
                             <!-- Desktop: Original layout -->
                             <div class="hidden md:block">
                                 <div class="w-full aspect-square bg-gray-200 relative">
-                                    <img
-                                        :src="profile.image"
-                                        alt="Profile Image"
-                                        class="w-full h-full object-cover object-center"
-                                        @click="openPhotoGallery(0)"
+                                    <PhotoBlurControl
+                                        :imageUrl="profile.image"
+                                        :isBlurred="userData?.photos_blurred || false"
+                                        :canUnblur="canUnblurPhotos"
+                                        :userId="profile.id"
+                                        size="full"
+                                        @unblurred="handlePhotoUnblurred"
+                                        @click="handlePhotoClick(0)"
                                     />
 
                                     <!-- Online Status -->
@@ -676,7 +732,7 @@
                                     <div
                                         v-if="profile.photos && profile.photos.length > 1"
                                         class="absolute bottom-4 right-4 bg-white bg-opacity-80 rounded-full p-2 cursor-pointer"
-                                        @click="openPhotoGallery(0)"
+                                        @click="handlePhotoClick(0)"
                                     >
                                         <svg
                                             class="h-6 w-6 text-gray-800"
@@ -745,7 +801,10 @@
                             <!-- Desktop: Header with action buttons -->
                             <div class="hidden md:flex items-center justify-between mb-4">
                                 <div>
-                                    <h2 class="text-2xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
+                                    <div class="flex items-center gap-2">
+                                        <h2 class="text-2xl font-bold">{{ profile.name }}, {{ profile.age }}</h2>
+                                        <TierBadge :tier="userData?.tier || targetUserTier?.name?.toLowerCase() || 'free'" size="sm" />
+                                    </div>
                                     <p class="text-gray-600">{{ profile.location }}</p>
                                 </div>
                                 <div class="flex space-x-2">
@@ -1235,6 +1294,31 @@
     <!-- Like Success Modal -->
     <LikeSuccessModal :show="showLikeModal" :type="likeModalType" :userName="profile.name" :canShowMessageButton="canShowMessageButton" @close="closeLikeModal" @message="handleMessageFromModal" />
 
+    <!-- Privacy Modal -->
+    <div v-if="showPrivacyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div class="flex items-center mb-4">
+                <svg class="h-8 w-8 text-purple-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <h3 class="text-lg font-semibold text-gray-900">Photos are Private</h3>
+            </div>
+            
+            <p class="text-gray-600 mb-6">
+                {{ profile.name }} has chosen to keep their photos private. You cannot view their photo gallery in full screen mode.
+            </p>
+            
+            <div class="flex justify-end">
+                <button 
+                    @click="closePrivacyModal"
+                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                >
+                    Understood
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Photo Gallery Modal -->
     <div v-if="showPhotoGallery" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
         <!-- Close button -->
@@ -1268,12 +1352,18 @@
 
         <!-- Photo display -->
         <div class="w-full max-w-4xl max-h-full p-4">
-            <img
-                v-if="profile.photos && profile.photos[currentPhotoIndex]"
-                :src="profile.photos[currentPhotoIndex]"
-                alt="Profile Photo"
-                class="max-h-full max-w-full mx-auto object-contain"
-            />
+            <div v-if="profile.photos && profile.photos[currentPhotoIndex]" class="max-h-screen max-w-full mx-auto flex items-center justify-center">
+                <div class="max-h-[80vh] max-w-[80vw]">
+                    <PhotoBlurControl
+                        :imageUrl="profile.photos[currentPhotoIndex]"
+                        :isBlurred="userData?.photos_blurred || false"
+                        :canUnblur="canUnblurPhotos"
+                        :userId="profile.id"
+                        size="full"
+                        @unblurred="handlePhotoUnblurred"
+                    />
+                </div>
+            </div>
 
             <!-- Photo counter -->
             <div

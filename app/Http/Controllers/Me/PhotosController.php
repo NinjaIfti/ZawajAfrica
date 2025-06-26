@@ -34,6 +34,10 @@ class PhotosController extends Controller
             $user->profile_photo = asset('storage/' . $user->profile_photo);
         }
         
+        // Include blur settings in user data
+        $user->photos_blurred = $user->photos_blurred ?? false;
+        $user->photo_blur_mode = $user->photo_blur_mode ?? 'manual';
+        
         return Inertia::render('Me/Photos', [
             'user' => $user,
             'photos' => $photos

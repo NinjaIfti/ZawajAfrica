@@ -11,13 +11,7 @@
     const selectedLanguage = ref({ name: 'English' });
     const showLanguageModal = ref(false);
 
-    // Language options
-    const languages = [
-        { id: 'en', name: 'English' },
-        { id: 'ha', name: 'Hausa' },
-        { id: 'yo', name: 'Yoruba' },
-        { id: 'ig', name: 'Igbo' },
-    ];
+  
 
     const toggleLanguageModal = () => {
         showLanguageModal.value = !showLanguageModal.value;

@@ -107,7 +107,7 @@
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
         <!-- Mobile header with hamburger menu - Only visible on mobile -->
-        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center md:hidden">
             <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
                 <svg
                     class="h-6 w-6 text-gray-700"
@@ -130,7 +130,7 @@
             </button>
 
             <!-- Page title on mobile -->
-            <h1 class="text-lg font-bold">My Personality</h1>
+            <h1 class="text-lg text-white font-bold">My Personality</h1>
         </div>
 
         <!-- Mobile Menu Overlay -->
@@ -145,7 +145,7 @@
             class="mobile-menu fixed inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0"
             :class="{ 'translate-x-0': isMobileMenuOpen, '-translate-x-full': !isMobileMenuOpen }"
         >
-            <Sidebar :user="$page.props.auth.user" />
+            <Sidebar :user="$page.props.auth.user" />   
         </aside>
 
         <!-- Main Content - Add left margin on desktop to account for fixed sidebar -->

@@ -128,7 +128,7 @@ class MatchingService
 
     private function buildMatchQuery(User $user, array $filters, string $userTier)
     {
-        $query = User::select('id', 'name', 'gender', 'dob_year', 'dob_month', 'dob_day', 'city', 'state', 'country', 'profile_photo', 'subscription_plan', 'subscription_status')
+        $query = User::select('id', 'name', 'gender', 'dob_year', 'dob_month', 'dob_day', 'city', 'state', 'country', 'profile_photo', 'photos_blurred', 'photo_blur_mode', 'is_verified', 'subscription_plan', 'subscription_status')
             ->with([
                 'photos' => function($q) { $q->select('id', 'user_id', 'photo_path', 'is_primary')->where('is_primary', true)->limit(1); },
                 'about' => function($q) { $q->select('user_id', 'heading', 'about_me', 'looking_for'); },
@@ -410,19 +410,28 @@ class MatchingService
             $locationParts = array_filter([$match->city, $match->state, $match->country]);
             $location = implode(', ', $locationParts);
 
+            $userTier = $this->tierService->getUserTier($match);
+            
             return [
                 'id' => $match->id,
                 'name' => $match->name,
                 'age' => $age,
                 'location' => $location,
+                'image' => $match->profile_photo,  // For MatchCard compatibility
                 'profile_photo' => $match->profile_photo,
+                'photos_blurred' => $match->photos_blurred ?? false,
+                'photo_blur_mode' => $match->photo_blur_mode ?? 'manual',
+                'is_verified' => $match->is_verified ?? false,
                 'compatibility_score' => $match->compatibility_score ?? 0,
+                'compatibility' => $match->compatibility_score ?? 0, // For backwards compatibility
                 'bio' => $match->about->about_me ?? null,
                 'education' => $match->overview->education_level ?? null,
                 'occupation' => $match->overview->employment_status ?? null,
                 'religion' => $match->overview->religion ?? null,
-                'tier_badge' => $this->tierService->getTierInfo($this->tierService->getUserTier($match))['badge'],
-                'can_access_contact' => $canAccessContact
+                'tier' => $userTier,
+                'tier_badge' => $this->tierService->getTierInfo($userTier)['badge'],
+                'can_access_contact' => $canAccessContact,
+                'timestamp' => 'Active now'  // Default timestamp for match cards
             ];
         })->toArray();
     }

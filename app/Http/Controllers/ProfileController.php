@@ -233,6 +233,13 @@ class ProfileController extends Controller
                 $photo->url = asset('storage/' . $photo->photo_path);
             });
         }
+        
+        // Add tier information to user data
+        $user->tier = $targetUserTier;
+        
+        // Ensure blur settings are available
+        $user->photos_blurred = $user->photos_blurred ?? false;
+        $user->photo_blur_mode = $user->photo_blur_mode ?? 'manual';
 
         // Hide contact details for free users
         $canAccessContact = $currentUserLimits['contact_details'] ?? false;

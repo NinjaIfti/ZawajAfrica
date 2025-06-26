@@ -5,6 +5,7 @@
     import Sidebar from '@/Components/Sidebar.vue';
     import ProfileHeader from '@/Components/ProfileHeader.vue';
     import { Link } from '@inertiajs/vue3';
+    import PhotoBlurControl from '@/Components/PhotoBlurControl.vue';
 
     const props = defineProps({
         auth: Object,
@@ -15,7 +16,7 @@
     // Mobile menu state
     const isMobileMenuOpen = ref(false);
 
-    // Toggle mobile menu
+    // Toggle mobile menu   
     const toggleMobileMenu = () => {
         isMobileMenuOpen.value = !isMobileMenuOpen.value;
 
@@ -52,7 +53,65 @@
     const isUploading = ref(false);
     const uploadProgress = ref(0);
     const successMessage = ref('');
+    
+    // Photo blur settings state
+    const blurSettings = ref({
+        enabled: props.user?.photos_blurred || false,
+        mode: props.user?.photo_blur_mode || 'manual'
+    });
     const errorMessage = ref('');
+
+    // Function to toggle photo blur settings
+    function togglePhotoBlur() {
+        // Refresh CSRF token before update
+        window.refreshCSRFToken();
+
+        axios
+            .post(route('photos.toggle-blur'), {
+                enabled: !blurSettings.value.enabled,
+                mode: blurSettings.value.mode
+            })
+            .then(response => {
+                blurSettings.value.enabled = response.data.enabled;
+                blurSettings.value.mode = response.data.mode;
+                successMessage.value = response.data.message || 'Photo blur settings updated';
+                setTimeout(() => {
+                    successMessage.value = '';
+                }, 3000);
+            })
+            .catch(error => {
+                errorMessage.value = error.response?.data?.message || 'Failed to update blur settings';
+                setTimeout(() => {
+                    errorMessage.value = '';
+                }, 3000);
+            });
+    }
+
+    // Function to update blur mode
+    function updateBlurMode(mode) {
+        // Refresh CSRF token before update
+        window.refreshCSRFToken();
+
+        axios
+            .post(route('photos.toggle-blur'), {
+                enabled: blurSettings.value.enabled,
+                mode: mode
+            })
+            .then(response => {
+                blurSettings.value.enabled = response.data.enabled;
+                blurSettings.value.mode = response.data.mode;
+                successMessage.value = response.data.message || 'Photo blur mode updated';
+                setTimeout(() => {
+                    successMessage.value = '';
+                }, 3000);
+            })
+            .catch(error => {
+                errorMessage.value = error.response?.data?.message || 'Failed to update blur mode';
+                setTimeout(() => {
+                    errorMessage.value = '';
+                }, 3000);
+            });
+    }
 
     // Initialize photos from user data or create empty slots
     function initializePhotos() {
@@ -206,7 +265,7 @@
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
         <!-- Mobile header with hamburger menu - Only visible on mobile -->
-        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center md:hidden">
             <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
                 <svg
                     class="h-6 w-6 text-gray-700"
@@ -229,7 +288,7 @@
             </button>
 
             <!-- Page title on mobile -->
-            <h1 class="text-lg font-bold">My Photos</h1>
+            <h1 class="text-lg text-white font-bold">My Photos</h1>
         </div>
 
         <!-- Mobile Menu Overlay -->
@@ -410,6 +469,95 @@
 
                     <p class="text-gray-600 mb-6">Adding photos is the best way to stand out from other profiles.</p>
 
+                    <!-- Photo Blur Settings -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <svg class="h-5 w-5 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Photo Privacy Settings
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <!-- Enable/Disable Photo Blur -->
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Blur my photos</h4>
+                                    <p class="text-sm text-gray-600">When enabled, your photos will be blurred for other users who haven't viewed them yet.</p>
+                                </div>
+                                <button
+                                    @click="togglePhotoBlur"
+                                    :class="[
+                                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
+                                        blurSettings.enabled ? 'bg-purple-600' : 'bg-gray-200'
+                                    ]"
+                                >
+                                    <span
+                                        :class="[
+                                            'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                                            blurSettings.enabled ? 'translate-x-6' : 'translate-x-1'
+                                        ]"
+                                    ></span>
+                                </button>
+                            </div>
+
+                            <!-- Blur Mode Selection -->
+                            <div v-if="blurSettings.enabled" class="space-y-3">
+                                <h4 class="font-medium text-gray-900">Blur Mode</h4>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input
+                                            type="radio"
+                                            name="blur_mode"
+                                            value="manual"
+                                            :checked="blurSettings.mode === 'manual'"
+                                            @change="updateBlurMode('manual')"
+                                            class="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                                        />
+                                        <span class="ml-3">
+                                            <span class="font-medium text-gray-900">Manual</span>
+                                            <span class="text-sm text-gray-600 block">Other users can request to view your photos (subject to their tier limits)</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input
+                                            type="radio"
+                                            name="blur_mode"
+                                            value="auto"
+                                            :checked="blurSettings.mode === 'auto'"
+                                            @change="updateBlurMode('auto')"
+                                            class="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                                        />
+                                        <span class="ml-3">
+                                            <span class="font-medium text-gray-900">Automatic</span>
+                                            <span class="text-sm text-gray-600 block">Photos automatically unblur when other users view your profile</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Privacy Info -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                                <div class="flex">
+                                    <svg class="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                    </svg>
+                                    <div class="ml-3">
+                                        <h3 class="text-sm font-medium text-blue-800">Privacy Control</h3>
+                                        <div class="mt-2 text-sm text-blue-700">
+                                            <p>
+                                                {{ blurSettings.enabled 
+                                                    ? 'Your photos are currently blurred for other users. They will need to use their daily photo views to see your unblurred photos.' 
+                                                    : 'Your photos are currently visible to all users without any blur.' 
+                                                }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Upload Progress Bar -->
                     <div v-if="isUploading" class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
                         <div
@@ -417,6 +565,36 @@
                             :style="{ width: uploadProgress + '%' }"
                         ></div>
                         <p class="text-sm text-gray-600 mt-1">Uploading: {{ Math.round(uploadProgress) }}%</p>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div v-if="blurSettings.enabled && photos.some(p => p.url)" class="bg-gray-50 rounded-lg p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <svg class="h-5 w-5 mr-2 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            How others see your photos
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-4">This is how your photos appear to other users before they request to view them:</p>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div v-for="(photo, index) in photos.slice(0, 4)" :key="'preview-' + index" class="relative">
+                                <div v-if="photo.url" class="aspect-square rounded-lg overflow-hidden">
+                                    <PhotoBlurControl
+                                        :imageUrl="photo.url"
+                                        :isBlurred="true"
+                                        :canUnblur="false"
+                                        :userId="props.user.id"
+                                        size="full"
+                                        :showUnblurButton="false"
+                                    />
+                                    <div v-if="photo.is_primary" class="absolute top-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                                        Primary
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Photo Grid - Responsive for mobile -->

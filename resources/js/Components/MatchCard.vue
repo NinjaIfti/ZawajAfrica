@@ -2,6 +2,8 @@
     import { Link } from '@inertiajs/vue3';
     import { ref } from 'vue';
     import LikeSuccessModal from '@/Components/LikeSuccessModal.vue';
+    import TierBadge from '@/Components/TierBadge.vue';
+    import PhotoBlurControl from '@/Components/PhotoBlurControl.vue';
 
     const props = defineProps({
         matches: {
@@ -117,6 +119,12 @@
         if (score >= 25) return 'bg-red-400'; // Low match
         return 'bg-gray-400'; // Very low match
     };
+
+    // Handle photo unblurred event
+    const handlePhotoUnblurred = (userId) => {
+        console.log(`Photo unblurred for user ${userId}`);
+        // Optionally track analytics or show success message
+    };
 </script>
 
 <template>
@@ -134,12 +142,19 @@
                 <Link :href="route('profile.view', { id: match.id })" class="block">
                     <!-- Match Image -->
                     <div class="h-48 sm:h-56 md:h-64 w-full bg-gray-700 relative">
-                        <img
-                            :src="match.image"
-                            :alt="match.name"
-                            class="h-full w-full object-cover "
-                            @error="$event.target.src = '/images/placeholder.jpg'"
+                        <PhotoBlurControl
+                            :imageUrl="match.image || '/images/male.png'"
+                            :isBlurred="match.photos_blurred || false"
+                            :canUnblur="match.photo_blur_mode === 'auto_unlock' || !match.photos_blurred"
+                            :userId="match.id"
+                            size="full"
+                            @unblurred="handlePhotoUnblurred"
                         />
+                        
+                        <!-- Debug info (remove after testing) -->
+                        <div v-if="false" class="absolute top-0 left-0 bg-red-500 text-white text-xs p-1 z-50">
+                            Blur: {{ match.photos_blurred }}, Mode: {{ match.photo_blur_mode }}
+                        </div>
 
                         <!-- Online Status -->
                         <div
@@ -186,9 +201,12 @@
                 <div class="bg-white px-4 py-3 relative overflow-hidden">
                     <div class="flex items-center justify-between">
                         <Link :href="route('profile.view', { id: match.id })" class="block flex-1 min-w-0">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-1">
                                 <h3 class="text-base font-bold truncate">{{ match.name }}</h3>
-                                <span class="ml-1 text-amber-500 text-base flex-shrink-0">✓</span>
+                                <!-- Show verification tick only if user is verified -->
+                                <span v-if="match.is_verified" class="text-amber-500 text-base flex-shrink-0">✓</span>
+                                <!-- Show tier badge if user is paid (not free) -->
+                                <TierBadge v-if="match.tier && match.tier !== 'free'" :tier="match.tier" size="xs" />
                                 <span class="ml-1 text-gray-500 text-sm flex-shrink-0">{{ match.age ? ', ' + match.age : '' }}</span>
                             </div>
                             <p v-if="match.location" class="text-gray-600 text-sm truncate">{{ match.location }}</p>

@@ -155,6 +155,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/me/photos/{id}', [App\Http\Controllers\Me\PhotosController::class, 'delete'])->name('me.photos.delete');
     Route::put('/me/photos/{id}/primary', [App\Http\Controllers\Me\PhotosController::class, 'setPrimary'])->name('me.photos.primary');
     
+    // Photo blur routes
+    Route::post('/photos/unblur', [App\Http\Controllers\PhotoBlurController::class, 'unblur'])->name('photos.unblur');
+    Route::post('/photos/toggle-blur', [App\Http\Controllers\PhotoBlurController::class, 'toggleBlur'])->name('photos.toggle-blur');
+    Route::get('/photos/blur-settings', [App\Http\Controllers\PhotoBlurController::class, 'getBlurSettings'])->name('photos.blur-settings');
+    Route::post('/photos/can-view', [App\Http\Controllers\PhotoBlurController::class, 'canViewPhotos'])->name('photos.can-view');
+    
     Route::get('/me/hobbies', [App\Http\Controllers\Me\HobbiesController::class, 'index'])->name('me.hobbies');
     Route::post('/me/hobbies/update', [App\Http\Controllers\Me\HobbiesController::class, 'update'])->name('me.hobbies.update');
     

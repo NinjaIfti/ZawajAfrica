@@ -8,6 +8,7 @@
     import TherapistWidget from '@/Components/TherapistWidget.vue';
     import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
     import MatchFiltersModal from '@/Components/MatchFiltersModal.vue';
+    import TierBadge from '@/Components/TierBadge.vue';
 
     const page = usePage();
     const showPaymentSuccessModal = ref(false);
@@ -191,7 +192,8 @@
                 image: match.profile_photo || '/images/placeholder.jpg',
                 compatibility_score: match.compatibility_score || 0,
                 compatibility: match.compatibility_score || 0,
-                timestamp: 'Active recently'
+                timestamp: 'Active recently',
+                tier: match.tier || 'free' // Preserve tier information from backend
             }));
         }
 
@@ -313,7 +315,23 @@
 
         // Check if user has an active subscription
         if (user.subscription_status === 'active' && user.subscription_plan) {
-            return user.subscription_plan;
+            return user.subscription_plan.toLowerCase();
+        }
+
+        return 'free';
+    });
+
+    // Get current user tier for display in welcome message
+    const currentUserTier = computed(() => {
+        const user = page.props.auth?.user;
+        if (!user) return 'free';
+
+        // Check if user has an active subscription
+        if (user.subscription_status === 'active' && user.subscription_plan) {
+            // Check if subscription hasn't expired
+            if (!user.subscription_expires_at || new Date(user.subscription_expires_at) > new Date()) {
+                return user.subscription_plan.toLowerCase();
+            }
         }
 
         return 'free';
@@ -384,10 +402,10 @@
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
         <!-- Mobile header with hamburger menu and welcome text - Only visible on mobile -->
-        <div class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center md:hidden">
+        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center md:hidden">
             <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
                 <svg
-                    class="h-6 w-6 text-gray-700"
+                    class="h-6 w-6 text-white"
                     :class="{ hidden: isMobileMenuOpen }"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -396,7 +414,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <svg
-                    class="h-6 w-6 text-gray-700"
+                    class="h-6 w-6 text-white"
                     :class="{ hidden: !isMobileMenuOpen }"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -407,7 +425,10 @@
             </button>
 
             <!-- Welcome text beside hamburger on mobile -->
-            <h1 class="text-lg font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+            <div class="flex items-center gap-2">
+                <h1 class="text-lg font-bold text-white">Welcome {{ $page.props.auth.user.name }}!</h1>
+                <TierBadge :tier="currentUserTier" size="xs" />
+            </div>
 
             <!-- Profile dropdown on mobile - right aligned -->
             <div class="profile-dropdown relative ml-auto">
@@ -483,7 +504,10 @@
             <!-- Welcome and Search - Only visible on desktop -->
             <div class="mb-6 md:mb-8 hidden md:block">
                 <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                    <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+                        <TierBadge :tier="currentUserTier" size="sm" />
+                    </div>
                 </div>
 
                 <!-- Search bar with integrated filter button - desktop -->
