@@ -164,7 +164,11 @@
                 </a>
 
                 <div class="mt-6 px-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Settings</div>
-                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-white">
+                <Link
+                    :href="route('admin.settings')"
+                    class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-white"
+                    :class="{ 'bg-gray-800 text-white': route().current('admin.settings') }"
+                >
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                             stroke-linecap="round"
@@ -179,8 +183,8 @@
                             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                         ></path>
                     </svg>
-                    <span>Site Settings</span>
-                </a>
+                    <span>Admin Settings</span>
+                </Link>
             </nav>
 
             <!-- User Info -->

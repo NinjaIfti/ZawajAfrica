@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AdminController extends Controller
 {
@@ -627,5 +629,32 @@ class AdminController extends Controller
 
             return redirect()->back()->with('error', 'Failed to delete user: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display admin settings page.
+     */
+    public function settings()
+    {
+        return Inertia::render('Admin/Settings', [
+            'admin' => auth()->user()->only(['name', 'email']),
+        ]);
+    }
+
+    /**
+     * Update admin password.
+     */
+    public function updatePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return back()->with('success', 'Password updated successfully.');
     }
 } 

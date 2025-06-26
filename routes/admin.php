@@ -8,6 +8,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Admin Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     
+    // Admin Settings
+    Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+    Route::patch('/password', [AdminController::class, 'updatePassword'])->name('password.update');
+    
     // User Management
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     Route::get('/users/{userId}', [AdminController::class, 'viewUser'])->name('users.view');
