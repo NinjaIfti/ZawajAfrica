@@ -99,16 +99,30 @@ class PaymentController extends Controller
         $reference = 'sub_' . Str::random(16);
         $amount = $planDetails['price_naira'] * 100; // Convert to kobo
 
+        // Use absolute URL for callback to ensure it works in production
+        $callbackUrl = url('/payment/callback');
+        
+        Log::info('Subscription payment initialization', [
+            'user_id' => $user->id,
+            'plan' => $request->plan,
+            'amount' => $amount,
+            'reference' => $reference,
+            'callback_url' => $callbackUrl,
+            'app_url' => config('app.url'),
+            'request_url' => $request->url()
+        ]);
+
         $paymentData = [
             'email' => $user->email,
             'amount' => $amount,
             'reference' => $reference,
-            'callback_url' => route('payment.callback'),
+            'callback_url' => $callbackUrl,
             'metadata' => [
                 'type' => 'subscription',
                 'plan' => $request->plan,
                 'user_id' => $user->id,
-                'user_gender' => $userGender
+                'user_gender' => $userGender,
+                'callback_url' => $callbackUrl // Store callback URL in metadata as backup
             ]
         ];
 
@@ -118,12 +132,23 @@ class PaymentController extends Controller
             // Store payment reference in session for verification
             session(['payment_reference' => $reference]);
             
+            Log::info('Subscription payment initialized successfully', [
+                'reference' => $reference,
+                'authorization_url' => $response['data']['authorization_url']
+            ]);
+            
             return response()->json([
                 'status' => true,
                 'authorization_url' => $response['data']['authorization_url'],
                 'reference' => $reference
             ]);
         }
+
+        Log::error('Subscription payment initialization failed', [
+            'user_id' => $user->id,
+            'plan' => $request->plan,
+            'response' => $response
+        ]);
 
         return response()->json([
             'status' => false,
@@ -325,12 +350,14 @@ class PaymentController extends Controller
             'paystack_reference' => $request->query('reference'),
             'monnify_reference' => $request->query('paymentReference'),
             'all_query_params' => $request->query(),
-            'request_url' => $request->fullUrl()
+            'request_url' => $request->fullUrl(),
+            'user_agent' => $request->userAgent(),
+            'ip' => $request->ip()
         ]);
         
         if (!$reference) {
             Log::error('Payment callback: No reference found in either parameter');
-            return redirect()->route('dashboard')->with('error', 'Payment reference not found');
+            return redirect()->route('subscription.index')->with('error', 'Payment reference not found. Please contact support if payment was deducted.');
         }
 
         // Determine gateway from reference
@@ -341,90 +368,148 @@ class PaymentController extends Controller
             'gateway' => $gateway
         ]);
         
-        // Verify payment based on gateway
-        if ($gateway === 'monnify') {
-            $response = $this->monnifyService->verifyPayment($reference);
-        } else {
-            $response = $this->paystackService->verifyPayment($reference);
-        }
-
-        Log::info('Payment verification response', [
-            'reference' => $reference,
-            'gateway' => $gateway,
-            'verification_response' => $response
-        ]);
-
-        if ($response['status'] === true && $response['data']['status'] === 'success') {
-            $paymentData = $response['data'];
-            $metadata = $paymentData['metadata'] ?? [];
-
-            Log::info('Payment verification successful', [
-                'reference' => $reference,
-                'gateway' => $gateway,
-                'payment_data' => $paymentData,
-                'metadata' => $metadata,
-                'metadata_type' => $metadata['type'] ?? 'no_type'
-            ]);
-
-            try {
-                DB::beginTransaction();
-
-                if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
-                    Log::info('Processing subscription payment');
-                    $this->handleSubscriptionPayment($paymentData, $metadata);
-                    DB::commit();
-                    return redirect()->route('subscription.index')->with([
-                        'payment_success' => true,
-                        'payment_type' => 'subscription'
-                    ]);
-                    
-                } elseif (isset($metadata['type']) && $metadata['type'] === 'therapist_booking') {
-                    Log::info('Processing therapist booking payment', [
-                        'booking_id' => $metadata['booking_id'] ?? 'no_booking_id',
-                        'metadata' => $metadata
-                    ]);
-                    $this->handleTherapistBookingPayment($paymentData, $metadata);
-                    DB::commit();
-                    return redirect()->route('therapists.index')->with([
-                        'payment_success' => true,
-                        'payment_type' => 'therapist_booking'
-                    ]);
-                } else {
-                    Log::warning('Payment callback: Unknown payment type or missing metadata', [
+        try {
+            // Verify payment based on gateway with retry logic
+            $maxRetries = 3;
+            $response = null;
+            
+            for ($i = 0; $i < $maxRetries; $i++) {
+                try {
+                    if ($gateway === 'monnify') {
+                        $response = $this->monnifyService->verifyPayment($reference);
+                    } else {
+                        $response = $this->paystackService->verifyPayment($reference);
+                    }
+                    break; // Success, exit retry loop
+                } catch (\Exception $e) {
+                    Log::warning("Payment verification attempt " . ($i + 1) . " failed", [
                         'reference' => $reference,
                         'gateway' => $gateway,
-                        'metadata' => $metadata
+                        'error' => $e->getMessage()
                     ]);
+                    
+                    if ($i === $maxRetries - 1) {
+                        throw $e; // Re-throw on final attempt
+                    }
+                    
+                    sleep(1); // Wait 1 second before retry
                 }
-
-                DB::commit();
-                return redirect()->route('dashboard')->with([
-                    'payment_success' => true,
-                    'payment_type' => 'general'
-                ]);
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Payment processing error: ' . $e->getMessage(), [
-                    'reference' => $reference,
-                    'gateway' => $gateway,
-                    'metadata' => $metadata,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                return redirect()->route('dashboard')->with('error', 'Payment was successful but there was an error processing your order. Please contact support.');
             }
-        } else {
-            Log::error('Payment verification failed', [
+
+            Log::info('Payment verification response', [
                 'reference' => $reference,
                 'gateway' => $gateway,
-                'verification_response' => $response,
-                'status' => $response['status'] ?? 'unknown',
-                'data_status' => $response['data']['status'] ?? 'unknown'
+                'verification_response' => $response
             ]);
-        }
 
-        return redirect()->route('dashboard')->with('error', 'Payment verification failed');
+            if ($response['status'] === true && $response['data']['status'] === 'success') {
+                $paymentData = $response['data'];
+                $metadata = $paymentData['metadata'] ?? [];
+
+                Log::info('Payment verification successful', [
+                    'reference' => $reference,
+                    'gateway' => $gateway,
+                    'payment_data' => $paymentData,
+                    'metadata' => $metadata,
+                    'metadata_type' => $metadata['type'] ?? 'no_type'
+                ]);
+
+                try {
+                    DB::beginTransaction();
+
+                    if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
+                        Log::info('Processing subscription payment', [
+                            'user_id' => $metadata['user_id'] ?? 'unknown',
+                            'plan' => $metadata['plan'] ?? 'unknown'
+                        ]);
+                        
+                        $this->handleSubscriptionPayment($paymentData, $metadata);
+                        DB::commit();
+                        
+                        Log::info('Subscription payment processed successfully, redirecting to subscription page');
+                        
+                        return redirect()->route('subscription.index')->with([
+                            'payment_success' => true,
+                            'payment_type' => 'subscription',
+                            'message' => 'Your subscription has been activated successfully!'
+                        ]);
+                        
+                    } elseif (isset($metadata['type']) && $metadata['type'] === 'therapist_booking') {
+                        Log::info('Processing therapist booking payment', [
+                            'booking_id' => $metadata['booking_id'] ?? 'no_booking_id',
+                            'metadata' => $metadata
+                        ]);
+                        $this->handleTherapistBookingPayment($paymentData, $metadata);
+                        DB::commit();
+                        return redirect()->route('therapists.index')->with([
+                            'payment_success' => true,
+                            'payment_type' => 'therapist_booking'
+                        ]);
+                    } else {
+                        Log::warning('Payment callback: Unknown payment type or missing metadata', [
+                            'reference' => $reference,
+                            'gateway' => $gateway,
+                            'metadata' => $metadata
+                        ]);
+                        
+                        // For unknown payment types, still commit and redirect to dashboard
+                        DB::commit();
+                        return redirect()->route('dashboard')->with([
+                            'payment_success' => true,
+                            'payment_type' => 'general',
+                            'message' => 'Payment processed successfully!'
+                        ]);
+                    }
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Payment processing error: ' . $e->getMessage(), [
+                        'reference' => $reference,
+                        'gateway' => $gateway,
+                        'metadata' => $metadata,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    
+                    // Payment was successful but processing failed
+                    // Don't show generic error, show specific message for subscription
+                    if (isset($metadata['type']) && $metadata['type'] === 'subscription') {
+                        return redirect()->route('subscription.index')->with('error', 'Payment was successful but there was an error activating your subscription. Please contact support with reference: ' . $reference);
+                    }
+                    
+                    return redirect()->route('dashboard')->with('error', 'Payment was successful but there was an error processing your order. Please contact support with reference: ' . $reference);
+                }
+            } else {
+                Log::error('Payment verification failed', [
+                    'reference' => $reference,
+                    'gateway' => $gateway,
+                    'verification_response' => $response,
+                    'status' => $response['status'] ?? 'unknown',
+                    'data_status' => $response['data']['status'] ?? 'unknown'
+                ]);
+                
+                // Redirect to subscription page for subscription payments
+                if (str_starts_with($reference, 'sub_')) {
+                    return redirect()->route('subscription.index')->with('error', 'Payment verification failed. If you were charged, please contact support with reference: ' . $reference);
+                }
+                
+                return redirect()->route('dashboard')->with('error', 'Payment verification failed. If you were charged, please contact support with reference: ' . $reference);
+            }
+        } catch (\Exception $e) {
+            Log::error('Payment callback exception', [
+                'reference' => $reference,
+                'gateway' => $gateway,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Network or service error
+            if (str_starts_with($reference, 'sub_')) {
+                return redirect()->route('subscription.index')->with('error', 'Unable to verify payment due to network issues. If you were charged, please contact support with reference: ' . $reference);
+            }
+            
+            return redirect()->route('dashboard')->with('error', 'Unable to verify payment due to network issues. If you were charged, please contact support with reference: ' . $reference);
+        }
     }
 
     /**
@@ -497,46 +582,59 @@ class PaymentController extends Controller
     {
         $user = User::find($metadata['user_id']);
         
-        if ($user) {
-            $expiresAt = now()->addMonth();
-            
-            // Update user subscription
-            $user->update([
-                'subscription_plan' => $metadata['plan'],
-                'subscription_status' => 'active',
-                'subscription_expires_at' => $expiresAt
+        if (!$user) {
+            Log::error('Subscription payment: User not found', [
+                'user_id' => $metadata['user_id'],
+                'payment_data' => $paymentData
             ]);
+            throw new \Exception('User not found for subscription payment');
+        }
+        
+        Log::info('Updating user subscription', [
+            'user_id' => $user->id,
+            'old_plan' => $user->subscription_plan,
+            'new_plan' => $metadata['plan'],
+            'old_status' => $user->subscription_status
+        ]);
+        
+        $expiresAt = now()->addMonth();
+        
+        // Update user subscription
+        $user->update([
+            'subscription_plan' => $metadata['plan'],
+            'subscription_status' => 'active',
+            'subscription_expires_at' => $expiresAt
+        ]);
 
-            // Send subscription confirmation notification
-            try {
-                $user->notify(new \App\Notifications\SubscriptionPurchased(
-                    $metadata['plan'],
-                    $paymentData['amount'] / 100,
-                    $paymentData['reference'],
-                    $expiresAt->toDateTime()
-                ));
-                
-                Log::info('Subscription confirmation email sent successfully', [
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'plan' => $metadata['plan'],
-                    'amount' => $paymentData['amount'] / 100
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to send subscription confirmation email', [
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                // Don't throw here - we want the subscription to still be processed even if email fails
-            }
+        Log::info('User subscription updated successfully', [
+            'user_id' => $user->id,
+            'new_plan' => $user->fresh()->subscription_plan,
+            'new_status' => $user->fresh()->subscription_status,
+            'expires_at' => $user->fresh()->subscription_expires_at
+        ]);
 
-            Log::info('Subscription payment processed', [
+        // Send subscription confirmation notification
+        try {
+            $user->notify(new \App\Notifications\SubscriptionPurchased(
+                $metadata['plan'],
+                $paymentData['amount'] / 100,
+                $paymentData['reference'],
+                $expiresAt->toDateTime()
+            ));
+            
+            Log::info('Subscription confirmation email sent successfully', [
                 'user_id' => $user->id,
+                'user_email' => $user->email,
                 'plan' => $metadata['plan'],
                 'amount' => $paymentData['amount'] / 100
             ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send subscription confirmation email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Don't throw here - we want the subscription to still be processed
         }
     }
 

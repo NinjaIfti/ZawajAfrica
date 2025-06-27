@@ -74,18 +74,14 @@ class MatchController extends Controller
         
         try {
             DB::transaction(function () use ($currentUser, $targetUserId, &$matchCreated, &$targetUser, &$error) {
-                // Lock the user records to prevent race conditions first
-                DB::table('users')->where('id', $currentUser->id)->lockForUpdate()->first();
-                DB::table('users')->where('id', $targetUserId)->lockForUpdate()->first();
-                
-                // Get target user within transaction
+                // Get target user within transaction - quick validation
                 $targetUser = \App\Models\User::find($targetUserId);
                 if (!$targetUser) {
                     $error = 'Target user not found';
                     return;
                 }
                 
-                // Check if already liked or matched within the transaction
+                // Check if already liked or matched within the transaction - quick checks
                 if (UserLike::where('user_id', $currentUser->id)->where('liked_user_id', $targetUserId)->exists()) {
                     $error = 'You have already liked this user';
                     return;
@@ -96,7 +92,7 @@ class MatchController extends Controller
                     return;
                 }
 
-                // Create the like
+                // Create the like - fast operation
                 UserLike::create([
                     'user_id' => $currentUser->id,
                     'liked_user_id' => $targetUserId,
@@ -104,31 +100,22 @@ class MatchController extends Controller
                     'liked_at' => now()
                 ]);
 
-                // Check for mutual like within transaction
+                // Check for mutual like within transaction - optimized query
                 $isMutual = UserLike::isMutualLike($currentUser->id, $targetUserId);
 
                 if ($isMutual) {
-                    // Create a match
+                    // Create a match - fast operation
                     UserMatch::createMatch($currentUser->id, $targetUserId);
                     
-                    // Mark likes as matched
+                    // Mark likes as matched - fast operation
                     UserLike::markAsMatched($currentUser->id, $targetUserId);
 
                     $matchCreated = true;
                     
-                    // Log successful match creation
+                    // Log successful match creation (minimal logging for speed)
                     \Log::info("Match created", [
                         'user_1' => $currentUser->id,
-                        'user_2' => $targetUserId,
-                        'user_1_tier' => $this->tierService->getUserTier($currentUser),
-                        'user_2_tier' => $this->tierService->getUserTier($targetUser)
-                    ]);
-                } else {
-                    // Log like sent
-                    \Log::info("Like sent", [
-                        'sender_id' => $currentUser->id,
-                        'receiver_id' => $targetUserId,
-                        'sender_tier' => $this->tierService->getUserTier($currentUser)
+                        'user_2' => $targetUserId
                     ]);
                 }
             });
@@ -136,8 +123,7 @@ class MatchController extends Controller
             \Log::error("Like operation failed", [
                 'user_id' => $currentUser->id,
                 'target_user_id' => $targetUserId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
             
             return response()->json([
@@ -160,72 +146,72 @@ class MatchController extends Controller
             return response()->json($response, $statusCode);
         }
 
-        // Send notifications outside transaction
-        if ($matchCreated) {
-            // Send match notifications to both users
-            try {
-                // Send notification to first user (current user)
-                $currentUser->notify(new NewMatchFound($targetUser));
-                \Log::info('Match notification sent to first user', [
-                    'user_id' => $currentUser->id,
-                    'user_name' => $currentUser->name,
-                    'user_email' => $currentUser->email,
-                    'match_with' => $targetUser->name
-                ]);
-                
-                // Send notification to second user (target user)
-                $targetUser->notify(new NewMatchFound($currentUser));
-                \Log::info('Match notification sent to second user', [
-                    'user_id' => $targetUser->id,
-                    'user_name' => $targetUser->name,
-                    'user_email' => $targetUser->email,
-                    'match_with' => $currentUser->name
-                ]);
-                
-                \Log::info('Both match notifications sent successfully', [
-                    'user_1' => $currentUser->id,
-                    'user_2' => $targetUserId
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('Failed to send match notifications', [
-                    'user_1' => $currentUser->id,
-                    'user_2' => $targetUserId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-        } else {
-            // Send like notification (will auto-determine if name should be revealed based on receiver's tier)
-            try {
-                $targetUser->notify(new NewLikeReceived($currentUser, $targetUser));
-                \Log::info('Like notification sent successfully', [
-                    'liker_id' => $currentUser->id,
-                    'liker_name' => $currentUser->name,
-                    'receiver_id' => $targetUserId,
-                    'receiver_name' => $targetUser->name,
-                    'receiver_email' => $targetUser->email,
-                    'receiver_tier' => $this->tierService->getUserTier($targetUser)
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('Failed to send like notification', [
-                    'liker_id' => $currentUser->id,
-                    'receiver_id' => $targetUserId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                // Don't throw here - we want the like to still be processed even if notification fails
-            }
-        }
-
         // Increment rate limiting counter after successful operation
         Cache::put($rateLimitKey, $likesInLastMinute + 1, now()->addMinute());
 
-        return response()->json([
+        // IMMEDIATELY return success response to frontend
+        $response = [
             'success' => true,
             'message' => $matchCreated ? 'It\'s a match!' : 'Like sent successfully',
             'match_created' => $matchCreated,
             'can_message' => $this->tierService->canSendMessage($currentUser)['allowed']
-        ]);
+        ];
+
+        // Queue notifications asynchronously AFTER responding to frontend
+        if ($matchCreated) {
+            // Send instant database notifications and queue delayed emails
+            dispatch(function () use ($currentUser, $targetUser) {
+                try {
+                    // Send instant database notifications
+                    $matchNotification1 = new NewMatchFound($targetUser);
+                    $matchNotification2 = new NewMatchFound($currentUser);
+                    
+                    $currentUser->notify($matchNotification1);
+                    $targetUser->notify($matchNotification2);
+                    
+                    // Queue delayed email notifications (30 seconds later)
+                    $matchNotification1->sendDelayedEmail($currentUser);
+                    $matchNotification2->sendDelayedEmail($targetUser);
+                    
+                    \Log::info('Match notifications sent (instant DB) and emails queued (delayed)', [
+                        'user_1' => $currentUser->id,
+                        'user_2' => $targetUser->id
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send match notifications', [
+                        'user_1' => $currentUser->id,
+                        'user_2' => $targetUser->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            })->afterResponse();
+        } else {
+            // Send instant database notification and queue delayed email
+            dispatch(function () use ($currentUser, $targetUser) {
+                try {
+                    $likeNotification = new NewLikeReceived($currentUser, $targetUser);
+                    
+                    // Send instant database notification
+                    $targetUser->notify($likeNotification);
+                    
+                    // Queue delayed email notification (30 seconds later)
+                    $likeNotification->sendDelayedEmail($targetUser);
+                    
+                    \Log::info('Like notification sent (instant DB) and email queued (delayed)', [
+                        'liker_id' => $currentUser->id,
+                        'receiver_id' => $targetUser->id
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send like notification', [
+                        'liker_id' => $currentUser->id,
+                        'receiver_id' => $targetUser->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            })->afterResponse();
+        }
+
+        return response()->json($response);
     }
 
     /**

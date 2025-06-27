@@ -11,7 +11,7 @@ use App\Services\ZohoMailService;
 use App\Services\UserTierService;
 use App\Traits\ZohoMailTemplate;
 
-class NewLikeReceived extends Notification // Remove ShouldQueue for immediate processing
+class NewLikeReceived extends Notification implements ShouldQueue // Implement ShouldQueue for async processing
 {
     use Queueable, ZohoMailTemplate;
 
@@ -39,8 +39,87 @@ class NewLikeReceived extends Notification // Remove ShouldQueue for immediate p
      */
     public function via($notifiable)
     {
-        // Send both database (in-app) and mail (Zoho email) notifications
-        return ['database', 'mail'];
+        // Send database notification immediately, queue email for later
+        return ['database'];
+    }
+
+    /**
+     * Determine the time at which the email should be sent.
+     */
+    public function retryUntil()
+    {
+        return now()->addMinutes(5);
+    }
+
+    /**
+     * Queue the email notification separately with delay
+     */
+    public function sendDelayedEmail($notifiable)
+    {
+        // Queue email notification with 30 second delay
+        dispatch(function () use ($notifiable) {
+            try {
+                $this->sendEmailNotification($notifiable);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send delayed like email', [
+                    'liker_id' => $this->liker->id,
+                    'receiver_id' => $notifiable->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        })->delay(now()->addSeconds(30));
+    }
+
+    /**
+     * Send email notification separately
+     */
+    private function sendEmailNotification($notifiable)
+    {
+        try {
+            // Configure Zoho Mail before sending
+            $zohoMailService = app(ZohoMailService::class);
+            $zohoMailService->configureMailer();
+
+            $canReveal = $this->canRevealLiker();
+            
+            if ($canReveal) {
+                // For paid users - show actual liker's name
+                $subject = '💕 ' . $this->liker->name . ' likes you on ZawajAfrica!';
+                $content = "Hi " . $notifiable->name . ",\n\n" .
+                          $this->liker->name . " has liked your profile!\n\n" .
+                          "Check out their profile and maybe like them back for a potential match!\n\n" .
+                          "View their profile: " . url('/profile/view/' . $this->liker->id) . "\n\n" .
+                          "Don't miss out on potential connections!\n\n" .
+                          "Best regards,\nZawajAfrica Team";
+            } else {
+                // For free users - anonymous message with upgrade prompt
+                $subject = '💕 Someone likes you on ZawajAfrica!';
+                $content = "Hi " . $notifiable->name . ",\n\n" .
+                          "Someone has liked your profile!\n\n" .
+                          "Upgrade to a paid plan to see who liked you and unlock more features!\n\n" .
+                          "Upgrade now: " . url('/subscription') . "\n\n" .
+                          "Don't miss out on potential connections!\n\n" .
+                          "Best regards,\nZawajAfrica Team";
+            }
+
+            // Send simple text email
+            \Mail::raw($content, function ($message) use ($notifiable, $subject) {
+                $message->to($notifiable->email)
+                        ->subject($subject);
+            });
+
+            \Log::info('Like email sent successfully (delayed)', [
+                'liker_id' => $this->liker->id,
+                'receiver_id' => $notifiable->id,
+                'subject' => $subject
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send like email', [
+                'liker_id' => $this->liker->id,
+                'receiver_id' => $notifiable->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

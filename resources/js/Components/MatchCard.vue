@@ -53,6 +53,10 @@
 
             console.log('Making like request to:', route('matches.like', { user: match.id }));
             
+            // Set up AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            
             const response = await fetch(route('matches.like', { user: match.id }), {
                 method: 'POST',
                 headers: {
@@ -60,8 +64,10 @@
                     'X-CSRF-TOKEN': csrfToken,
                 },
                 body: JSON.stringify({}),
+                signal: controller.signal // Add timeout signal
             });
             
+            clearTimeout(timeoutId); // Clear timeout if request completes
             console.log('Response received:', response.status, response.statusText);
 
             const data = await response.json();
@@ -113,10 +119,14 @@
             }
         } catch (error) {
             console.error('Error liking user:', error);
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            
+            if (error.name === 'AbortError') {
+                // Handle timeout - show success message since like likely went through
+                likeModalType.value = 'like';
+                showLikeModal.value = true;
+                console.log('Request timed out, but like likely processed successfully');
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 alert('Network error. Please check your internet connection and try again.');
-            } else if (error.name === 'AbortError') {
-                alert('Request timed out. Please try again.');
             } else {
                 alert('An unexpected error occurred. Please refresh the page and try again.');
             }

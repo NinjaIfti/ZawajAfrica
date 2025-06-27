@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\ZohoMailService;
 use App\Traits\ZohoMailTemplate;
 
-class NewMatchFound extends Notification // Remove ShouldQueue for immediate processing
+class NewMatchFound extends Notification implements ShouldQueue // Implement ShouldQueue for async processing
 {
     use Queueable, ZohoMailTemplate;
 
@@ -31,51 +31,79 @@ class NewMatchFound extends Notification // Remove ShouldQueue for immediate pro
      */
     public function via($notifiable)
     {
-        return ['database', 'mail'];
+        // Send database notification immediately, queue email for later
+        return ['database'];
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Determine the time at which the email should be sent.
      */
-    public function toMail($notifiable)
+    public function retryUntil()
     {
-        // Log the email sending attempt
-        \Log::info('NewMatchFound toMail called', [
-            'recipient_id' => $notifiable->id,
-            'recipient_name' => $notifiable->name,
-            'recipient_email' => $notifiable->email,
-            'match_with' => $this->match->name
-        ]);
+        return now()->addMinutes(5);
+    }
 
-        // Configure Zoho Mail before sending
-        $zohoMailService = app(ZohoMailService::class);
-        $zohoMailService->configureMailer();
+    /**
+     * Queue the email notification separately with delay
+     */
+    public function sendDelayedEmail($notifiable)
+    {
+        // Queue email notification with 30 second delay
+        dispatch(function () use ($notifiable) {
+            try {
+                $this->sendEmailNotification($notifiable);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send delayed match email', [
+                    'match_id' => $this->match->id,
+                    'receiver_id' => $notifiable->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        })->delay(now()->addSeconds(30));
+    }
 
-        $subject = '🌟 It\'s a Match! You and ' . $this->match->name . ' liked each other!';
+    /**
+     * Send email notification separately
+     */
+    private function sendEmailNotification($notifiable)
+    {
+        try {
+            // Configure Zoho Mail before sending
+            $zohoMailService = app(ZohoMailService::class);
+            $zohoMailService->configureMailer();
 
-        $message = $this->createMatchEmail($subject, $notifiable->name)
-            ->line('🎉 **Congratulations!** You have a new match!')
-            ->line('You and **' . $this->match->name . '** both liked each other!')
-            ->line('')
-            ->line('This means you can now start messaging each other and get to know one another better.')
-            ->action('Start Messaging', url('/messages'))
-            ->line('**Next Steps:**')
-            ->line('• Send a thoughtful first message')
-            ->line('• Be genuine and respectful in your conversations')
-            ->line('• Take your time to get to know each other')
-            ->line('')
-            ->line('We\'re excited to see where this connection leads!');
+            $subject = '🌟 It\'s a Match! You and ' . $this->match->name . ' liked each other!';
+            
+            $content = "Hi " . $notifiable->name . ",\n\n" .
+                      "🎉 Congratulations! You have a new match!\n\n" .
+                      "You and " . $this->match->name . " both liked each other!\n\n" .
+                      "This means you can now start messaging each other and get to know one another better.\n\n" .
+                      "Start messaging: " . url('/messages') . "\n\n" .
+                      "Next Steps:\n" .
+                      "• Send a thoughtful first message\n" .
+                      "• Be genuine and respectful in your conversations\n" .
+                      "• Take your time to get to know each other\n\n" .
+                      "We're excited to see where this connection leads!\n\n" .
+                      "Best regards,\nZawajAfrica Team";
 
-        $finalMessage = $this->addIslamicBlessing(
-            $this->addProfessionalFooter($message)
-        );
+            // Send simple text email
+            \Mail::raw($content, function ($message) use ($notifiable, $subject) {
+                $message->to($notifiable->email)
+                        ->subject($subject);
+            });
 
-        \Log::info('NewMatchFound email prepared successfully', [
-            'recipient_email' => $notifiable->email,
-            'subject' => $subject
-        ]);
-
-        return $finalMessage;
+            \Log::info('Match email sent successfully (delayed)', [
+                'match_id' => $this->match->id,
+                'receiver_id' => $notifiable->id,
+                'subject' => $subject
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send match email', [
+                'match_id' => $this->match->id,
+                'receiver_id' => $notifiable->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

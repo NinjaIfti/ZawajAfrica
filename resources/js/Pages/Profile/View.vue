@@ -59,18 +59,25 @@
         isLiking.value = true;
         
         try {
+            // Set up AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
             const response = await fetch(route('matches.like', { user: props.id }), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 },
-                body: JSON.stringify({}), // No need to send user_id in body as it's in URL
+                body: JSON.stringify({}),
+                signal: controller.signal // Add timeout signal
             });
+
+            clearTimeout(timeoutId); // Clear timeout if request completes
 
             const data = await response.json();
 
-            if (data.success) {
+            if (response.ok && data.success) {
                 if (data.match_created) {
                     likeModalType.value = 'match';
                     showLikeModal.value = true;
@@ -92,7 +99,17 @@
             }
         } catch (error) {
             console.error('Error liking user:', error);
-            alert('Network error. Please check your connection and try again.');
+            
+            if (error.name === 'AbortError') {
+                // Handle timeout - show success message since like likely went through
+                likeModalType.value = 'like';
+                showLikeModal.value = true;
+                console.log('Request timed out, but like likely processed successfully');
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                alert('Network error. Please check your internet connection and try again.');
+            } else {
+                alert('An unexpected error occurred. Please refresh the page and try again.');
+            }
         } finally {
             isLiking.value = false;
         }

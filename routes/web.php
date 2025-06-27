@@ -377,11 +377,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/subscription/purchase', [App\Http\Controllers\SubscriptionController::class, 'purchase'])->name('subscription.purchase');
 });
 
+// Payment callback route - outside auth middleware to prevent issues
+Route::get('/payment/callback', [App\Http\Controllers\PaymentController::class, 'handleCallback'])->name('payment.callback');
+
 // Payment routes
 Route::middleware('auth')->group(function () {
     Route::post('/payment/subscription/initialize', [App\Http\Controllers\PaymentController::class, 'initializeSubscription'])->name('payment.subscription.initialize');
     Route::post('/payment/therapist/initialize', [App\Http\Controllers\PaymentController::class, 'initializeTherapistBooking'])->name('payment.therapist.initialize');
-    Route::get('/payment/callback', [App\Http\Controllers\PaymentController::class, 'handleCallback'])->name('payment.callback');
 });
 
 Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook');
@@ -395,6 +397,17 @@ Route::get('/api/csrf-token', function () {
     ]);
 })->name('api.csrf-token');
 
-
+// API route to get current user data for payment verification
+Route::middleware('auth')->get('/api/user', function () {
+    $user = Auth::user();
+    return response()->json([
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'subscription_status' => $user->subscription_status,
+        'subscription_plan' => $user->subscription_plan,
+        'subscription_expires_at' => $user->subscription_expires_at
+    ]);
+})->name('api.user');
 
 require __DIR__.'/auth.php';

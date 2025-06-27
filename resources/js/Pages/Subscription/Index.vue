@@ -130,6 +130,13 @@
             });
 
             if (response.data.status) {
+                // Store payment reference and timestamp in localStorage for fallback
+                localStorage.setItem('zawaj_payment_reference', response.data.reference);
+                localStorage.setItem('zawaj_payment_timestamp', Date.now().toString());
+                localStorage.setItem('zawaj_payment_plan', planName);
+                
+                console.log('Redirecting to payment gateway:', response.data.authorization_url);
+                
                 // Redirect to Paystack payment page
                 window.location.href = response.data.authorization_url;
             } else {
@@ -137,9 +144,52 @@
             }
         } catch (error) {
             console.error('Payment error:', error);
-            alert('An error occurred while initializing payment. Please try again.');
+            if (error.response && error.response.status === 422) {
+                alert('Please check that you\'ve agreed to the terms and try again.');
+            } else {
+                alert('An error occurred while initializing payment. Please try again.');
+            }
         } finally {
             isProcessingPayment.value = false;
+        }
+    };
+
+    // Check payment status when user returns
+    const checkPaymentStatus = async () => {
+        const paymentRef = localStorage.getItem('zawaj_payment_reference');
+        const paymentTimestamp = localStorage.getItem('zawaj_payment_timestamp');
+        
+        if (paymentRef && paymentTimestamp) {
+            const timeDiff = Date.now() - parseInt(paymentTimestamp);
+            // If payment was initiated less than 30 minutes ago
+            if (timeDiff < 30 * 60 * 1000) {
+                console.log('Found pending payment reference:', paymentRef);
+                
+                try {
+                    // Check if user's subscription was updated
+                    const userResponse = await axios.get('/api/user');
+                    if (userResponse.data.subscription_status === 'active') {
+                        // Payment was successful
+                        localStorage.removeItem('zawaj_payment_reference');
+                        localStorage.removeItem('zawaj_payment_timestamp');
+                        localStorage.removeItem('zawaj_payment_plan');
+                        
+                        showPaymentSuccessModal.value = true;
+                        
+                        // Refresh the page to show updated subscription
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 3000);
+                    }
+                } catch (error) {
+                    console.error('Error checking payment status:', error);
+                }
+            } else {
+                // Clean up old payment references
+                localStorage.removeItem('zawaj_payment_reference');
+                localStorage.removeItem('zawaj_payment_timestamp');
+                localStorage.removeItem('zawaj_payment_plan');
+            }
         }
     };
 
@@ -156,6 +206,13 @@
     onMounted(() => {
         if (page.props.flash?.payment_success) {
             showPaymentSuccessModal.value = true;
+            // Clean up payment references on successful payment
+            localStorage.removeItem('zawaj_payment_reference');
+            localStorage.removeItem('zawaj_payment_timestamp');
+            localStorage.removeItem('zawaj_payment_plan');
+        } else {
+            // Check for pending payments when user returns
+            setTimeout(checkPaymentStatus, 1000);
         }
     });
 
