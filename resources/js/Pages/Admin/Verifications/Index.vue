@@ -1,8 +1,10 @@
 <script setup>
-    import { Head, Link } from '@inertiajs/vue3';
+    import { Head, Link, router } from '@inertiajs/vue3';
     import AdminLayout from '@/Layouts/AdminLayout.vue';
+    import axios from 'axios';
 
     const props = defineProps({
+        nonVerifiedUsers: Object,
         pendingVerifications: Object,
         approvedVerifications: Object,
         rejectedVerifications: Object,
@@ -16,6 +18,16 @@
             day: 'numeric',
         });
     };
+
+    const setVerificationStatus = async (userId, status) => {
+        console.log('Setting verification status', userId, status);
+        try {
+            await axios.patch(route('admin.users.verification.update', userId), { status });
+            router.reload();
+        } catch (error) {
+            alert('Failed to update verification status: ' + (error.response?.data?.message || error.message));
+        }
+    };
 </script>
 
 <template>
@@ -28,6 +40,41 @@
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <!-- Non-Verified Users -->
+                <div class="mb-8 overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div class="p-6 text-gray-900">
+                        <div class="mb-6 flex items-center justify-between">
+                            <h3 class="text-lg font-medium">Non-Verified Users</h3>
+                            <div class="text-sm text-gray-500">Total: {{ nonVerifiedUsers?.total || 0 }}</div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">User</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Email</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    <tr v-for="user in nonVerifiedUsers?.data || []" :key="user.id">
+                                        <td class="whitespace-nowrap px-6 py-4">{{ user.name }}</td>
+                                        <td class="whitespace-nowrap px-6 py-4">{{ user.email }}</td>
+                                        <td class="whitespace-nowrap px-6 py-4">
+                                            <button @click="setVerificationStatus(user.id, 'pending')" class="text-yellow-700 hover:underline mr-2">Pending</button>
+                                            <button @click="setVerificationStatus(user.id, 'nonverified')" class="text-red-700 hover:underline mr-2">Reject</button>
+                                            <button @click="setVerificationStatus(user.id, 'verified')" class="text-green-700 hover:underline">Approve</button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!nonVerifiedUsers?.data || nonVerifiedUsers?.data.length === 0">
+                                        <td colspan="3" class="px-6 py-4 text-center text-gray-500">No non-verified users found</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Pending Verifications -->
                 <div class="mb-8 overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">

@@ -237,6 +237,28 @@ class AdminController extends Controller
                     'verifications.status', 'verifications.rejection_reason', 'verifications.document_type')
             ->get();
         
+        // Non-verified users: no verification record or status is null/empty
+        $nonVerifiedUsers = User::leftJoin('verifications', 'users.id', '=', 'verifications.user_id')
+            ->where(function($query) {
+                $query->whereNull('verifications.status')
+                      ->orWhere('verifications.status', '')
+                      ->orWhere('verifications.status', 'nonverified');
+            })
+            ->where('users.is_verified', false)
+            ->select('users.*')
+            ->get();
+
+        $nonVerifiedData = [
+            'data' => $nonVerifiedUsers->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ];
+            }),
+            'total' => $nonVerifiedUsers->count()
+        ];
+        
         // Map the users to include verification data in the expected format
         $pendingData = [
             'data' => $pendingUsers->map(function($user) {
@@ -289,6 +311,7 @@ class AdminController extends Controller
         ];
         
         return Inertia::render('Admin/Verifications/Index', [
+            'nonVerifiedUsers' => $nonVerifiedData,
             'pendingVerifications' => $pendingData,
             'approvedVerifications' => $approvedData,
             'rejectedVerifications' => $rejectedData,
@@ -428,15 +451,33 @@ class AdminController extends Controller
     /**
      * Display subscriptions management page.
      */
-    public function subscriptions()
+    public function subscriptions(Request $request)
     {
-        $subscriptions = User::whereNotNull('subscription_plan')
-            ->with(['verification'])
-            ->latest('subscription_expires_at')
-            ->paginate(15);
+        $status = $request->input('status', 'all'); // all, paid, nonpaid
+        $plan = $request->input('plan', 'all'); // all, basic, gold, platinum, none
+
+        $query = User::query()->with(['verification']);
+
+        // Filter by paid/nonpaid
+        if ($status === 'paid') {
+            $query->whereNotNull('subscription_plan');
+        } elseif ($status === 'nonpaid') {
+            $query->whereNull('subscription_plan');
+        }
+
+        // Filter by plan
+        if (in_array($plan, ['basic', 'gold', 'platinum'])) {
+            $query->where('subscription_plan', $plan);
+        } elseif ($plan === 'none') {
+            $query->whereNull('subscription_plan');
+        }
+
+        $subscriptions = $query->latest('subscription_expires_at')->paginate(15);
 
         $stats = [
-            'total' => User::whereNotNull('subscription_plan')->count(),
+            'total' => User::count(),
+            'paid' => User::whereNotNull('subscription_plan')->count(),
+            'nonpaid' => User::whereNull('subscription_plan')->count(),
             'active' => User::where('subscription_status', 'active')
                 ->where(function($query) {
                     $query->whereNull('subscription_expires_at')
@@ -458,6 +499,10 @@ class AdminController extends Controller
         return Inertia::render('Admin/Subscriptions/Index', [
             'subscriptions' => $subscriptions,
             'stats' => $stats,
+            'filters' => [
+                'status' => $status,
+                'plan' => $plan,
+            ],
         ]);
     }
 
@@ -819,5 +864,50 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', 'Password updated successfully.');
+    }
+
+    /**
+     * Update user verification status (verified, pending, non-verified)
+     */
+    public function updateUserVerification(Request $request, User $user)
+    {
+        $request->validate([
+            'status' => 'required|in:verified,pending,nonverified'
+        ]);
+
+        $status = $request->input('status');
+
+        // Ensure verification record exists
+        if (!$user->verification) {
+            $user->verification()->create([
+                'status' => $status === 'verified' ? 'approved' : ($status === 'pending' ? 'pending' : 'rejected'),
+                'verified_at' => $status === 'verified' ? now() : null,
+            ]);
+        } else {
+            if ($status === 'verified') {
+                $user->verification->status = 'approved';
+                $user->verification->verified_at = now();
+                $user->verification->save();
+            } elseif ($status === 'pending') {
+                $user->verification->status = 'pending';
+                $user->verification->verified_at = null;
+                $user->verification->save();
+            } else { // nonverified
+                $user->verification->status = 'rejected';
+                $user->verification->verified_at = null;
+                $user->verification->save();
+            }
+        }
+
+        $user->is_verified = $status === 'verified';
+        $user->save();
+
+        \Log::info('Admin updated user verification status', [
+            'admin_id' => auth()->id(),
+            'user_id' => $user->id,
+            'status' => $status
+        ]);
+
+        return response()->json(['message' => 'Verification status updated successfully.']);
     }
 } 

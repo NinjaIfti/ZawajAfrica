@@ -313,7 +313,11 @@
                         <div class="flex items-center gap-1 pr-20">
                             <h3 class="text-base font-bold truncate">{{ match.name }}</h3>
                             <!-- Show verification tick only if user is verified -->
-                            <span v-if="match.is_verified" class="text-amber-500 text-base flex-shrink-0">✓</span>
+                            <span v-if="match.is_verified || match.verified" class="text-amber-500 flex-shrink-0 ml-1">
+                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
                             <!-- Show tier badge if user is paid (not free) -->
                             <TierBadge v-if="match.tier && match.tier !== 'free'" :tier="match.tier" size="xs" />
                             <span class="ml-1 text-gray-500 text-sm flex-shrink-0">{{ match.age ? ', ' + match.age : '' }}</span>

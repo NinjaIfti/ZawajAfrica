@@ -1,5 +1,5 @@
 <script setup>
-    import { Head, Link } from '@inertiajs/vue3';
+    import { Head, Link, router, usePage } from '@inertiajs/vue3';
     import AdminLayout from '@/Layouts/AdminLayout.vue';
     import axios from 'axios';
     import { ref, onMounted, watch } from 'vue';
@@ -13,10 +13,30 @@
             type: Object,
             required: true,
         },
+        filters: {
+            type: Object,
+            required: false,
+            default: () => ({ status: 'all', plan: 'all' })
+        }
     });
 
     // Track selected plan for each user
     const giftPlans = ref({});
+
+    // Filter state
+    const filterStatus = ref(props.filters.status || 'all');
+    const filterPlan = ref(props.filters.plan || 'all');
+
+    // Handle filter change
+    const applyFilters = () => {
+        router.get(route('admin.subscriptions'), {
+            status: filterStatus.value,
+            plan: filterPlan.value
+        }, {
+            preserveState: true,
+            preserveScroll: true
+        });
+    };
 
     const formatDate = dateString => {
         if (!dateString) return 'N/A';
@@ -172,6 +192,27 @@
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <!-- Filters -->
+                <div class="mb-6 flex flex-wrap gap-4 items-center">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">User Type</label>
+                        <select v-model="filterStatus" @change="applyFilters" class="border rounded px-2 py-1 text-sm">
+                            <option value="all">All Users</option>
+                            <option value="paid">Paid Users</option>
+                            <option value="nonpaid">Non-Paid Users</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Subscription Plan</label>
+                        <select v-model="filterPlan" @change="applyFilters" class="border rounded px-2 py-1 text-sm">
+                            <option value="all">All Plans</option>
+                            <option value="basic">Basic</option>
+                            <option value="gold">Gold</option>
+                            <option value="platinum">Platinum</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                </div>
                 <!-- Stats Cards -->
                 <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
                     <!-- Total Subscriptions Card -->
@@ -350,7 +391,7 @@
                                                 Cancel
                                             </button>
                                             <button
-                                                v-if="subscription.subscription_status !== 'active'"
+                                                v-if="subscription.subscription_status !== 'active' && subscription.subscription_plan"
                                                 @click="reactivateSubscription(subscription.id)"
                                                 class="text-blue-600 hover:text-blue-800"
                                             >
