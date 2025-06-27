@@ -35,6 +35,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('/therapist-bookings/{booking}', [\App\Http\Controllers\Admin\TherapistsController::class, 'updateBooking'])->name('therapists.bookings.update');
     
     // Subscription Management
-    Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
+Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
+Route::post('/subscriptions/{user}/extend', [AdminController::class, 'extendSubscription'])->name('subscriptions.extend');
+Route::post('/subscriptions/{user}/cancel', [AdminController::class, 'cancelSubscription'])->name('subscriptions.cancel');
+Route::post('/subscriptions/{user}/reactivate', [AdminController::class, 'reactivateSubscription'])->name('subscriptions.reactivate');
+Route::post('/subscriptions/{user}/gift', [AdminController::class, 'giftSubscription'])->name('subscriptions.gift');
     Route::get('/premium-users', [AdminController::class, 'getPremiumUsers'])->name('premium.users');
 }); 

@@ -1,6 +1,8 @@
 <script setup>
     import { Head, Link } from '@inertiajs/vue3';
     import AdminLayout from '@/Layouts/AdminLayout.vue';
+    import axios from 'axios';
+    import { ref, onMounted, watch } from 'vue';
 
     const props = defineProps({
         subscriptions: {
@@ -12,6 +14,9 @@
             required: true,
         },
     });
+
+    // Track selected plan for each user
+    const giftPlans = ref({});
 
     const formatDate = dateString => {
         if (!dateString) return 'N/A';
@@ -57,7 +62,18 @@
     };
 
     const getPlanDisplayName = plan => {
-        switch (plan) {
+        if (!plan) return 'No Plan';
+        
+        // Handle current plan names (case insensitive)
+        const planLower = plan.toLowerCase();
+        switch (planLower) {
+            case 'basic':
+                return 'Basic Plan';
+            case 'gold':
+                return 'Gold Plan';
+            case 'platinum':
+                return 'Platinum Plan';
+            // Legacy plan names
             case 'basic_monthly':
                 return 'Basic Monthly';
             case 'basic_yearly':
@@ -67,9 +83,83 @@
             case 'premium_yearly':
                 return 'Premium Yearly';
             default:
-                return plan || 'Unknown';
+                // Capitalize first letter of each word
+                return plan.split('_').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
         }
     };
+
+    // Admin subscription management methods
+    const extendSubscription = async (userId) => {
+        if (confirm('Extend this subscription by 30 days?')) {
+            try {
+                await axios.post(route('admin.subscriptions.extend', userId));
+                window.location.reload();
+            } catch (error) {
+                alert('Failed to extend subscription: ' + (error.response?.data?.message || error.message));
+            }
+        }
+    };
+
+    const cancelSubscription = async (userId) => {
+        if (confirm('Are you sure you want to cancel this subscription?')) {
+            try {
+                await axios.post(route('admin.subscriptions.cancel', userId));
+                window.location.reload();
+            } catch (error) {
+                alert('Failed to cancel subscription: ' + (error.response?.data?.message || error.message));
+            }
+        }
+    };
+
+    const reactivateSubscription = async (userId) => {
+        if (confirm('Reactivate this subscription for 30 days?')) {
+            try {
+                await axios.post(route('admin.subscriptions.reactivate', userId));
+                window.location.reload();
+            } catch (error) {
+                alert('Failed to reactivate subscription: ' + (error.response?.data?.message || error.message));
+            }
+        }
+    };
+
+    // Gift subscription using dropdown selection
+    const giftSubscription = async (userId) => {
+        const plan = giftPlans.value[userId];
+        if (!plan) {
+            alert('Please select a plan to gift.');
+            return;
+        }
+        if (confirm(`Gift ${plan} subscription to this user for 1 month?`)) {
+            try {
+                await axios.post(route('admin.subscriptions.gift', userId), {
+                    plan: plan
+                });
+                window.location.reload();
+            } catch (error) {
+                alert('Failed to gift subscription: ' + (error.response?.data?.message || error.message));
+            }
+        }
+    };
+
+    // Set the default selected value for the dropdown to the user's current plan (if any)
+    onMounted(() => {
+        props.subscriptions.data.forEach(sub => {
+            if (sub.subscription_plan) {
+                giftPlans.value[sub.id] = sub.subscription_plan;
+            }
+        });
+    });
+
+    // Also update if the subscriptions prop changes (pagination, etc)
+    watch(() => props.subscriptions.data, (newSubs) => {
+        newSubs.forEach(sub => {
+            if (sub.subscription_plan) {
+                giftPlans.value[sub.id] = sub.subscription_plan;
+            }
+        });
+    });
 </script>
 
 <template>
@@ -237,12 +327,56 @@
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                        <Link
-                                            :href="route('admin.users.view', subscription.id)"
-                                            class="text-purple-600 hover:text-purple-800"
-                                        >
-                                            View Profile
-                                        </Link>
+                                        <div class="flex space-x-2">
+                                            <Link
+                                                :href="route('admin.users.view', subscription.id)"
+                                                class="text-purple-600 hover:text-purple-800"
+                                            >
+                                                View Profile
+                                            </Link>
+                                            <span class="text-gray-300">|</span>
+                                            <button
+                                                v-if="subscription.subscription_status === 'active'"
+                                                @click="extendSubscription(subscription.id)"
+                                                class="text-green-600 hover:text-green-800"
+                                            >
+                                                Extend
+                                            </button>
+                                            <button
+                                                v-if="subscription.subscription_status === 'active'"
+                                                @click="cancelSubscription(subscription.id)"
+                                                class="text-red-600 hover:text-red-800"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                v-if="subscription.subscription_status !== 'active'"
+                                                @click="reactivateSubscription(subscription.id)"
+                                                class="text-blue-600 hover:text-blue-800"
+                                            >
+                                                Reactivate
+                                            </button>
+                                            <span class="text-gray-300">|</span>
+                                            <!-- Dropdown for plan selection -->
+                                            <select v-model="giftPlans[subscription.id]" class="border rounded px-2 py-1 text-sm">
+                                                <option disabled value="">Gift Plan...</option>
+                                                <option :value="'basic'">
+                                                    {{ subscription.subscription_plan === 'basic' ? 'Basic' : 'Basic' }}
+                                                </option>
+                                                <option :value="'gold'">
+                                                    {{ subscription.subscription_plan === 'gold' ? 'Gold' : 'Gold' }}
+                                                </option>
+                                                <option :value="'platinum'">
+                                                    {{ subscription.subscription_plan === 'platinum' ? 'Platinum' : 'Platinum' }}
+                                                </option>
+                                            </select>
+                                            <button
+                                                @click="giftSubscription(subscription.id)"
+                                                class="text-purple-600 hover:text-purple-800"
+                                            >
+                                                Gift Plan
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="!subscriptions.data || subscriptions.data.length === 0">

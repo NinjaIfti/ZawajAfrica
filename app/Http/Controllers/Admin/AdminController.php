@@ -443,8 +443,14 @@ class AdminController extends Controller
                         ->orWhere('subscription_expires_at', '>', now());
                 })
                 ->count(),
-            'expired' => User::where('subscription_status', 'active')
-                ->where('subscription_expires_at', '<=', now())
+            'expired' => User::where(function($query) {
+                    $query->where('subscription_status', 'expired')
+                        ->orWhere(function($subQuery) {
+                            $subQuery->where('subscription_status', 'active')
+                                ->whereNotNull('subscription_expires_at')
+                                ->where('subscription_expires_at', '<=', now());
+                        });
+                })
                 ->count(),
             'cancelled' => User::where('subscription_status', 'cancelled')->count(),
         ];
@@ -481,6 +487,158 @@ class AdminController extends Controller
                 })
                 ->count(),
         ]);
+    }
+
+    /**
+     * Extend user subscription by 30 days
+     */
+    public function extendSubscription(User $user)
+    {
+        try {
+            if (!$user->subscription_plan) {
+                return response()->json(['message' => 'User has no subscription plan to extend'], 400);
+            }
+
+            // If subscription is expired or about to expire, extend from now
+            // If still active, extend from current expiry date
+            $currentExpiry = $user->subscription_expires_at;
+            if (!$currentExpiry || $currentExpiry->isPast()) {
+                $newExpiry = now()->addDays(30);
+            } else {
+                $newExpiry = $currentExpiry->addDays(30);
+            }
+
+            $user->update([
+                'subscription_status' => 'active',
+                'subscription_expires_at' => $newExpiry
+            ]);
+
+            \Log::info('Admin extended subscription', [
+                'admin_id' => auth()->id(),
+                'user_id' => $user->id,
+                'old_expiry' => $currentExpiry,
+                'new_expiry' => $newExpiry
+            ]);
+
+            return response()->json(['message' => 'Subscription extended successfully']);
+        } catch (\Exception $e) {
+            \Log::error('Failed to extend subscription', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['message' => 'Failed to extend subscription'], 500);
+        }
+    }
+
+    /**
+     * Cancel user subscription
+     */
+    public function cancelSubscription(User $user)
+    {
+        try {
+            $user->update([
+                'subscription_status' => 'cancelled'
+            ]);
+
+            \Log::info('Admin cancelled subscription', [
+                'admin_id' => auth()->id(),
+                'user_id' => $user->id,
+                'plan' => $user->subscription_plan
+            ]);
+
+            return response()->json(['message' => 'Subscription cancelled successfully']);
+        } catch (\Exception $e) {
+            \Log::error('Failed to cancel subscription', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['message' => 'Failed to cancel subscription'], 500);
+        }
+    }
+
+    /**
+     * Reactivate user subscription
+     */
+    public function reactivateSubscription(User $user)
+    {
+        try {
+            $newExpiry = now()->addDays(30);
+
+            $user->update([
+                'subscription_status' => 'active',
+                'subscription_expires_at' => $newExpiry
+            ]);
+
+            \Log::info('Admin reactivated subscription', [
+                'admin_id' => auth()->id(),
+                'user_id' => $user->id,
+                'plan' => $user->subscription_plan,
+                'new_expiry' => $newExpiry
+            ]);
+
+            return response()->json(['message' => 'Subscription reactivated successfully']);
+        } catch (\Exception $e) {
+            \Log::error('Failed to reactivate subscription', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['message' => 'Failed to reactivate subscription'], 500);
+        }
+    }
+
+    /**
+     * Gift subscription to user with specified plan
+     */
+    public function giftSubscription(Request $request, User $user)
+    {
+        try {
+            $request->validate([
+                'plan' => 'required|string|in:basic,gold,platinum'
+            ]);
+
+            $plan = $request->plan;
+            $expiresAt = now()->addMonth(); // 1 month automatic expiration
+
+            $user->update([
+                'subscription_plan' => $plan,
+                'subscription_status' => 'active',
+                'subscription_expires_at' => $expiresAt
+            ]);
+
+            \Log::info('Admin gifted subscription', [
+                'admin_id' => auth()->id(),
+                'user_id' => $user->id,
+                'plan' => $plan,
+                'expires_at' => $expiresAt
+            ]);
+
+            // Optional: Notify the user that they've been gifted a subscription
+            try {
+                $user->notify(new \App\Notifications\SubscriptionPurchased(
+                    $plan,
+                    0, // Amount is 0 since it's a gift
+                    'admin_gift_' . time(), // Reference
+                    $expiresAt->toDateTime()
+                ));
+            } catch (\Exception $e) {
+                \Log::warning('Failed to send subscription gift notification', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Continue even if notification fails
+            }
+
+            return response()->json([
+                'message' => "Successfully gifted {$plan} plan to {$user->name}",
+                'expires_at' => $expiresAt->format('Y-m-d H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to gift subscription', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['message' => 'Failed to gift subscription: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

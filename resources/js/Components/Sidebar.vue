@@ -330,7 +330,7 @@
         <!-- ZawajAfrica Social Media Links -->
         <div class="p-4 border-t border-gray-200">
             <p class="text-sm text-gray-600 mb-3 font-medium">Follow ZawajAfrica</p>
-            <div class="flex justify-center space-x-4">
+            <div class="flex flex-row justify-center space-x-4">
                 <!-- WhatsApp -->
                 <a 
                     href="https://wa.me/qr/DQN37GVLFCV6J1" 
