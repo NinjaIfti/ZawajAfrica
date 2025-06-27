@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/me/faqs/update', [App\Http\Controllers\Me\FAQsController::class, 'update'])->name('me.faqs.update');
     
     // Matches routes (API only - no index page)
+    Route::post('/matches/{user}/like', [App\Http\Controllers\MatchController::class, 'like'])->name('matches.like');
     Route::post('/matches/pass', [App\Http\Controllers\MatchController::class, 'pass'])->name('matches.pass');
     Route::get('/matches/filters', [App\Http\Controllers\MatchController::class, 'getFilters'])->name('matches.filters');
     Route::get('/matches/ai-suggestions', [App\Http\Controllers\MatchController::class, 'getAISuggestions'])->name('matches.ai-suggestions');

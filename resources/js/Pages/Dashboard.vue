@@ -628,7 +628,7 @@
             </div>
 
             <!-- Match Cards Component -->
-            <MatchCard :matches="displayMatches" />
+            <MatchCard :matches="displayMatches" :userTier="userTier" />
 
             <!-- Loading indicator -->
             <div v-if="isLoading" class="text-center py-8">

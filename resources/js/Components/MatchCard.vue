@@ -19,14 +19,25 @@
     // Modal state
     const showLikeModal = ref(false);
     const likeModalType = ref('like');
+    const currentLikedUser = ref(null);
+    
+    // Loading states for each match
+    const loadingStates = ref({});
 
     // Handle like button click
     const handleLike = async match => {
+        console.log('Like button clicked for match:', match);
+        
         // Frontend validation
-        if (!match || !match.id || typeof match.id !== 'number') {
+        if (!match || !match.id) {
             alert('Invalid user selected. Please refresh the page and try again.');
             return;
         }
+
+        // Set loading state for this specific match
+        loadingStates.value[match.id] = true;
+        currentLikedUser.value = match.id; // Store the current user context for modal
+        console.log('Loading state set for match:', match.id);
 
         try {
             // Get CSRF token with fallback
@@ -40,6 +51,8 @@
                 return;
             }
 
+            console.log('Making like request to:', route('matches.like', { user: match.id }));
+            
             const response = await fetch(route('matches.like', { user: match.id }), {
                 method: 'POST',
                 headers: {
@@ -48,26 +61,39 @@
                 },
                 body: JSON.stringify({}),
             });
+            
+            console.log('Response received:', response.status, response.statusText);
+
+            const data = await response.json();
+            console.log('Response data:', data);
 
             if (!response.ok) {
                 if (response.status === 429) {
-                    const data = await response.json();
                     alert(data.error + '\n\nWould you like to upgrade your plan?');
                     if (confirm('Go to subscription page?')) {
                         window.location.href = route('subscription.index');
                     }
                     return;
+                } else if (response.status === 400) {
+                    // Handle already liked case
+                    if (data.already_liked) {
+                        likeModalType.value = 'already_liked';
+                        showLikeModal.value = true;
+                        return;
+                    }
+                    // Handle already matched case
+                    if (data.already_matched) {
+                        likeModalType.value = 'match';
+                        showLikeModal.value = true;
+                        return;
+                    }
+                    alert(data.error || 'Invalid request. Please refresh the page and try again.');
+                    return;
                 } else if (response.status === 500) {
                     alert('Server error. Please try again later or contact support.');
                     return;
-                } else if (response.status === 400) {
-                    const data = await response.json();
-                    alert(data.error || 'Invalid request. Please refresh the page and try again.');
-                    return;
                 }
             }
-
-            const data = await response.json();
 
             if (data.success) {
                 if (data.match_created) {
@@ -94,13 +120,16 @@
             } else {
                 alert('An unexpected error occurred. Please refresh the page and try again.');
             }
+        } finally {
+            // Clear loading state
+            loadingStates.value[match.id] = false;
         }
     };
 
     // Handle message button click
     const handleMessage = match => {
-        // Check if user can message (this will be handled by backend/middleware)
-        window.location.href = route('messages');
+        // Go to specific conversation with this user
+        window.location.href = route('messages.show', match.id);
     };
 
     // Close like modal
@@ -111,7 +140,12 @@
     // Handle message from modal
     const handleMessageFromModal = () => {
         closeLikeModal();
-        window.location.href = route('messages');
+        // Get the user ID from the current like context - we'll store it when like is clicked
+        if (currentLikedUser.value) {
+            window.location.href = route('messages.show', currentLikedUser.value);
+        } else {
+            window.location.href = route('messages');
+        }
     };
 
     // Get compatibility color based on score
@@ -132,14 +166,14 @@
 
     // Check if user can see message button for a specific match
     const canShowMessageButton = (match) => {
-        // If users are matched, always show message button
-        if (match.is_matched) {
+        // If users are matched, always show message button (for all users)
+        if (match.is_matched || match.matched) {
             return true;
         }
         
-        // If user is Platinum or Gold, show message button
+        // If user is Platinum, show message button even if not matched
         const userTier = props.userTier || 'free';
-        return userTier === 'platinum' || userTier === 'gold';
+        return userTier === 'platinum';
     };
 </script>
 
@@ -215,51 +249,72 @@
 
                 <!-- Match Info -->
                 <div class="bg-white px-4 py-3 relative overflow-hidden">
-                    <div class="flex items-center justify-between">
-                        <Link :href="route('profile.view', { id: match.id })" class="block flex-1 min-w-0">
-                            <div class="flex items-center gap-1">
-                                <h3 class="text-base font-bold truncate">{{ match.name }}</h3>
-                                <!-- Show verification tick only if user is verified -->
-                                <span v-if="match.is_verified" class="text-amber-500 text-base flex-shrink-0">✓</span>
-                                <!-- Show tier badge if user is paid (not free) -->
-                                <TierBadge v-if="match.tier && match.tier !== 'free'" :tier="match.tier" size="xs" />
-                                <span class="ml-1 text-gray-500 text-sm flex-shrink-0">{{ match.age ? ', ' + match.age : '' }}</span>
+                    <!-- Action buttons positioned at top-right -->
+                    <div class="absolute top-3 right-3 flex space-x-2 z-40">
+                        <button 
+                            class="text-purple-800 p-1 relative z-50 bg-white rounded-full shadow-sm hover:bg-gray-50" 
+                            @click.prevent="handleLike(match)" 
+                            :disabled="loadingStates[match.id]"
+                            :class="{ 'opacity-50 cursor-not-allowed': loadingStates[match.id] }"
+                            aria-label="Like"
+                        >
+                            <!-- Loading spinner -->
+                            <div v-if="loadingStates[match.id]" class="absolute inset-0 flex items-center justify-center">
+                                <svg class="animate-spin h-5 w-5 text-purple-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
                             </div>
-                            <p v-if="match.location" class="text-gray-600 text-sm truncate">{{ match.location }}</p>
-                            <p class="text-xs text-gray-500">{{ match.timestamp }}</p>
-                        </Link>
-                        <div class="flex space-x-3 items-center">
-                            <button class="text-purple-800 p-1" @click.prevent="handleLike(match)" aria-label="Like">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                    />
-                                </svg>
-                            </button>
-                            <button
-                                v-if="canShowMessageButton(match)"
-                                class="text-purple-800 p-1"
-                                @click.prevent="handleMessage(match)"
-                                aria-label="Message"
+                            <!-- Heart icon -->
+                            <svg 
+                                class="h-5 w-5 transition-opacity duration-200" 
+                                :class="{ 'opacity-0': loadingStates[match.id] }"
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
                             >
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                />
+                            </svg>
+                        </button>
+                        <button
+                            v-if="canShowMessageButton(match)"
+                            class="text-purple-800 p-1 relative z-50 bg-white rounded-full shadow-sm hover:bg-gray-50"
+                            @click.prevent="handleMessage(match)"
+                            aria-label="Message"
+                        >
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                />
+                            </svg>
+                        </button>
                     </div>
+                    
+                    <!-- Content without action buttons -->
+                    <Link :href="route('profile.view', { id: match.id })" class="block">
+                        <div class="flex items-center gap-1 pr-20">
+                            <h3 class="text-base font-bold truncate">{{ match.name }}</h3>
+                            <!-- Show verification tick only if user is verified -->
+                            <span v-if="match.is_verified" class="text-amber-500 text-base flex-shrink-0">✓</span>
+                            <!-- Show tier badge if user is paid (not free) -->
+                            <TierBadge v-if="match.tier && match.tier !== 'free'" :tier="match.tier" size="xs" />
+                            <span class="ml-1 text-gray-500 text-sm flex-shrink-0">{{ match.age ? ', ' + match.age : '' }}</span>
+                        </div>
+                        <p v-if="match.location" class="text-gray-600 text-sm truncate pr-20">{{ match.location }}</p>
+                        <p class="text-xs text-gray-500">{{ match.timestamp }}</p>
+                    </Link>
 
                     <!-- Rainbow pattern - hidden on mobile -->
                     <div
-                        class="absolute bottom-0 right-8 h-16 md:h-20 w-20 md:w-24 translate-x-1/3 translate-y-1/4 hidden sm:block"
+                        class="absolute bottom-0 right-8 h-16 md:h-20 w-20 md:w-24 translate-x-1/3 translate-y-1/4 hidden sm:block z-10"
                     >
                         <img src="/images/card.png" alt="Pattern" class="h-full w-full object-contain opacity-60" />
                     </div>

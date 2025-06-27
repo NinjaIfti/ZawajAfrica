@@ -13,6 +13,7 @@
     const likeModalType = ref('like'); // 'like' or 'match'
     const currentImageIndex = ref(0);
     const activeTab = ref('about');
+    const isLiking = ref(false);
 
     // Gallery state
     const isGalleryOpen = ref(false);
@@ -54,6 +55,9 @@
 
     // Handle like button click
     const handleLike = async () => {
+        if (isLiking.value) return; // Prevent double-clicking
+        isLiking.value = true;
+        
         try {
             const response = await fetch(route('matches.like', { user: props.id }), {
                 method: 'POST',
@@ -89,6 +93,8 @@
         } catch (error) {
             console.error('Error liking user:', error);
             alert('Network error. Please check your connection and try again.');
+        } finally {
+            isLiking.value = false;
         }
     };
 
@@ -761,16 +767,23 @@
                             <div class="md:hidden flex justify-center space-x-3 mb-4">
                                 <button
                                     @click="handleLike"
-                                    class="flex items-center justify-center px-6 py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+                                    :disabled="isLiking"
+                                    class="flex items-center justify-center px-6 py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
-                                    <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <!-- Loading spinner -->
+                                    <svg v-if="isLiking" class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <!-- Heart icon -->
+                                    <svg v-else class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path
                                             fill-rule="evenodd"
                                             d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
                                             clip-rule="evenodd"
                                         />
                                     </svg>
-                                    Like
+                                    {{ isLiking ? 'Liking...' : 'Like' }}
                                 </button>
                                 <button
                                     v-if="canShowMessageButton"
@@ -801,9 +814,16 @@
                                 <div class="flex space-x-2">
                                     <button
                                         @click="handleLike"
-                                        class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50"
+                                        :disabled="isLiking"
+                                        class="text-purple-800 border border-purple-800 rounded-full p-2 bg-white hover:bg-purple-50 disabled:opacity-70 disabled:cursor-not-allowed relative"
                                     >
-                                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                                        <!-- Loading spinner -->
+                                        <svg v-if="isLiking" class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <!-- Heart icon -->
+                                        <svg v-else class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
                                             <path
                                                 fill-rule="evenodd"
                                                 d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
