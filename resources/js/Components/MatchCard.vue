@@ -10,6 +10,10 @@
             type: Array,
             default: () => [],
         },
+        userTier: {
+            type: String,
+            default: 'free',
+        },
     });
 
     // Modal state
@@ -125,6 +129,18 @@
         console.log(`Photo unblurred for user ${userId}`);
         // Optionally track analytics or show success message
     };
+
+    // Check if user can see message button for a specific match
+    const canShowMessageButton = (match) => {
+        // If users are matched, always show message button
+        if (match.is_matched) {
+            return true;
+        }
+        
+        // If user is Platinum or Gold, show message button
+        const userTier = props.userTier || 'free';
+        return userTier === 'platinum' || userTier === 'gold';
+    };
 </script>
 
 <template>
@@ -224,6 +240,7 @@
                                 </svg>
                             </button>
                             <button
+                                v-if="canShowMessageButton(match)"
                                 class="text-purple-800 p-1"
                                 @click.prevent="handleMessage(match)"
                                 aria-label="Message"

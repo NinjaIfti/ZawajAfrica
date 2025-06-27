@@ -50,7 +50,7 @@ Route::get('/dashboard', function () {
     
     // Get potential matches using the MatchingService for real compatibility scores
     $matchingService = app(\App\Services\MatchingService::class);
-    $matchResults = $matchingService->getMatches($user, [], 10);
+    $matchResults = $matchingService->getMatches($user, [], 1000); // Unlimited matches (high limit)
     $potentialMatches = $matchResults['matches']; // Use the formatted matches directly
     
     // Get active therapists for the widget

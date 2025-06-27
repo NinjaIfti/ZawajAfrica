@@ -93,7 +93,7 @@ class AdminController extends Controller
                 ->join('users', 'user_daily_activities.user_id', '=', 'users.id')
                 ->where('user_daily_activities.activity', 'profile_views')
                 ->where('user_daily_activities.date', $today)
-                ->where('user_daily_activities.count', '>=', 45) // 90% of 50 limit
+                ->where('user_daily_activities.count', '>=', 63) // 90% of 70 limit
                 ->where(function($query) {
                     $query->whereNull('users.subscription_plan')
                           ->orWhere('users.subscription_status', '!=', 'active')

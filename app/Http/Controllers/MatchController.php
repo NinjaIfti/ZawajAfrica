@@ -440,7 +440,7 @@ class MatchController extends Controller
         }
 
         // Get AI-enhanced matches
-        $aiMatches = $this->matchingService->getMatches($user, [], 10);
+        $aiMatches = $this->matchingService->getMatches($user, [], 1000); // Unlimited matches
 
         return response()->json([
             'suggestions' => $aiMatches['matches'],

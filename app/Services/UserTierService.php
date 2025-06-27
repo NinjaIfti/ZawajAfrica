@@ -18,22 +18,22 @@ class UserTierService
     // Daily limits by tier
     private array $tierLimits = [
         self::TIER_FREE => [
-            'profile_views' => 50,
+            'profile_views' => 70,
             'messages' => 0, // Cannot initiate messages
             'contact_details' => false,
             'ads_frequency' => 10, // Show ads every 10 profiles
             'therapy_sessions' => true,
             'unlimited_search' => false,
-            'elite_access' => false,
+            'elite_access' => true, // Can see all users
         ],
         self::TIER_BASIC => [
-            'profile_views' => 120,
+            'profile_views' => 140,
             'messages' => 30,
             'contact_details' => true,
             'ads_frequency' => 0, // No ads
             'therapy_sessions' => true,
             'unlimited_search' => false,
-            'elite_access' => false,
+            'elite_access' => true, // Can see all users
         ],
         self::TIER_GOLD => [
             'profile_views' => -1, // Unlimited
@@ -42,7 +42,7 @@ class UserTierService
             'ads_frequency' => 0, // No ads
             'therapy_sessions' => true,
             'unlimited_search' => true,
-            'elite_access' => false,
+            'elite_access' => true, // Can see all users
         ],
         self::TIER_PLATINUM => [
             'profile_views' => -1, // Unlimited
@@ -51,7 +51,7 @@ class UserTierService
             'ads_frequency' => 0, // No ads
             'therapy_sessions' => true,
             'unlimited_search' => true,
-            'elite_access' => true,
+            'elite_access' => true, // Can see all users
             'custom_filters' => true,
             'priority_support' => true,
         ],

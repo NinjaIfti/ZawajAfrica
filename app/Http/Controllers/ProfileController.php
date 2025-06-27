@@ -202,25 +202,10 @@ class ProfileController extends Controller
         $user = User::with(['appearance', 'lifestyle', 'background', 'about', 'overview', 'photos', 'interests', 'personality', 'others'])
             ->findOrFail($id);
 
-        // Check if viewing elite member requires Platinum access
+        // All users can view all profiles regardless of tier
+        // Elite access restrictions removed - emojis distinguish tiers instead
         $targetUserTier = $this->tierService->getUserTier($user);
         $currentUserLimits = $this->tierService->getUserLimits($currentUser);
-        
-        // Enhanced check for elite member access
-        if ($targetUserTier === UserTierService::TIER_PLATINUM && !($currentUserLimits['elite_access'] ?? false)) {
-            // Double-check that target is actually an active platinum user
-            $isActivePlatinum = $user->subscription_plan === 'platinum' 
-                && $user->subscription_status === 'active'
-                && (!$user->subscription_expires_at || $user->subscription_expires_at->isFuture());
-                
-            if ($isActivePlatinum) {
-                return response()->json([
-                    'error' => 'This is a Platinum Elite member. Upgrade to Platinum to view their profile.',
-                    'target_tier' => 'platinum',
-                    'upgrade_prompt' => true
-                ], 403);
-            }
-        }
         
         // Format profile photo URL if it exists
         if ($user->profile_photo) {
