@@ -47,7 +47,7 @@ class OpenAIService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
-            ])->timeout(60)->post($this->apiUrl . '/chat/completions', $payload);
+            ])->timeout(120)->post($this->apiUrl . '/chat/completions', $payload);
 
             if ($response->successful()) {
                 $data = $response->json();

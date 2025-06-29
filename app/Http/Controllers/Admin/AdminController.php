@@ -960,6 +960,9 @@ class AdminController extends Controller
         ]);
 
         try {
+            // Increase execution time for broadcast generation
+            set_time_limit(120); // 2 minutes
+            
             $openAIService = app(OpenAIService::class);
 
             $prompt = $this->buildBroadcastPrompt(
@@ -1015,6 +1018,9 @@ class AdminController extends Controller
     public function generateUserInsights()
     {
         try {
+            // Increase execution time for insights generation
+            set_time_limit(180); // 3 minutes
+            
             $openAIService = app(OpenAIService::class);
 
             // Gather data for insights
@@ -1074,6 +1080,9 @@ class AdminController extends Controller
         }
 
         try {
+            // Set execution time limit for this operation
+            set_time_limit(300); // 5 minutes
+            
             // Get users based on target audience
             $users = $this->getUsersByAudience($request->target_audience);
             
@@ -1090,19 +1099,19 @@ class AdminController extends Controller
 
             $sentCount = 0;
             $failedCount = 0;
+            $batchSize = 5; // Reduced batch size
+            $delayMicroseconds = 500000; // 0.5 seconds instead of 1 second
 
-            // Send emails in batches to avoid overwhelming the server
-            $users->chunk(10)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount) {
+            // Process in smaller batches with shorter delays
+            $users->chunk($batchSize)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount, $delayMicroseconds) {
                 foreach ($userChunk as $user) {
                     try {
-                        \Mail::raw($request->body, function ($message) use ($user, $request) {
-                            $message->to($user->email, $user->name)
-                                   ->subject($request->subject);
-                        });
+                        // Use timeout for individual email sending
+                        $this->sendSingleBroadcastEmail($user, $request->subject, $request->body);
                         $sentCount++;
                         
-                        // Longer delay to prevent rate limiting
-                        usleep(1000000); // 1 second delay
+                        // Shorter delay to prevent rate limiting
+                        usleep($delayMicroseconds);
                         
                     } catch (\Exception $e) {
                         $failedCount++;
@@ -1112,6 +1121,12 @@ class AdminController extends Controller
                             'error' => $e->getMessage()
                         ]);
                     }
+                }
+                
+                // Flush any output to prevent timeouts
+                if (ob_get_level()) {
+                    ob_flush();
+                    flush();
                 }
             });
 
@@ -1146,6 +1161,31 @@ class AdminController extends Controller
             ], 500);
         } finally {
             $lock->release();
+        }
+    }
+
+    /**
+     * Send single broadcast email with timeout handling
+     */
+    private function sendSingleBroadcastEmail($user, $subject, $body)
+    {
+        try {
+            // Set a shorter timeout for individual emails
+            ini_set('default_socket_timeout', 30);
+            
+            \Mail::raw($body, function ($message) use ($user, $subject) {
+                $message->to($user->email, $user->name)
+                       ->subject($subject);
+            });
+            
+        } catch (\Exception $e) {
+            // Log individual email failures but don't stop the process
+            Log::error('Individual broadcast email failed', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 

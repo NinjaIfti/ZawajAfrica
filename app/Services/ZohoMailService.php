@@ -58,7 +58,7 @@ class ZohoMailService
             'username' => $this->smtpUsername,
             'password' => $this->smtpPassword,
             'encryption' => $this->smtpEncryption,
-            'timeout' => null,
+            'timeout' => config('mail.mailers.smtp.timeout', 120),
         ]);
 
         Config::set('mail.from', [
