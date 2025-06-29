@@ -1064,6 +1064,15 @@ class AdminController extends Controller
             'target_audience' => 'required|string|in:all,premium,basic,free'
         ]);
 
+        // Prevent multiple simultaneous broadcasts
+        $lock = \Cache::lock('broadcast_email_lock', 1800); // 30 minutes
+        if (!$lock->get()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'A broadcast is already in progress. Please wait until it finishes.'
+            ], 429);
+        }
+
         try {
             // Get users based on target audience
             $users = $this->getUsersByAudience($request->target_audience);
@@ -1083,7 +1092,7 @@ class AdminController extends Controller
             $failedCount = 0;
 
             // Send emails in batches to avoid overwhelming the server
-            $users->chunk(50)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount) {
+            $users->chunk(10)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount) {
                 foreach ($userChunk as $user) {
                     try {
                         \Mail::raw($request->body, function ($message) use ($user, $request) {
@@ -1092,8 +1101,8 @@ class AdminController extends Controller
                         });
                         $sentCount++;
                         
-                        // Small delay to prevent rate limiting
-                        usleep(100000); // 0.1 second delay
+                        // Longer delay to prevent rate limiting
+                        usleep(1000000); // 1 second delay
                         
                     } catch (\Exception $e) {
                         $failedCount++;
@@ -1135,6 +1144,8 @@ class AdminController extends Controller
                 'success' => false,
                 'error' => 'Failed to send broadcast emails: ' . $e->getMessage()
             ], 500);
+        } finally {
+            $lock->release();
         }
     }
 
