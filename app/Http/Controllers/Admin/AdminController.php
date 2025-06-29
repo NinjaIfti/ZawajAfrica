@@ -15,6 +15,13 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Models\UserReport;
+use App\Models\Verification;
+use App\Models\TherapistBooking;
+use App\Models\Profile;
+use Illuminate\Support\Facades\Validator;
+use App\Services\UserTierService;
+use App\Services\NotificationService;
 
 class AdminController extends Controller
 {
@@ -1095,7 +1102,13 @@ class AdminController extends Controller
 
             // Configure Zoho Mail
             $zohoMailService = app(\App\Services\ZohoMailService::class);
-            $zohoMailService->configureMailer();
+            
+            if (!$zohoMailService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zoho HTTP API not properly configured'
+                ], 500);
+            }
 
             $sentCount = 0;
             $failedCount = 0;
@@ -1103,12 +1116,29 @@ class AdminController extends Controller
             $delayMicroseconds = 500000; // 0.5 seconds instead of 1 second
 
             // Process in smaller batches with shorter delays
-            $users->chunk($batchSize)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount, $delayMicroseconds) {
+            $users->chunk($batchSize)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount, $delayMicroseconds, $zohoMailService) {
                 foreach ($userChunk as $user) {
                     try {
-                        // Use timeout for individual email sending
-                        $this->sendSingleBroadcastEmail($user, $request->subject, $request->body);
-                        $sentCount++;
+                        // Use HTTP API for individual email sending
+                        $httpService = app(\App\Services\ZohoHttpEmailService::class);
+                        $result = $httpService->sendNotificationEmail(
+                            'admin',
+                            $user->email,
+                            $request->subject,
+                            $request->body,
+                            $user->name
+                        );
+                        
+                        if ($result['success']) {
+                            $sentCount++;
+                        } else {
+                            $failedCount++;
+                            Log::error('Failed to send broadcast email to user via HTTP API', [
+                                'user_id' => $user->id,
+                                'user_email' => $user->email,
+                                'error' => $result['error']
+                            ]);
+                        }
                         
                         // Shorter delay to prevent rate limiting
                         usleep($delayMicroseconds);
@@ -1121,12 +1151,6 @@ class AdminController extends Controller
                             'error' => $e->getMessage()
                         ]);
                     }
-                }
-                
-                // Flush any output to prevent timeouts
-                if (ob_get_level()) {
-                    ob_flush();
-                    flush();
                 }
             });
 
@@ -1161,31 +1185,6 @@ class AdminController extends Controller
             ], 500);
         } finally {
             $lock->release();
-        }
-    }
-
-    /**
-     * Send single broadcast email with timeout handling
-     */
-    private function sendSingleBroadcastEmail($user, $subject, $body)
-    {
-        try {
-            // Set a shorter timeout for individual emails
-            ini_set('default_socket_timeout', 30);
-            
-            \Mail::raw($body, function ($message) use ($user, $subject) {
-                $message->to($user->email, $user->name)
-                       ->subject($subject);
-            });
-            
-        } catch (\Exception $e) {
-            // Log individual email failures but don't stop the process
-            Log::error('Individual broadcast email failed', [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
         }
     }
 

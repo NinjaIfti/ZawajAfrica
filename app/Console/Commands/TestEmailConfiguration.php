@@ -23,7 +23,7 @@ class TestEmailConfiguration extends Command
      */
     public function handle()
     {
-        $this->info('Testing Email Configuration...');
+        $this->info('Testing Zoho HTTP API Email Configuration...');
 
         // Get test email address
         $testEmail = $this->argument('email') ?? $this->ask('Enter email address to send test to:');
@@ -33,65 +33,77 @@ class TestEmailConfiguration extends Command
             return 1;
         }
 
-        // Test Zoho Mail Service
+        // Test Zoho Mail Service (now HTTP API only)
         $zohoMailService = app(ZohoMailService::class);
         
-        $this->info('Checking Zoho Mail configuration...');
+        $this->info('Checking Zoho HTTP API configuration...');
         $status = $zohoMailService->getStatus();
         
         $this->table(
             ['Setting', 'Value'],
             [
                 ['Configured', $status['configured'] ? '✅ Yes' : '❌ No'],
-                ['SMTP Host', $status['smtp_host'] ?? 'Not set'],
-                ['SMTP Port', $status['smtp_port'] ?? 'Not set'],
-                ['Username', $status['smtp_username'] ?? 'Not set'],
+                ['Method', $status['method']],
+                ['API URL', $status['api_url']],
                 ['From Address', $status['from_address'] ?? 'Not set'],
                 ['From Name', $status['from_name'] ?? 'Not set'],
+                ['Has Token', $status['has_token'] ? '✅ Yes' : '❌ No'],
             ]
         );
 
         if (!$status['configured']) {
-            $this->error('Zoho Mail is not properly configured. Please check your environment variables.');
+            $this->error('Zoho HTTP API is not properly configured. Please check your environment variables.');
+            $this->warn('Required: ZOHO_MAIL_API_TOKEN, ZOHO_MAIL_FROM_ADDRESS');
             return 1;
         }
 
-        // Test email sending with timeout
+        // Test connection
+        $this->info('Testing API connection...');
+        $connectionResult = $zohoMailService->testConnection();
+        
+        if (!$connectionResult['success']) {
+            $this->error('API connection failed: ' . $connectionResult['error']);
+            return 1;
+        }
+
+        $this->info('✅ API connection successful');
+
+        // Send test email
         $this->info("Sending test email to: {$testEmail}");
         
         try {
             $startTime = microtime(true);
             
-            // Configure Zoho Mail
-            $zohoMailService->configureMailer();
-            
-            // Send test email
-            Mail::raw('This is a test email from ZawajAfrica to verify email configuration and timeout settings.', function ($message) use ($testEmail) {
-                $message->to($testEmail)
-                       ->subject('ZawajAfrica - Email Configuration Test - ' . now()->format('Y-m-d H:i:s'));
-            });
+            // Use ZohoHttpEmailService directly for better control
+            $httpService = app(\App\Services\ZohoHttpEmailService::class);
+            $result = $httpService->sendEmail(
+                $testEmail,
+                'ZawajAfrica - HTTP API Test - ' . now()->format('Y-m-d H:i:s'),
+                '<h2>ZawajAfrica HTTP API Test</h2><p>This email was sent via Zoho HTTP API.</p><p>✅ No SMTP blocking issues!</p>'
+            );
             
             $endTime = microtime(true);
             $duration = round(($endTime - $startTime), 2);
             
-            $this->info("✅ Test email sent successfully!");
-            $this->info("⏱️ Email sent in {$duration} seconds");
-            
-            if ($duration > 30) {
-                $this->warn("⚠️ Email took longer than 30 seconds. Consider checking your SMTP settings.");
+            if ($result['success']) {
+                $this->info("✅ Test email sent successfully via Zoho HTTP API!");
+                $this->info("⏱️ Email sent in {$duration} seconds");
+                
+                if (isset($result['message_id'])) {
+                    $this->info("📧 Message ID: {$result['message_id']}");
+                }
+            } else {
+                $this->error("❌ Failed to send test email: " . $result['error']);
+                return 1;
             }
             
         } catch (\Exception $e) {
-            $this->error("❌ Failed to send test email: " . $e->getMessage());
-            
-            if (strpos($e->getMessage(), 'timeout') !== false) {
-                $this->error("This appears to be a timeout issue. Check your SMTP timeout settings.");
-            }
-            
+            $this->error("❌ Exception occurred: " . $e->getMessage());
             return 1;
         }
 
-        $this->info('Email configuration test completed successfully!');
+        $this->info('✅ Zoho HTTP API email configuration test completed successfully!');
+        $this->info('🎉 No SMTP blocking issues - emails will work on DigitalOcean!');
         return 0;
     }
 } 

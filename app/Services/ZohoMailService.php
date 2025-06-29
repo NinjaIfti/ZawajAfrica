@@ -2,29 +2,16 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Config;
+use App\Services\ZohoHttpEmailService;
 
 class ZohoMailService
 {
-    private $smtpHost;
-    private $smtpPort;
-    private $smtpUsername;
-    private $smtpPassword;
-    private $smtpEncryption;
-    private $fromAddress;
-    private $fromName;
+    private ZohoHttpEmailService $httpEmailService;
 
     public function __construct()
     {
-        $this->smtpHost = config('services.zoho_mail.smtp_host');
-        $this->smtpPort = config('services.zoho_mail.smtp_port');
-        $this->smtpUsername = config('services.zoho_mail.smtp_username');
-        $this->smtpPassword = config('services.zoho_mail.smtp_password');
-        $this->smtpEncryption = config('services.zoho_mail.smtp_encryption');
-        $this->fromAddress = config('services.zoho_mail.from_address');
-        $this->fromName = config('services.zoho_mail.from_name');
+        $this->httpEmailService = app(ZohoHttpEmailService::class);
     }
 
     /**
@@ -32,105 +19,31 @@ class ZohoMailService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->smtpHost) && 
-               !empty($this->smtpPort) && 
-               !empty($this->smtpUsername) && 
-               !empty($this->smtpPassword) && 
-               !empty($this->fromAddress);
+        return $this->httpEmailService->isConfigured();
     }
 
     /**
-     * Configure Laravel Mail to use Zoho SMTP
+     * Configure mailer (no longer needed, kept for compatibility)
      */
     public function configureMailer(): void
     {
-        if (!$this->isConfigured()) {
-            Log::warning('Zoho Mail not properly configured, using default mailer');
-            return;
-        }
-
-        // Dynamically configure mail settings
-        Config::set('mail.default', 'zoho_smtp');
-        Config::set('mail.mailers.zoho_smtp', [
-            'transport' => 'smtp',
-            'host' => $this->smtpHost,
-            'port' => $this->smtpPort,
-            'username' => $this->smtpUsername,
-            'password' => $this->smtpPassword,
-            'encryption' => $this->smtpEncryption,
-            'timeout' => config('mail.mailers.smtp.timeout', 120),
-        ]);
-
-        Config::set('mail.from', [
-            'address' => $this->fromAddress,
-            'name' => $this->fromName
-        ]);
-
-        Log::info('Zoho Mail SMTP configured successfully');
+        Log::debug('ZohoMailService: Using HTTP API, no SMTP configuration needed');
     }
 
     /**
-     * Configure Laravel Mail to use specific sender address
+     * Configure mailer with specific sender (no longer needed, kept for compatibility)
      */
     public function configureMailerWithSender(string $senderType = 'default'): void
     {
-        $this->configureMailer();
-        
-        // Override from address based on sender type
-        $addresses = config('services.zoho_mail.addresses', []);
-        
-        if (isset($addresses[$senderType])) {
-            Config::set('mail.from', [
-                'address' => $addresses[$senderType]['address'],
-                'name' => $addresses[$senderType]['name']
-            ]);
-            
-            Log::info("Mail configured with {$senderType} sender", [
-                'address' => $addresses[$senderType]['address'],
-                'name' => $addresses[$senderType]['name']
-            ]);
-        }
+        Log::debug("ZohoMailService: Using HTTP API for {$senderType} sender");
     }
 
     /**
-     * Send email with specific sender type
+     * Send email with specific sender type (now uses HTTP API only)
      */
     public function sendWithSender(string $senderType, $mailable, $to): bool
     {
         try {
-            $this->configureMailerWithSender($senderType);
-            Mail::to($to)->send($mailable);
-            
-            Log::info("Email sent successfully with {$senderType} sender", [
-                'to' => is_string($to) ? $to : $to->email ?? 'unknown',
-                'mailable' => get_class($mailable)
-            ]);
-            
-            return true;
-        } catch (\Exception $e) {
-            Log::error("Failed to send email with {$senderType} sender", [
-                'error' => $e->getMessage(),
-                'to' => is_string($to) ? $to : $to->email ?? 'unknown',
-                'mailable' => get_class($mailable)
-            ]);
-            
-            // Try fallback email service for SMTP connection issues
-            if (strpos($e->getMessage(), 'Connection') !== false || strpos($e->getMessage(), 'timeout') !== false) {
-                return $this->sendWithFallback($senderType, $mailable, $to);
-            }
-            
-            return false;
-        }
-    }
-
-    /**
-     * Send email using fallback service
-     */
-    private function sendWithFallback(string $senderType, $mailable, $to): bool
-    {
-        try {
-            $fallbackService = app(\App\Services\FallbackEmailService::class);
-            
             // Extract email content from mailable
             $emailAddress = is_string($to) ? $to : $to->email;
             $userName = is_string($to) ? '' : ($to->name ?? '');
@@ -139,7 +52,7 @@ class ZohoMailService
             $rendered = $mailable->render();
             $subject = $mailable->subject ?? 'ZawajAfrica Notification';
             
-            $result = $fallbackService->sendNotificationEmail(
+            $result = $this->httpEmailService->sendNotificationEmail(
                 $senderType,
                 $emailAddress,
                 $subject,
@@ -148,23 +61,22 @@ class ZohoMailService
             );
             
             if ($result['success']) {
-                Log::info("Email sent via fallback service", [
-                    'method' => $result['method'],
+                Log::info("Email sent successfully via HTTP API with {$senderType} sender", [
                     'to' => $emailAddress,
-                    'sender_type' => $senderType
+                    'subject' => $subject
                 ]);
                 return true;
             } else {
-                Log::error("Fallback email also failed", [
+                Log::error("Failed to send email via HTTP API with {$senderType} sender", [
                     'error' => $result['error'],
                     'to' => $emailAddress,
-                    'sender_type' => $senderType
+                    'subject' => $subject
                 ]);
                 return false;
             }
             
         } catch (\Exception $e) {
-            Log::error("Fallback email service failed", [
+            Log::error("HTTP API email service failed", [
                 'error' => $e->getMessage(),
                 'to' => is_string($to) ? $to : $to->email ?? 'unknown',
                 'sender_type' => $senderType
@@ -174,7 +86,7 @@ class ZohoMailService
     }
 
     /**
-     * Send therapist-related email from support address
+     * Send therapist-related email
      */
     public function sendTherapistEmail($mailable, $to): bool
     {
@@ -182,7 +94,7 @@ class ZohoMailService
     }
 
     /**
-     * Send admin email from admin address
+     * Send admin email
      */
     public function sendAdminEmail($mailable, $to): bool
     {
@@ -190,7 +102,7 @@ class ZohoMailService
     }
 
     /**
-     * Send support email from support address
+     * Send support email
      */
     public function sendSupportEmail($mailable, $to): bool
     {
@@ -206,43 +118,11 @@ class ZohoMailService
     }
 
     /**
-     * Test email connectivity
+     * Test email connectivity (now uses HTTP API)
      */
     public function testConnection(): array
     {
-        try {
-            $this->configureMailer();
-            
-            // Test email content
-            $testData = [
-                'subject' => 'ZawajAfrica - Mail Configuration Test',
-                'body' => 'This is a test email to verify Zoho Mail SMTP configuration is working properly.',
-                'timestamp' => now()->format('Y-m-d H:i:s')
-            ];
-
-            Mail::raw($testData['body'], function ($message) use ($testData) {
-                $message->to($this->smtpUsername)
-                       ->subject($testData['subject']);
-            });
-
-            Log::info('Zoho Mail test email sent successfully');
-            
-            return [
-                'status' => true,
-                'message' => 'Test email sent successfully via Zoho Mail'
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Zoho Mail test failed', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine()
-            ]);
-
-            return [
-                'status' => false,
-                'message' => 'Test email failed: ' . $e->getMessage()
-            ];
-        }
+        return $this->httpEmailService->testConnection();
     }
 
     /**
@@ -250,30 +130,23 @@ class ZohoMailService
      */
     public function getStatus(): array
     {
+        $httpStatus = $this->httpEmailService->getStatus();
+        
         return [
-            'configured' => $this->isConfigured(),
-            'smtp_host' => $this->smtpHost,
-            'smtp_port' => $this->smtpPort,
-            'smtp_username' => $this->smtpUsername ? '***@' . substr($this->smtpUsername, strpos($this->smtpUsername, '@')) : null,
-            'from_address' => $this->fromAddress,
-            'from_name' => $this->fromName
+            'configured' => $httpStatus['configured'],
+            'method' => 'HTTP API',
+            'api_url' => $httpStatus['api_url'],
+            'from_address' => $httpStatus['from_email'],
+            'from_name' => $httpStatus['from_name'],
+            'has_token' => $httpStatus['has_token']
         ];
     }
 
     /**
-     * Get recommended email addresses for ZawajAfrica
+     * Send broadcast emails
      */
-    public function getRecommendedEmailAddresses(): array
+    public function sendBroadcast(string $subject, string $body, array $recipients, string $senderType = 'admin'): array
     {
-        $domain = '@zawajafrica.online';
-        
-        return [
-            'support' => 'support' . $domain,
-            'bookings' => 'bookings' . $domain,
-            'noreply' => 'noreply' . $domain,
-            'info' => 'info' . $domain,
-            'admin' => 'admin' . $domain,
-            'notifications' => 'notifications' . $domain
-        ];
+        return $this->httpEmailService->sendBroadcast($subject, $body, $recipients, $senderType);
     }
 } 

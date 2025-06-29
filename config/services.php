@@ -66,13 +66,12 @@ return [
 
     'zoho_mail' => [
         'enabled' => env('ZOHO_MAIL_ENABLED', false),
-        'smtp_host' => env('ZOHO_MAIL_HOST', 'smtp.zoho.com'),
-        'smtp_port' => env('ZOHO_MAIL_PORT', 587),
-        'smtp_username' => env('ZOHO_MAIL_USERNAME'),
-        'smtp_password' => env('ZOHO_MAIL_PASSWORD'),
-        'smtp_encryption' => env('ZOHO_MAIL_ENCRYPTION', 'tls'),
         'from_address' => env('ZOHO_MAIL_FROM_ADDRESS'),
         'from_name' => env('ZOHO_MAIL_FROM_NAME', 'ZawajAfrica'),
+        
+        // Zoho HTTP API Configuration (no SMTP needed)
+        'api_token' => env('ZOHO_MAIL_API_TOKEN'),
+        'account_id' => env('ZOHO_MAIL_ACCOUNT_ID'),
         
         // Multiple email addresses for different purposes
         'addresses' => [
@@ -105,10 +104,7 @@ return [
         'webhook_secret' => env('ZOHO_BOOKINGS_WEBHOOK_SECRET'),
     ],
 
-    'google' => [
-        'client_id' => env('GOOGLE_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => env('GOOGLE_REDIRECT_URI'),
-    ],
+  
+
 
 ];

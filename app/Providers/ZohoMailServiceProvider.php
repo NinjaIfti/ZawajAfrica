@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Services\ZohoMailService;
+use App\Services\ZohoHttpEmailService;
 use Illuminate\Support\Facades\Log;
 
 class ZohoMailServiceProvider extends ServiceProvider
@@ -13,6 +14,11 @@ class ZohoMailServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Register the ZohoHttpEmailService as a singleton
+        $this->app->singleton(ZohoHttpEmailService::class, function ($app) {
+            return new ZohoHttpEmailService();
+        });
+
         // Register the ZohoMailService as a singleton
         $this->app->singleton(ZohoMailService::class, function ($app) {
             return new ZohoMailService();
@@ -24,14 +30,14 @@ class ZohoMailServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Only configure Zoho Mail if it's enabled
+        // Only configure if Zoho Mail is enabled
         if (config('services.zoho_mail.enabled')) {
             $this->configureZohoMail();
         }
     }
 
     /**
-     * Configure Zoho Mail SMTP settings
+     * Configure Zoho Mail HTTP service
      */
     private function configureZohoMail(): void
     {
@@ -39,15 +45,13 @@ class ZohoMailServiceProvider extends ServiceProvider
             $zohoMailService = $this->app->make(ZohoMailService::class);
             
             if ($zohoMailService->isConfigured()) {
-                // Configure mail settings to use Zoho SMTP
-                $zohoMailService->configureMailer();
-                
-                Log::info('ZohoMailServiceProvider: Mail configured to use Zoho SMTP');
+                Log::debug('ZohoMailServiceProvider: Zoho HTTP API configured successfully');
             } else {
-                Log::warning('ZohoMailServiceProvider: Zoho Mail enabled but not properly configured');
+                Log::warning('ZohoMailServiceProvider: Zoho HTTP API enabled but not properly configured');
+                Log::info('Make sure to set ZOHO_MAIL_API_TOKEN in your .env file');
             }
         } catch (\Exception $e) {
-            Log::error('ZohoMailServiceProvider: Failed to configure Zoho Mail', [
+            Log::error('ZohoMailServiceProvider: Failed to configure Zoho HTTP API', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine()
             ]);
