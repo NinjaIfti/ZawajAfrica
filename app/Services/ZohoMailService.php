@@ -114,6 +114,61 @@ class ZohoMailService
                 'mailable' => get_class($mailable)
             ]);
             
+            // Try fallback email service for SMTP connection issues
+            if (strpos($e->getMessage(), 'Connection') !== false || strpos($e->getMessage(), 'timeout') !== false) {
+                return $this->sendWithFallback($senderType, $mailable, $to);
+            }
+            
+            return false;
+        }
+    }
+
+    /**
+     * Send email using fallback service
+     */
+    private function sendWithFallback(string $senderType, $mailable, $to): bool
+    {
+        try {
+            $fallbackService = app(\App\Services\FallbackEmailService::class);
+            
+            // Extract email content from mailable
+            $emailAddress = is_string($to) ? $to : $to->email;
+            $userName = is_string($to) ? '' : ($to->name ?? '');
+            
+            // Render the mailable to get subject and body
+            $rendered = $mailable->render();
+            $subject = $mailable->subject ?? 'ZawajAfrica Notification';
+            
+            $result = $fallbackService->sendNotificationEmail(
+                $senderType,
+                $emailAddress,
+                $subject,
+                $rendered,
+                $userName
+            );
+            
+            if ($result['success']) {
+                Log::info("Email sent via fallback service", [
+                    'method' => $result['method'],
+                    'to' => $emailAddress,
+                    'sender_type' => $senderType
+                ]);
+                return true;
+            } else {
+                Log::error("Fallback email also failed", [
+                    'error' => $result['error'],
+                    'to' => $emailAddress,
+                    'sender_type' => $senderType
+                ]);
+                return false;
+            }
+            
+        } catch (\Exception $e) {
+            Log::error("Fallback email service failed", [
+                'error' => $e->getMessage(),
+                'to' => is_string($to) ? $to : $to->email ?? 'unknown',
+                'sender_type' => $senderType
+            ]);
             return false;
         }
     }
