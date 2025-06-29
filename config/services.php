@@ -73,6 +73,26 @@ return [
         'smtp_encryption' => env('ZOHO_MAIL_ENCRYPTION', 'tls'),
         'from_address' => env('ZOHO_MAIL_FROM_ADDRESS'),
         'from_name' => env('ZOHO_MAIL_FROM_NAME', 'ZawajAfrica'),
+        
+        // Multiple email addresses for different purposes
+        'addresses' => [
+            'support' => [
+                'address' => env('ZOHO_MAIL_SUPPORT_ADDRESS', 'support@zawajafrica.com.ng'),
+                'name' => env('ZOHO_MAIL_SUPPORT_NAME', 'ZawajAfrica Support Team'),
+            ],
+            'admin' => [
+                'address' => env('ZOHO_MAIL_ADMIN_ADDRESS', 'admin@zawajafrica.com.ng'),
+                'name' => env('ZOHO_MAIL_ADMIN_NAME', 'ZawajAfrica Admin'),
+            ],
+            'therapist' => [
+                'address' => env('ZOHO_MAIL_THERAPIST_ADDRESS', 'support@zawajafrica.com.ng'),
+                'name' => env('ZOHO_MAIL_THERAPIST_NAME', 'ZawajAfrica Therapy Services'),
+            ],
+            'noreply' => [
+                'address' => env('ZOHO_MAIL_NOREPLY_ADDRESS', 'noreply@zawajafrica.com.ng'),
+                'name' => env('ZOHO_MAIL_NOREPLY_NAME', 'ZawajAfrica'),
+            ],
+        ],
     ],
 
     'zoho_bookings' => [

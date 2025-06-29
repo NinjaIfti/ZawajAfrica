@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
+use App\Models\ChatbotConversation;
+use App\Services\AIEmailService;
+use App\Services\OpenAIService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -642,10 +645,12 @@ class AdminController extends Controller
             ]);
 
             $plan = $request->plan;
+            // Capitalize plan name to match frontend expectations
+            $capitalizedPlan = ucfirst($plan); // 'basic' -> 'Basic', 'gold' -> 'Gold', 'platinum' -> 'Platinum'
             $expiresAt = now()->addMonth(); // 1 month automatic expiration
 
             $user->update([
-                'subscription_plan' => $plan,
+                'subscription_plan' => $capitalizedPlan,
                 'subscription_status' => 'active',
                 'subscription_expires_at' => $expiresAt
             ]);
@@ -653,14 +658,14 @@ class AdminController extends Controller
             \Log::info('Admin gifted subscription', [
                 'admin_id' => auth()->id(),
                 'user_id' => $user->id,
-                'plan' => $plan,
+                'plan' => $capitalizedPlan,
                 'expires_at' => $expiresAt
             ]);
 
             // Optional: Notify the user that they've been gifted a subscription
             try {
                 $user->notify(new \App\Notifications\SubscriptionPurchased(
-                    $plan,
+                    $capitalizedPlan,
                     0, // Amount is 0 since it's a gift
                     'admin_gift_' . time(), // Reference
                     $expiresAt->toDateTime()
@@ -674,7 +679,7 @@ class AdminController extends Controller
             }
 
             return response()->json([
-                'message' => "Successfully gifted {$plan} plan to {$user->name}",
+                'message' => "Successfully gifted {$capitalizedPlan} plan to {$user->name}",
                 'expires_at' => $expiresAt->format('Y-m-d H:i:s')
             ]);
         } catch (\Exception $e) {
@@ -909,5 +914,363 @@ class AdminController extends Controller
         ]);
 
         return response()->json(['message' => 'Verification status updated successfully.']);
+    }
+
+    /**
+     * AI-powered admin tools and insights
+     */
+    public function aiInsights()
+    {
+        $chatbotStats = ChatbotConversation::getStatistics();
+        
+        $userEngagementData = [
+            'most_active_chatbot_users' => ChatbotConversation::select('user_id', DB::raw('COUNT(*) as message_count'))
+                ->with('user:id,name,email')
+                ->groupBy('user_id')
+                ->orderByDesc('message_count')
+                ->limit(10)
+                ->get(),
+            'recent_conversations' => ChatbotConversation::with('user:id,name')
+                ->latest()
+                ->limit(20)
+                ->get(),
+            'daily_ai_usage' => ChatbotConversation::selectRaw('DATE(created_at) as date, COUNT(*) as count')
+                ->where('created_at', '>=', now()->subDays(30))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+        ];
+
+        return Inertia::render('Admin/AIInsights', [
+            'chatbot_stats' => $chatbotStats,
+            'user_engagement' => $userEngagementData
+        ]);
+    }
+
+    /**
+     * Generate AI broadcast email
+     */
+    public function generateBroadcast(Request $request)
+    {
+        $request->validate([
+            'message_type' => 'required|string|in:announcement,promotion,update,newsletter',
+            'target_audience' => 'required|string|in:all,premium,basic,free',
+            'topic' => 'required|string|max:200',
+            'tone' => 'required|string|in:formal,friendly,exciting,professional'
+        ]);
+
+        try {
+            $openAIService = app(OpenAIService::class);
+
+            $prompt = $this->buildBroadcastPrompt(
+                $request->message_type,
+                $request->target_audience,
+                $request->topic,
+                $request->tone
+            );
+
+            $messages = [
+                ['role' => 'user', 'content' => $prompt]
+            ];
+
+            $response = $openAIService->chat($messages);
+
+            if ($response['success']) {
+                // Parse AI response to extract subject and body
+                $content = $response['message'];
+                $parts = explode("\n\n", $content, 2);
+                
+                $subject = str_replace('Subject: ', '', $parts[0]);
+                $body = $parts[1] ?? $content;
+
+                return response()->json([
+                    'success' => true,
+                    'subject' => $subject,
+                    'body' => $body,
+                    'preview' => substr(strip_tags($body), 0, 150) . '...'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $response['error']
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('AI broadcast generation failed', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to generate broadcast message'
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate user insights using AI
+     */
+    public function generateUserInsights()
+    {
+        try {
+            $openAIService = app(OpenAIService::class);
+
+            // Gather data for insights
+            $analyticsData = $this->gatherUserAnalytics();
+
+            $prompt = $this->buildInsightsPrompt($analyticsData);
+
+            $messages = [
+                ['role' => 'user', 'content' => $prompt]
+            ];
+
+            $response = $openAIService->chat($messages);
+
+            if ($response['success']) {
+                return response()->json([
+                    'success' => true,
+                    'insights' => $response['message'],
+                    'raw_data' => $analyticsData
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $response['error']
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('AI insights generation failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to generate user insights'
+            ], 500);
+        }
+    }
+
+    /**
+     * Send broadcast email to users
+     */
+    public function sendBroadcast(Request $request)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:200',
+            'body' => 'required|string|max:5000',
+            'target_audience' => 'required|string|in:all,premium,basic,free'
+        ]);
+
+        try {
+            // Get users based on target audience
+            $users = $this->getUsersByAudience($request->target_audience);
+            
+            if ($users->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No users found for the selected audience'
+                ], 400);
+            }
+
+            // Configure Zoho Mail
+            $zohoMailService = app(\App\Services\ZohoMailService::class);
+            $zohoMailService->configureMailer();
+
+            $sentCount = 0;
+            $failedCount = 0;
+
+            // Send emails in batches to avoid overwhelming the server
+            $users->chunk(50)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount) {
+                foreach ($userChunk as $user) {
+                    try {
+                        \Mail::raw($request->body, function ($message) use ($user, $request) {
+                            $message->to($user->email, $user->name)
+                                   ->subject($request->subject);
+                        });
+                        $sentCount++;
+                        
+                        // Small delay to prevent rate limiting
+                        usleep(100000); // 0.1 second delay
+                        
+                    } catch (\Exception $e) {
+                        $failedCount++;
+                        Log::error('Failed to send broadcast email to user', [
+                            'user_id' => $user->id,
+                            'user_email' => $user->email,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+            });
+
+            Log::info('Broadcast email campaign completed', [
+                'target_audience' => $request->target_audience,
+                'total_users' => $users->count(),
+                'sent_count' => $sentCount,
+                'failed_count' => $failedCount,
+                'subject' => $request->subject
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Broadcast sent successfully to {$sentCount} users" . 
+                           ($failedCount > 0 ? " ({$failedCount} failed)" : ""),
+                'stats' => [
+                    'total_users' => $users->count(),
+                    'sent_count' => $sentCount,
+                    'failed_count' => $failedCount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Broadcast email campaign failed', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to send broadcast emails: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get users based on target audience
+     */
+    private function getUsersByAudience(string $audience)
+    {
+        $query = User::whereNotNull('email')->where('email', '!=', '');
+
+        switch ($audience) {
+            case 'premium':
+                return $query->whereNotNull('subscription_plan')
+                            ->where('subscription_status', 'active')
+                            ->whereIn('subscription_plan', ['premium_monthly', 'premium_yearly'])
+                            ->get(['id', 'name', 'email']);
+            
+            case 'basic':
+                return $query->whereNotNull('subscription_plan')
+                            ->where('subscription_status', 'active')
+                            ->whereIn('subscription_plan', ['basic_monthly', 'basic_yearly'])
+                            ->get(['id', 'name', 'email']);
+            
+            case 'free':
+                return $query->where(function($q) {
+                    $q->whereNull('subscription_plan')
+                      ->orWhere('subscription_status', '!=', 'active');
+                })->get(['id', 'name', 'email']);
+            
+            case 'all':
+            default:
+                return $query->get(['id', 'name', 'email']);
+        }
+    }
+
+    /**
+     * Build broadcast prompt for AI
+     */
+    private function buildBroadcastPrompt(string $messageType, string $audience, string $topic, string $tone): string
+    {
+        return "Generate a professional email broadcast for ZawajAfrica platform.
+
+Details:
+- Message Type: {$messageType}
+- Target Audience: {$audience} users
+- Topic: {$topic}
+- Tone: {$tone}
+
+Requirements:
+1. Start with 'Subject: ' followed by compelling subject line
+2. Write for African Muslim audience
+3. Maintain Islamic values and cultural sensitivity
+4. Include call-to-action appropriate for the message type
+5. Keep under 400 words
+6. End with appropriate Islamic greeting
+
+Format:
+Subject: [subject line]
+
+[email body]";
+    }
+
+    /**
+     * Gather user analytics data
+     */
+    private function gatherUserAnalytics(): array
+    {
+        $last30Days = now()->subDays(30);
+        
+        return [
+            'user_growth' => [
+                'new_users_last_30_days' => User::where('created_at', '>=', $last30Days)->count(),
+                'total_users' => User::count(),
+                'verified_users' => User::where('is_verified', true)->count(),
+                'premium_users' => User::whereNotNull('subscription_plan')
+                    ->where('subscription_status', 'active')->count()
+            ],
+            'engagement' => [
+                'active_users_last_7_days' => User::where('updated_at', '>=', now()->subDays(7))->count(),
+                'chatbot_conversations_last_30_days' => ChatbotConversation::where('created_at', '>=', $last30Days)->count(),
+                'total_matches_created' => \App\Models\UserMatch::count(),
+                'total_messages_sent' => \App\Models\Message::count()
+            ],
+            'conversion' => [
+                'free_to_premium_rate' => $this->calculateConversionRate(),
+                'profile_completion_rate' => $this->calculateProfileCompletionRate()
+            ]
+        ];
+    }
+
+    /**
+     * Build insights prompt for AI
+     */
+    private function buildInsightsPrompt(array $data): string
+    {
+        $dataJson = json_encode($data, JSON_PRETTY_PRINT);
+
+        return "Analyze the following ZawajAfrica platform data and provide actionable insights.
+
+Platform Data:
+{$dataJson}
+
+Please provide:
+1. Key trends and patterns
+2. Areas of concern or opportunity
+3. Specific recommendations for:
+   - User acquisition
+   - User engagement
+   - Premium conversion
+   - Platform improvements
+4. Predictions for next month
+5. Priority action items
+
+Keep it professional, data-driven, and actionable for platform administrators.";
+    }
+
+    /**
+     * Calculate conversion rate
+     */
+    private function calculateConversionRate(): float
+    {
+        $totalUsers = User::count();
+        $premiumUsers = User::whereNotNull('subscription_plan')
+            ->where('subscription_status', 'active')->count();
+        
+        return $totalUsers > 0 ? round(($premiumUsers / $totalUsers) * 100, 2) : 0;
+    }
+
+    /**
+     * Calculate profile completion rate
+     */
+    private function calculateProfileCompletionRate(): float
+    {
+        $usersWithProfiles = User::whereHas('profile')->count();
+        $totalUsers = User::count();
+        
+        return $totalUsers > 0 ? round(($usersWithProfiles / $totalUsers) * 100, 2) : 0;
     }
 } 

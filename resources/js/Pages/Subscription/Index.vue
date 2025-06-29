@@ -67,13 +67,13 @@
             return 'purchase';
         }
 
-        // If this is the current plan
-        if (currentPlan === planName) {
+        // If this is the current plan (case-insensitive comparison)
+        if (currentPlan.toLowerCase() === planName.toLowerCase()) {
             return 'current';
         }
 
-        // Compare plan levels for upgrade/downgrade
-        const currentLevel = planHierarchy[currentPlan] || 0;
+        // Compare plan levels for upgrade/downgrade (handle both cases)
+        const currentLevel = planHierarchy[currentPlan] || planHierarchy[currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1).toLowerCase()] || 0;
         const targetLevel = planHierarchy[planName] || 0;
 
         if (targetLevel > currentLevel) {
@@ -135,8 +135,6 @@
                 localStorage.setItem('zawaj_payment_timestamp', Date.now().toString());
                 localStorage.setItem('zawaj_payment_plan', planName);
                 
-                console.log('Redirecting to payment gateway:', response.data.authorization_url);
-                
                 // Redirect to Paystack payment page
                 window.location.href = response.data.authorization_url;
             } else {
@@ -163,8 +161,6 @@
             const timeDiff = Date.now() - parseInt(paymentTimestamp);
             // If payment was initiated less than 30 minutes ago
             if (timeDiff < 30 * 60 * 1000) {
-                console.log('Found pending payment reference:', paymentRef);
-                
                 try {
                     // Check if user's subscription was updated
                     const userResponse = await axios.get('/api/user');
@@ -202,6 +198,19 @@
         });
     };
 
+    // Function to refresh subscription status
+    const refreshSubscriptionStatus = async () => {
+        try {
+            const response = await axios.get('/api/user/subscription');
+            if (response.data) {
+                // Update the subscription data and reload the page to reflect changes
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error('Failed to refresh subscription status:', error);
+        }
+    };
+
     // Check for payment success on page load
     onMounted(() => {
         if (page.props.flash?.payment_success) {
@@ -226,29 +235,40 @@
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
         <!-- Mobile header with hamburger menu - Only visible on mobile -->
-        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center md:hidden">
-            <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
-                <svg
-                    class="h-6 w-6 text-gray-700"
-                    :class="{ hidden: isMobileMenuOpen }"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <svg
-                    class="h-6 w-6 text-gray-700"
-                    :class="{ hidden: !isMobileMenuOpen }"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center justify-between md:hidden">
+            <div class="flex items-center">
+                <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
+                    <svg
+                        class="h-6 w-6 text-white"
+                        :class="{ hidden: isMobileMenuOpen }"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg
+                        class="h-6 w-6 text-white"
+                        :class="{ hidden: !isMobileMenuOpen }"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
 
-            <h1 class="text-lg text-white font-bold">Subscription Plans</h1>
+                <h1 class="text-lg text-white font-bold">Subscription Plans</h1>
+            </div>
+            
+            <!-- Mobile Refresh Button -->
+            <button
+                @click="refreshSubscriptionStatus"
+                class="px-2 py-1 text-xs bg-white/20 text-white rounded hover:bg-white/30 transition-colors"
+                title="Refresh subscription status"
+            >
+                🔄
+            </button>
         </div>
 
         <!-- Mobile Menu Overlay -->
@@ -273,6 +293,15 @@
                 <div class="flex justify-between items-center">
                     <h1 class="text-2xl font-bold">Subscription Plans</h1>
                     <div class="flex items-center space-x-4">
+                        <!-- Refresh Subscription Status Button -->
+                        <button
+                            @click="refreshSubscriptionStatus"
+                            class="px-3 py-1 text-sm bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors"
+                            title="Refresh subscription status"
+                        >
+                            🔄 Refresh Status
+                        </button>
+                        
                         <div class="flex items-center space-x-2">
                             <span class="text-gray-700">English</span>
                             <svg

@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\TherapistBooking;
+use App\Services\ZohoMailService;
 
 class TherapistBookingPaid extends Notification // Remove ShouldQueue for immediate processing
 {
@@ -50,6 +51,21 @@ class TherapistBookingPaid extends Notification // Remove ShouldQueue for immedi
             ->action('View Booking Details', url('/therapists/bookings'))
             ->line('You will receive a session reminder 24 hours before your appointment.')
             ->salutation('Best regards, The ZawajAfrica Team');
+    }
+
+    /**
+     * Send the mail using ZohoMailService with therapist sender type
+     */
+    public function send($notifiable, $notification)
+    {
+        if (in_array('mail', $this->via($notifiable))) {
+            $zohoMail = app(ZohoMailService::class);
+            $mailable = $this->toMail($notifiable);
+            $zohoMail->sendTherapistEmail($mailable, $notifiable);
+        }
+        
+        // Continue with other channels
+        parent::send($notifiable, $notification);
     }
 
     /**

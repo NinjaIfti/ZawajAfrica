@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\TherapistBooking;
+use App\Services\ZohoMailService;
 
 class TherapistBookingCancelled extends Notification implements ShouldQueue
 {
@@ -62,6 +63,21 @@ class TherapistBookingCancelled extends Notification implements ShouldQueue
             ->salutation('Best regards, The ZawajAfrica Team');
 
         return $mail;
+    }
+
+    /**
+     * Send the mail using ZohoMailService with therapist sender type
+     */
+    public function send($notifiable, $notification)
+    {
+        if (in_array('mail', $this->via($notifiable))) {
+            $zohoMail = app(ZohoMailService::class);
+            $mailable = $this->toMail($notifiable);
+            $zohoMail->sendTherapistEmail($mailable, $notifiable);
+        }
+        
+        // Continue with other channels
+        parent::send($notifiable, $notification);
     }
 
     /**

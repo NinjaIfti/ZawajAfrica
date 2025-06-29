@@ -26,7 +26,7 @@
 
     // Handle like button click
     const handleLike = async match => {
-        console.log('Like button clicked for match:', match);
+
         
         // Frontend validation
         if (!match || !match.id) {
@@ -37,7 +37,7 @@
         // Set loading state for this specific match
         loadingStates.value[match.id] = true;
         currentLikedUser.value = match.id; // Store the current user context for modal
-        console.log('Loading state set for match:', match.id);
+        
 
         try {
             // Get CSRF token with fallback
@@ -51,7 +51,7 @@
                 return;
             }
 
-            console.log('Making like request to:', route('matches.like', { user: match.id }));
+
             
             // Set up AbortController for timeout
             const controller = new AbortController();
@@ -68,10 +68,7 @@
             });
             
             clearTimeout(timeoutId); // Clear timeout if request completes
-            console.log('Response received:', response.status, response.statusText);
-
-            const data = await response.json();
-            console.log('Response data:', data);
+                            const data = await response.json();
 
             if (!response.ok) {
                 if (response.status === 429) {
@@ -124,7 +121,7 @@
                 // Handle timeout - show success message since like likely went through
                 likeModalType.value = 'like';
                 showLikeModal.value = true;
-                console.log('Request timed out, but like likely processed successfully');
+
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 alert('Network error. Please check your internet connection and try again.');
             } else {
@@ -170,7 +167,7 @@
 
     // Handle photo unblurred event
     const handlePhotoUnblurred = (userId) => {
-        console.log(`Photo unblurred for user ${userId}`);
+        
         // Optionally track analytics or show success message
     };
 

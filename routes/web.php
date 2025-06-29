@@ -198,6 +198,16 @@ Route::middleware('auth')->group(function () {
     // Notification routes
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.index');
     Route::get('/notifications/data', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.data');
+    
+    // User subscription refresh route
+    Route::get('/api/user/subscription', function () {
+        $user = Auth::user();
+        return response()->json([
+            'subscription_plan' => $user->subscription_plan,
+            'subscription_status' => $user->subscription_status,
+            'subscription_expires_at' => $user->subscription_expires_at,
+        ]);
+    })->name('user.subscription.status');
     Route::get('/notifications/unread', [App\Http\Controllers\NotificationController::class, 'unread'])->name('notifications.unread');
     Route::patch('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::patch('/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');

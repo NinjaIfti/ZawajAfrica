@@ -104,7 +104,7 @@
                 // Handle timeout - show success message since like likely went through
                 likeModalType.value = 'like';
                 showLikeModal.value = true;
-                console.log('Request timed out, but like likely processed successfully');
+
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 alert('Network error. Please check your internet connection and try again.');
             } else {
@@ -381,7 +381,7 @@
 
     // Handle photo unblurred event
     const handlePhotoUnblurred = (userId) => {
-        console.log(`Photo unblurred for user ${userId}`);
+        
         // You might want to update UI state or show a message
     };
 

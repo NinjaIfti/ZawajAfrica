@@ -102,11 +102,13 @@ class ChatbotController extends Controller
         $response = $this->openAIService->chat($messages, $user->id, $userPreferences);
 
         if ($response['success']) {
-            // Save conversation turn to history
+            // Save conversation turn to history with model and usage data
             $this->openAIService->saveConversationTurn(
                 $user->id,
                 $userMessage,
-                $response['message']
+                $response['message'],
+                $response['model'] ?? null,
+                $response['usage'] ?? null
             );
 
             return response()->json([

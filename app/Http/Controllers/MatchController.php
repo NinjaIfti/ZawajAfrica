@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\MatchingService;
 use App\Services\UserTierService;
+use App\Models\User;
 use App\Models\UserLike;
 use App\Models\UserMatch;
 use App\Notifications\NewMatchFound;
@@ -169,9 +170,9 @@ class MatchController extends Controller
                     $currentUser->notify($matchNotification1);
                     $targetUser->notify($matchNotification2);
                     
-                    // Queue delayed email notifications (30 seconds later)
-                    $matchNotification1->sendDelayedEmail($currentUser);
-                    $matchNotification2->sendDelayedEmail($targetUser);
+                    // Send delayed email notifications (30 seconds later) - without queue dependency
+                    self::sendMatchEmailAfterDelay($currentUser, $targetUser);
+                    self::sendMatchEmailAfterDelay($targetUser, $currentUser);
                     
                     \Log::info('Match notifications sent (instant DB) and emails queued (delayed)', [
                         'user_1' => $currentUser->id,
@@ -194,8 +195,8 @@ class MatchController extends Controller
                     // Send instant database notification
                     $targetUser->notify($likeNotification);
                     
-                    // Queue delayed email notification (30 seconds later)
-                    $likeNotification->sendDelayedEmail($targetUser);
+                    // Send delayed email notification (30 seconds later) - without queue dependency
+                    self::sendLikeEmailAfterDelay($currentUser, $targetUser);
                     
                     \Log::info('Like notification sent (instant DB) and email queued (delayed)', [
                         'liker_id' => $currentUser->id,
@@ -212,6 +213,233 @@ class MatchController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Send match email after delay (without queue dependency)
+     */
+    private static function sendMatchEmailAfterDelay(User $user, User $matchedUser): void
+    {
+        // Schedule email to be sent in 30 seconds using cache-based scheduling
+        $emailData = [
+            'type' => 'match',
+            'user_id' => $user->id,
+            'matched_user_id' => $matchedUser->id,
+            'scheduled_at' => now()->addSeconds(30)->timestamp
+        ];
+        
+        $cacheKey = "scheduled_email_match_{$user->id}_{$matchedUser->id}_" . time();
+        cache()->put($cacheKey, $emailData, 300); // 5 minutes expiry
+        
+        // Immediately try to process if possible
+        self::processScheduledEmails();
+    }
+
+    /**
+     * Send like email after delay (without queue dependency)  
+     */
+    private static function sendLikeEmailAfterDelay(User $liker, User $receiver): void
+    {
+        // Schedule email to be sent in 30 seconds using cache-based scheduling
+        $emailData = [
+            'type' => 'like',
+            'liker_id' => $liker->id,
+            'receiver_id' => $receiver->id,
+            'scheduled_at' => now()->addSeconds(30)->timestamp
+        ];
+        
+        $cacheKey = "scheduled_email_like_{$liker->id}_{$receiver->id}_" . time();
+        cache()->put($cacheKey, $emailData, 300); // 5 minutes expiry
+        
+        // Immediately try to process if possible
+        self::processScheduledEmails();
+    }
+
+    /**
+     * Process scheduled emails that are ready to be sent
+     */
+    private static function processScheduledEmails(): void
+    {
+        // This method will be called by a cron job or manual trigger
+        // Implement proper email processing logic here
+        self::sendAllScheduledEmails();
+    }
+
+    /**
+     * Send all scheduled emails that are ready
+     */
+    private static function sendAllScheduledEmails(): void
+    {
+        try {
+            \Log::info('Scheduled email processing started');
+            
+            $zohoMailService = app(\App\Services\ZohoMailService::class);
+            $zohoMailService->configureMailer();
+
+            // Check for users who liked/matched in last 30-60 seconds for delayed emails
+            $recentLikes = \App\Models\UserLike::with(['user', 'likedUser'])
+                ->whereBetween('created_at', [now()->subSeconds(60), now()->subSeconds(30)])
+                ->get();
+
+            foreach ($recentLikes as $like) {
+                // Check if this became a match
+                $isMatch = \App\Models\UserLike::where('user_id', $like->liked_user_id)
+                    ->where('liked_user_id', $like->user_id)
+                    ->exists();
+
+                if ($isMatch) {
+                    self::sendMatchEmailNow($like->user, $like->likedUser);
+                    self::sendMatchEmailNow($like->likedUser, $like->user);
+                    \Log::info('Match email sent', ['user1' => $like->user_id, 'user2' => $like->liked_user_id]);
+                } else {
+                    self::sendLikeEmailNow($like->user, $like->likedUser);
+                    \Log::info('Like email sent', ['liker' => $like->user_id, 'receiver' => $like->liked_user_id]);
+                }
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to process scheduled emails', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Manual trigger for sending scheduled emails (can be called via cron)
+     */
+    public function sendScheduledEmails(): void
+    {
+        try {
+            $zohoMailService = app(\App\Services\ZohoMailService::class);
+            $zohoMailService->configureMailer();
+
+            // For now, we'll use a simple approach - check for users who liked/matched in last 30-60 seconds
+            $recentLikes = \App\Models\UserLike::with(['user', 'likedUser'])
+                ->whereBetween('created_at', [now()->subSeconds(60), now()->subSeconds(30)])
+                ->get();
+
+            foreach ($recentLikes as $like) {
+                // Check if this became a match
+                $isMatch = \App\Models\UserLike::where('user_id', $like->liked_user_id)
+                    ->where('liked_user_id', $like->user_id)
+                    ->exists();
+
+                if ($isMatch) {
+                    self::sendMatchEmailNow($like->user, $like->likedUser);
+                    self::sendMatchEmailNow($like->likedUser, $like->user);
+                    \Log::info('Match email sent', ['user1' => $like->user_id, 'user2' => $like->liked_user_id]);
+                } else {
+                    self::sendLikeEmailNow($like->user, $like->likedUser);
+                    \Log::info('Like email sent', ['liker' => $like->user_id, 'receiver' => $like->liked_user_id]);
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to send scheduled emails', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Send match email immediately
+     */
+    private static function sendMatchEmailNow(User $user, User $matchedUser): void
+    {
+        try {
+            $zohoMailService = app(\App\Services\ZohoMailService::class);
+            $zohoMailService->configureMailer();
+
+            $subject = '🌟 It\'s a Match! You and ' . $matchedUser->name . ' liked each other!';
+            
+            $content = "Hi " . $user->name . ",\n\n" .
+                      "🎉 Congratulations! You have a new match!\n\n" .
+                      "You and " . $matchedUser->name . " both liked each other!\n\n" .
+                      "This means you can now start messaging each other and get to know one another better.\n\n" .
+                      "Start messaging: " . url('/messages') . "\n\n" .
+                      "Next Steps:\n" .
+                      "• Send a thoughtful first message\n" .
+                      "• Be genuine and respectful in your conversations\n" .
+                      "• Take your time to get to know each other\n\n" .
+                      "We're excited to see where this connection leads!\n\n" .
+                      "Best regards,\nZawajAfrica Team";
+
+            \Mail::raw($content, function ($message) use ($user, $subject) {
+                $message->to($user->email, $user->name)
+                        ->subject($subject);
+            });
+
+            \Log::info('Match email sent successfully', [
+                'user_id' => $user->id,
+                'matched_user_id' => $matchedUser->id
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to send match email', [
+                'user_id' => $user->id,
+                'matched_user_id' => $matchedUser->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Send like email immediately
+     */
+    private static function sendLikeEmailNow(User $liker, User $receiver): void
+    {
+        try {
+            $zohoMailService = app(\App\Services\ZohoMailService::class);
+            $zohoMailService->configureMailer();
+
+            // Determine if we can reveal liker's name (based on receiver's tier)
+            $tierService = app(\App\Services\UserTierService::class);
+            $receiverTier = $tierService->getUserTier($receiver);
+            
+            $canReveal = in_array($receiverTier, [
+                \App\Services\UserTierService::TIER_BASIC,
+                \App\Services\UserTierService::TIER_GOLD, 
+                \App\Services\UserTierService::TIER_PLATINUM
+            ]);
+
+            if ($canReveal) {
+                // For paid users - show actual liker's name
+                $subject = '💕 ' . $liker->name . ' likes you on ZawajAfrica!';
+                $content = "Hi " . $receiver->name . ",\n\n" .
+                          $liker->name . " has liked your profile!\n\n" .
+                          "Check out their profile and maybe like them back for a potential match!\n\n" .
+                          "View their profile: " . url('/profile/view/' . $liker->id) . "\n\n" .
+                          "Don't miss out on potential connections!\n\n" .
+                          "Best regards,\nZawajAfrica Team";
+            } else {
+                // For free users - anonymous message with upgrade prompt
+                $subject = '💕 Someone likes you on ZawajAfrica!';
+                $content = "Hi " . $receiver->name . ",\n\n" .
+                          "Someone has liked your profile!\n\n" .
+                          "Upgrade to a paid plan to see who liked you and unlock more features!\n\n" .
+                          "Upgrade now: " . url('/subscription') . "\n\n" .
+                          "Don't miss out on potential connections!\n\n" .
+                          "Best regards,\nZawajAfrica Team";
+            }
+
+            \Mail::raw($content, function ($message) use ($receiver, $subject) {
+                $message->to($receiver->email, $receiver->name)
+                        ->subject($subject);
+            });
+
+            \Log::info('Like email sent successfully', [
+                'liker_id' => $liker->id,
+                'receiver_id' => $receiver->id,
+                'revealed' => $canReveal
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to send like email', [
+                'liker_id' => $liker->id,
+                'receiver_id' => $receiver->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

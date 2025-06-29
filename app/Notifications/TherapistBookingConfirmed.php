@@ -8,6 +8,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\TherapistBooking;
 use App\Traits\ZohoMailTemplate;
+use App\Services\ZohoMailService;
 
 class TherapistBookingConfirmed extends Notification // Remove ShouldQueue for immediate processing
 {
@@ -34,7 +35,7 @@ class TherapistBookingConfirmed extends Notification // Remove ShouldQueue for i
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Send the notification via mail using therapist sender address.
      */
     public function toMail($notifiable)
     {
@@ -58,6 +59,21 @@ class TherapistBookingConfirmed extends Notification // Remove ShouldQueue for i
             ->line('We wish you a beneficial and healing session!');
 
         return $this->addProfessionalFooter($message);
+    }
+
+    /**
+     * Send the mail using ZohoMailService with therapist sender type
+     */
+    public function send($notifiable, $notification)
+    {
+        if (in_array('mail', $this->via($notifiable))) {
+            $zohoMail = app(ZohoMailService::class);
+            $mailable = $this->toMail($notifiable);
+            $zohoMail->sendTherapistEmail($mailable, $notifiable);
+        }
+        
+        // Continue with other channels
+        parent::send($notifiable, $notification);
     }
 
     /**

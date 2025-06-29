@@ -237,19 +237,30 @@ class OpenAIService
      */
     public function getConversationHistory(int $userId, int $limit = 20): array
     {
-        $cacheKey = "chatbot_history_{$userId}";
-        return Cache::get($cacheKey, []);
+        // Get from database with fallback to cache for recent sessions
+        $dbHistory = \App\Models\ChatbotConversation::getRecentForUser($userId, $limit);
+        
+        // If no DB history, check cache for current session
+        if (empty($dbHistory)) {
+            $cacheKey = "chatbot_history_{$userId}";
+            return Cache::get($cacheKey, []);
+        }
+        
+        return $dbHistory;
     }
 
     /**
      * Save conversation turn to history
      */
-    public function saveConversationTurn(int $userId, string $userMessage, string $botResponse): void
+    public function saveConversationTurn(int $userId, string $userMessage, string $botResponse, ?string $model = null, ?array $usage = null): void
     {
+        // Store permanently in database
+        \App\Models\ChatbotConversation::storeTurn($userId, $userMessage, $botResponse, $model, $usage);
+        
+        // Also keep in cache for current session performance
         $cacheKey = "chatbot_history_{$userId}";
-        $history = $this->getConversationHistory($userId);
-
-        // Add new conversation turn
+        $history = Cache::get($cacheKey, []);
+        
         $history[] = [
             'role' => 'user',
             'content' => $userMessage,
@@ -260,16 +271,18 @@ class OpenAIService
             'role' => 'assistant',
             'content' => $botResponse,
             'timestamp' => now()->toISOString(),
+            'model' => $model,
+            'usage' => $usage
         ];
 
-        // Keep only recent history (configurable limit)
+        // Keep only recent history in cache
         $maxHistory = config('services.openai.max_history', 20);
         if (count($history) > $maxHistory) {
             $history = array_slice($history, -$maxHistory);
         }
 
-        // Cache for 24 hours
-        Cache::put($cacheKey, $history, 60 * 60 * 24);
+        // Cache for current session (2 hours)
+        Cache::put($cacheKey, $history, 60 * 60 * 2);
     }
 
     /**
@@ -277,6 +290,10 @@ class OpenAIService
      */
     public function clearConversationHistory(int $userId): void
     {
+        // Clear from database
+        \App\Models\ChatbotConversation::clearForUser($userId);
+        
+        // Clear from cache
         $cacheKey = "chatbot_history_{$userId}";
         Cache::forget($cacheKey);
     }

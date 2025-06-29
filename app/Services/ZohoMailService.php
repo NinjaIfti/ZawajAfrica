@@ -70,6 +70,87 @@ class ZohoMailService
     }
 
     /**
+     * Configure Laravel Mail to use specific sender address
+     */
+    public function configureMailerWithSender(string $senderType = 'default'): void
+    {
+        $this->configureMailer();
+        
+        // Override from address based on sender type
+        $addresses = config('services.zoho_mail.addresses', []);
+        
+        if (isset($addresses[$senderType])) {
+            Config::set('mail.from', [
+                'address' => $addresses[$senderType]['address'],
+                'name' => $addresses[$senderType]['name']
+            ]);
+            
+            Log::info("Mail configured with {$senderType} sender", [
+                'address' => $addresses[$senderType]['address'],
+                'name' => $addresses[$senderType]['name']
+            ]);
+        }
+    }
+
+    /**
+     * Send email with specific sender type
+     */
+    public function sendWithSender(string $senderType, $mailable, $to): bool
+    {
+        try {
+            $this->configureMailerWithSender($senderType);
+            Mail::to($to)->send($mailable);
+            
+            Log::info("Email sent successfully with {$senderType} sender", [
+                'to' => is_string($to) ? $to : $to->email ?? 'unknown',
+                'mailable' => get_class($mailable)
+            ]);
+            
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to send email with {$senderType} sender", [
+                'error' => $e->getMessage(),
+                'to' => is_string($to) ? $to : $to->email ?? 'unknown',
+                'mailable' => get_class($mailable)
+            ]);
+            
+            return false;
+        }
+    }
+
+    /**
+     * Send therapist-related email from support address
+     */
+    public function sendTherapistEmail($mailable, $to): bool
+    {
+        return $this->sendWithSender('therapist', $mailable, $to);
+    }
+
+    /**
+     * Send admin email from admin address
+     */
+    public function sendAdminEmail($mailable, $to): bool
+    {
+        return $this->sendWithSender('admin', $mailable, $to);
+    }
+
+    /**
+     * Send support email from support address
+     */
+    public function sendSupportEmail($mailable, $to): bool
+    {
+        return $this->sendWithSender('support', $mailable, $to);
+    }
+
+    /**
+     * Send no-reply email
+     */
+    public function sendNoReplyEmail($mailable, $to): bool
+    {
+        return $this->sendWithSender('noreply', $mailable, $to);
+    }
+
+    /**
      * Test email connectivity
      */
     public function testConnection(): array

@@ -20,7 +20,7 @@
     };
 
     const setVerificationStatus = async (userId, status) => {
-        console.log('Setting verification status', userId, status);
+
         try {
             await axios.patch(route('admin.users.verification.update', userId), { status });
             router.reload();
