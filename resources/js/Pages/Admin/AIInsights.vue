@@ -30,15 +30,24 @@
 
     // Broadcast Modal State
     const showBroadcastModal = ref(false);
-const broadcastForm = reactive({
-    message_type: 'announcement',
-    target_audience: 'all',
-    topic: '',
-    tone: 'friendly'
-});
-const generatedBroadcast = ref(null);
-const isGenerating = ref(false);
-const isSending = ref(false);
+    const broadcastForm = reactive({
+        message_type: 'announcement',
+        target_audience: 'all',
+        topic: '',
+        tone: 'friendly'
+    });
+    const generatedBroadcast = ref(null);
+    const isGenerating = ref(false);
+    const isSending = ref(false);
+    const isEditing = ref(false);
+    const editableContent = reactive({
+        subject: '',
+        body: ''
+    });
+    const isSavingDraft = ref(false);
+    const isLoadingDraft = ref(false);
+    const lastDraftSaved = ref(null);
+    const error = ref('');
 
     // Insights Modal State
     const showInsightsModal = ref(false);
@@ -62,32 +71,33 @@ const isSending = ref(false);
 
     // Generate AI Broadcast
     const generateBroadcast = async () => {
-        if (!broadcastForm.topic.trim()) {
-            alert('Please enter a topic for the broadcast');
-            return;
-        }
-
         isGenerating.value = true;
+        error.value = '';
+        
         try {
-            const response = await fetch(route('admin.ai.broadcast.generate'), {
+            const response = await fetch(route('admin.ai.generate-broadcast'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                body: JSON.stringify(broadcastForm),
+                body: JSON.stringify({
+                    tone: 'professional',
+                    include_metrics: true
+                }),
             });
 
             const data = await response.json();
 
             if (data.success) {
-                generatedBroadcast.value = data;
+                generatedBroadcast.value = data.email;
+                showPreview.value = true;
             } else {
-                alert('Failed to generate broadcast: ' + data.error);
+                error.value = data.error || 'Failed to generate email';
             }
-        } catch (error) {
-            console.error('Error generating broadcast:', error);
-            alert('An error occurred while generating the broadcast');
+        } catch (err) {
+            console.error('Error generating broadcast:', err);
+            error.value = 'Network error occurred. Please try again.';
         } finally {
             isGenerating.value = false;
         }
@@ -126,6 +136,133 @@ const isSending = ref(false);
         broadcastForm.topic = '';
         broadcastForm.tone = 'friendly';
         generatedBroadcast.value = null;
+        isEditing.value = false;
+        editableContent.subject = '';
+        editableContent.body = '';
+        lastDraftSaved.value = null;
+    };
+
+    // Enable editing mode
+    const enableEdit = () => {
+        isEditing.value = true;
+    };
+
+    // Save edited content
+    const saveEditedContent = () => {
+        if (!editableContent.subject.trim()) {
+            alert('Subject cannot be empty');
+            return;
+        }
+        if (!editableContent.body.trim()) {
+            alert('Email body cannot be empty');
+            return;
+        }
+
+        // Update the generated broadcast with edited content
+        generatedBroadcast.value.subject = editableContent.subject;
+        generatedBroadcast.value.body = editableContent.body;
+        generatedBroadcast.value.preview = editableContent.body.substring(0, 150) + '...';
+        
+        isEditing.value = false;
+    };
+
+    // Cancel editing and revert to original content
+    const cancelEdit = () => {
+        if (generatedBroadcast.value) {
+            editableContent.subject = generatedBroadcast.value.subject;
+            editableContent.body = generatedBroadcast.value.body;
+        }
+        isEditing.value = false;
+    };
+
+    // Save draft
+    const saveDraft = async () => {
+        if (!editableContent.subject.trim() || !editableContent.body.trim()) {
+            alert('Subject and body are required to save draft');
+            return;
+        }
+
+        isSavingDraft.value = true;
+        try {
+            const response = await fetch(route('admin.ai.save-broadcast-draft'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    subject: editableContent.subject,
+                    body: editableContent.body,
+                    target_audience: broadcastForm.target_audience,
+                    message_type: broadcastForm.message_type,
+                    tone: broadcastForm.tone,
+                    topic: broadcastForm.topic
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                lastDraftSaved.value = data.saved_at;
+                alert('Draft saved successfully!');
+            } else {
+                alert('Failed to save draft: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error saving draft:', error);
+            alert('An error occurred while saving the draft');
+        } finally {
+            isSavingDraft.value = false;
+        }
+    };
+
+    // Load draft
+    const loadDraft = async () => {
+        isLoadingDraft.value = true;
+        try {
+            const response = await fetch(route('admin.ai.load-broadcast-draft'), {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.draft) {
+                const draft = data.draft;
+                
+                // Load form data
+                broadcastForm.message_type = draft.message_type;
+                broadcastForm.target_audience = draft.target_audience;
+                broadcastForm.topic = draft.topic;
+                broadcastForm.tone = draft.tone;
+                
+                // Load editable content
+                editableContent.subject = draft.subject;
+                editableContent.body = draft.body;
+                
+                // Create a mock generated broadcast to display
+                generatedBroadcast.value = {
+                    subject: draft.subject,
+                    body: draft.body,
+                    preview: draft.body.substring(0, 150) + '...'
+                };
+                
+                lastDraftSaved.value = draft.saved_at;
+                isEditing.value = true; // Start in edit mode
+                
+                alert('Draft loaded successfully!');
+            } else {
+                alert(data.message || 'No draft found');
+            }
+        } catch (error) {
+            console.error('Error loading draft:', error);
+            alert('An error occurred while loading the draft');
+        } finally {
+            isLoadingDraft.value = false;
+        }
     };
 
     const openBroadcastModal = () => {
@@ -134,55 +271,85 @@ const isSending = ref(false);
     };
 
     const openInsightsModal = () => {
-    generatedInsights.value = null;
-    showInsightsModal.value = true;
-};
+        generatedInsights.value = null;
+        showInsightsModal.value = true;
+    };
 
-// Send Broadcast Email
-const sendBroadcastEmail = async () => {
-    if (!generatedBroadcast.value) {
-        alert('Please generate a broadcast first');
-        return;
-    }
-
-    if (!confirm(`Are you sure you want to send this email to ${broadcastForm.target_audience === 'all' ? 'all users' : `${broadcastForm.target_audience} users`}? This action cannot be undone.`)) {
-        return;
-    }
-
-    isSending.value = true;
-    try {
-        const response = await fetch(route('admin.ai.broadcast.send'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-            body: JSON.stringify({
-                subject: generatedBroadcast.value.subject,
-                body: generatedBroadcast.value.body,
-                target_audience: broadcastForm.target_audience
-            }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            alert(`✅ ${data.message}\n\nStats:\n• Total Users: ${data.stats.total_users}\n• Successfully Sent: ${data.stats.sent_count}\n• Failed: ${data.stats.failed_count}`);
-            // Reset the form after successful send
-            resetBroadcastForm();
-            showBroadcastModal.value = false;
-        } else {
-            alert('Failed to send broadcast: ' + data.error);
+    // Send Broadcast Email
+    const sendBroadcastEmail = async () => {
+        if (!generatedBroadcast.value) {
+            alert('Please generate a broadcast first');
+            return;
         }
-    } catch (error) {
-        console.error('Error sending broadcast:', error);
-        alert('An error occurred while sending the broadcast');
-    } finally {
-        isSending.value = false;
-    }
-};
 
+        if (!confirm(`Are you sure you want to send this email to ${broadcastForm.target_audience === 'all' ? 'all users' : `${broadcastForm.target_audience} users`}? This action cannot be undone.`)) {
+            return;
+        }
 
+        isSending.value = true;
+        error.value = '';
+
+        try {
+            const emailToSend = isEditing.value ? editableContent : generatedBroadcast.value;
+
+            const response = await fetch(route('admin.ai.send-broadcast'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    subject: emailToSend.subject,
+                    body: emailToSend.body,
+                    is_edited: isEditing.value
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showPreview.value = false;
+                isEditing.value = false;
+                generatedBroadcast.value = null;
+                editableContent.subject = '';
+                editableContent.body = '';
+                lastSent.value = new Date().toISOString();
+                
+                alert(`✅ ${data.message}\n\nStats:\n• Total Users: ${data.stats.total_users}\n• Successfully Sent: ${data.stats.sent_count}\n• Failed: ${data.stats.failed_count}`);
+            } else {
+                error.value = data.error || 'Failed to send email';
+            }
+        } catch (err) {
+            console.error('Error sending broadcast:', err);
+            error.value = 'Network error occurred. Please try again.';
+        } finally {
+            isSending.value = false;
+        }
+    };
+
+    const deleteDraft = async () => {
+        if (!confirm('Are you sure you want to delete the saved draft?')) return;
+
+        try {
+            const response = await fetch(route('admin.ai.delete-broadcast-draft'), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                lastDraftSaved.value = null;
+                alert('Draft deleted successfully!');
+            } else {
+                console.error('Failed to delete draft:', data.error);
+            }
+        } catch (err) {
+            console.error('Error deleting draft:', err);
+        }
+    };
 </script>
 
 <template>
@@ -356,6 +523,24 @@ const sendBroadcastEmail = async () => {
                 </div>
 
                 <div v-if="!generatedBroadcast" class="space-y-4">
+                    <!-- Draft Controls -->
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">Draft Options</h4>
+                            <p class="text-xs text-gray-600">Load a previously saved draft or start fresh</p>
+                        </div>
+                        <PrimaryButton @click="loadDraft" :disabled="isLoadingDraft" class="bg-indigo-600 hover:bg-indigo-700">
+                            <svg v-if="isLoadingDraft" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                            </svg>
+                            {{ isLoadingDraft ? 'Loading...' : 'Load Draft' }}
+                        </PrimaryButton>
+                    </div>
+
                     <!-- Form Fields -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -411,31 +596,108 @@ const sendBroadcastEmail = async () => {
                     </div>
                 </div>
 
-                <!-- Generated Broadcast Preview -->
+                <!-- Generated Broadcast Preview/Edit -->
                 <div v-if="generatedBroadcast" class="space-y-4">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-gray-900 mb-2">Generated Email:</h4>
-                        <div class="space-y-2">
-                            <div><strong>Subject:</strong> {{ generatedBroadcast.subject }}</div>
-                            <div><strong>Preview:</strong> {{ generatedBroadcast.preview }}</div>
+                    <!-- Preview Mode -->
+                    <div v-if="!isEditing">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-900 mb-2">Generated Email:</h4>
+                            <div class="space-y-2">
+                                <div><strong>Subject:</strong> {{ generatedBroadcast.subject }}</div>
+                                <div><strong>Preview:</strong> {{ generatedBroadcast.preview }}</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 max-h-60 overflow-y-auto">
+                            <h5 class="font-medium text-gray-900 mb-2">Full Email Body:</h5>
+                            <div class="whitespace-pre-wrap text-sm text-gray-700">{{ generatedBroadcast.body }}</div>
+                        </div>
+
+                        <div class="flex justify-end space-x-3">
+                            <SecondaryButton @click="resetBroadcastForm">Generate New</SecondaryButton>
+                            <SecondaryButton @click="enableEdit" class="border-blue-300 text-blue-700 hover:bg-blue-50">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit Email
+                            </SecondaryButton>
+                            <SecondaryButton @click="showBroadcastModal = false">Close</SecondaryButton>
+                            <PrimaryButton @click="sendBroadcastEmail" :disabled="isSending" class="bg-green-600 hover:bg-green-700">
+                                <svg v-if="isSending" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {{ isSending ? 'Sending...' : `Send to ${broadcastForm.target_audience === 'all' ? 'All Users' : broadcastForm.target_audience + ' Users'}` }}
+                            </PrimaryButton>
                         </div>
                     </div>
 
-                    <div class="bg-white border border-gray-200 rounded-lg p-4 max-h-60 overflow-y-auto">
-                        <h5 class="font-medium text-gray-900 mb-2">Full Email Body:</h5>
-                        <div class="whitespace-pre-wrap text-sm text-gray-700">{{ generatedBroadcast.body }}</div>
-                    </div>
+                    <!-- Edit Mode -->
+                    <div v-if="isEditing" class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                <h4 class="font-semibold text-blue-900">Edit Email Content</h4>
+                            </div>
+                            <p class="text-sm text-blue-700">Make any changes you'd like to the AI-generated content before sending.</p>
+                        </div>
 
-                    <div class="flex justify-end space-x-3">
-                        <SecondaryButton @click="resetBroadcastForm">Generate New</SecondaryButton>
-                        <SecondaryButton @click="showBroadcastModal = false">Close</SecondaryButton>
-                        <PrimaryButton @click="sendBroadcastEmail" :disabled="isSending" class="bg-green-600 hover:bg-green-700">
-                            <svg v-if="isSending" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            {{ isSending ? 'Sending...' : `Send to ${broadcastForm.target_audience === 'all' ? 'All Users' : broadcastForm.target_audience + ' Users'}` }}
-                        </PrimaryButton>
+                        <!-- Edit Subject -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email Subject</label>
+                            <input 
+                                v-model="editableContent.subject" 
+                                type="text" 
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Enter email subject..."
+                            >
+                        </div>
+
+                        <!-- Edit Body -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email Body</label>
+                            <textarea 
+                                v-model="editableContent.body" 
+                                rows="12" 
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Enter email content..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Character Count -->
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-500">Characters: {{ editableContent.body.length }} / 5000</span>
+                            <span v-if="lastDraftSaved" class="text-green-600 text-xs">
+                                Last saved: {{ formatDate(lastDraftSaved) }}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <div class="flex space-x-3">
+                                <SecondaryButton @click="saveDraft" :disabled="isSavingDraft" class="border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+                                    <svg v-if="isSavingDraft" class="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    {{ isSavingDraft ? 'Saving...' : 'Save Draft' }}
+                                </SecondaryButton>
+                            </div>
+                            
+                            <div class="flex space-x-3">
+                                <SecondaryButton @click="cancelEdit">Cancel</SecondaryButton>
+                                <PrimaryButton @click="saveEditedContent" class="bg-blue-600 hover:bg-blue-700">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Save Changes
+                                </PrimaryButton>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

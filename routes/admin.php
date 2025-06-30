@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\ReportsController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     // Admin Dashboard
@@ -45,9 +46,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     
     // AI-Powered Admin Tools
     Route::get('/ai-insights', [AdminController::class, 'aiInsights'])->name('ai.insights');
-    Route::post('/ai-broadcast/generate', [AdminController::class, 'generateBroadcast'])->name('ai.broadcast.generate');
-    Route::post('/ai-broadcast/send', [AdminController::class, 'sendBroadcast'])->name('ai.broadcast.send');
+    Route::post('/ai-broadcast/generate', [AdminController::class, 'generateBroadcast'])->name('ai.generate-broadcast');
+    Route::post('/ai-broadcast/send', [AdminController::class, 'sendBroadcast'])->name('ai.send-broadcast');
+    Route::post('/ai-broadcast/save-draft', [AdminController::class, 'saveBroadcastDraft'])->name('ai.save-broadcast-draft');
+    Route::get('/ai-broadcast/load-draft', [AdminController::class, 'loadBroadcastDraft'])->name('ai.load-broadcast-draft');
+    Route::delete('/ai-broadcast/delete-draft', [AdminController::class, 'deleteBroadcastDraft'])->name('ai.delete-broadcast-draft');
     Route::post('/ai-insights/generate', [AdminController::class, 'generateUserInsights'])->name('ai.insights.generate');
     
+    // AI User Insights Chatbot
+    Route::post('/ai-user-insights', [AdminController::class, 'handleUserInsights'])->name('ai.user-insights');
+    Route::get('/user-insights', [AdminController::class, 'userInsightsPage'])->name('user-insights');
 
 }); 

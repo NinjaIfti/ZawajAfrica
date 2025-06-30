@@ -19,6 +19,14 @@ return [
         'lazy_loading' => env('ADSENSE_LAZY_LOADING', true),
         'profile_frequency' => env('ADSENSE_PROFILE_FREQUENCY', 10),
         'show_on_mobile' => env('ADSENSE_SHOW_ON_MOBILE', true),
+        'dashboard_feed_enabled' => env('ADSENSE_DASHBOARD_FEED_ENABLED', true),
+        'sidebar_ads_enabled' => env('ADSENSE_SIDEBAR_ADS_ENABLED', true),
+    ],
+    
+    'ad_slots' => [
+        'dashboard_feed' => '5106076698', // Fluid format dashboard feed ad
+        'display_auto' => '8367483099',   // Auto format display ad
+        'main_auto' => env('ADSENSE_MAIN_AUTO_SLOT', ''), // For future use
     ],
     
     'targeting' => [

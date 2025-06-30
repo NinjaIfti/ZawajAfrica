@@ -420,4 +420,11 @@ Route::middleware('auth')->get('/api/user', function () {
     ]);
 })->name('api.user');
 
+Route::get('/mobile-login', function () {
+    return inertia('Auth/MobileLogin', [
+        'canResetPassword' => Route::has('password.request'),
+        'status' => session('status'),
+    ]);
+});
+
 require __DIR__.'/auth.php';

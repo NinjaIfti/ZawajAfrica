@@ -24,7 +24,7 @@ trait ZohoMailTemplate
     protected function styleZohoEmail(MailMessage $message): MailMessage
     {
         return $message
-            ->theme('zawaj-africa') // Custom theme (can be created later)
+            ->theme('zawajafrica') // Use the custom ZawajAfrica theme
             ->metadata('X-Mailer', 'ZawajAfrica-Platform')
             ->priority(3); // Normal priority
     }

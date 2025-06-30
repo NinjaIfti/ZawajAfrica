@@ -231,4 +231,70 @@ class AdSenseService
             cookie($cookieName, $value ? 'true' : 'false', $expiry->diffInMinutes());
         }
     }
+
+    /**
+     * Get specific ad slot configuration
+     */
+    public function getAdSlot(string $slotName): ?string
+    {
+        $slots = $this->config['ad_slots'] ?? [];
+        return $slots[$slotName] ?? null;
+    }
+
+    /**
+     * Check if specific ad placement is enabled
+     */
+    public function isAdPlacementEnabled(string $placement): bool
+    {
+        $display = $this->config['display'] ?? [];
+        
+        switch ($placement) {
+            case 'dashboard_feed':
+                return $display['dashboard_feed_enabled'] ?? true;
+            case 'sidebar':
+                return $display['sidebar_ads_enabled'] ?? true;
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * Generate specific ad unit HTML
+     */
+    public function generateAdUnit(string $slotName, array $attributes = []): string
+    {
+        $slot = $this->getAdSlot($slotName);
+        $publisherId = $this->config['publisher_id'];
+        
+        if (!$slot || !$publisherId) {
+            return '';
+        }
+
+        $defaultAttributes = [
+            'class' => 'adsbygoogle',
+            'style' => 'display:block',
+            'data-ad-client' => $publisherId,
+            'data-ad-slot' => $slot,
+        ];
+
+        $mergedAttributes = array_merge($defaultAttributes, $attributes);
+        
+        $attributeString = '';
+        foreach ($mergedAttributes as $key => $value) {
+            $attributeString .= " {$key}=\"{$value}\"";
+        }
+
+        return "<ins{$attributeString}></ins>";
+    }
+
+    /**
+     * Log specific ad type impression
+     */
+    public function logSpecificAdImpression(User $user, string $adType, string $placement, array $metadata = []): void
+    {
+        $this->logAdImpression($user, $adType, array_merge($metadata, [
+            'placement' => $placement,
+            'slot' => $this->getAdSlot($adType)
+        ]));
+    }
 } 

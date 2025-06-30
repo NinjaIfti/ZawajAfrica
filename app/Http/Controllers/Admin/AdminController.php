@@ -1074,7 +1074,8 @@ class AdminController extends Controller
         $request->validate([
             'subject' => 'required|string|max:200',
             'body' => 'required|string|max:5000',
-            'target_audience' => 'required|string|in:all,premium,basic,free'
+            'target_audience' => 'required|string|in:all,premium,basic,free',
+            'is_edited' => 'boolean'
         ]);
 
         // Prevent multiple simultaneous broadcasts
@@ -1159,7 +1160,9 @@ class AdminController extends Controller
                 'total_users' => $users->count(),
                 'sent_count' => $sentCount,
                 'failed_count' => $failedCount,
-                'subject' => $request->subject
+                'subject' => $request->subject,
+                'is_edited' => $request->input('is_edited', false),
+                'admin_id' => auth()->id()
             ]);
 
             return response()->json([
@@ -1185,6 +1188,122 @@ class AdminController extends Controller
             ], 500);
         } finally {
             $lock->release();
+        }
+    }
+
+    /**
+     * Save broadcast email draft
+     */
+    public function saveBroadcastDraft(Request $request)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:200',
+            'body' => 'required|string|max:5000',
+            'target_audience' => 'required|string|in:all,premium,basic,free',
+            'message_type' => 'required|string|in:announcement,promotion,update,newsletter',
+            'tone' => 'required|string|in:formal,friendly,exciting,professional',
+            'topic' => 'required|string|max:200'
+        ]);
+
+        try {
+            // Save draft to cache with admin ID as key
+            $draftKey = 'broadcast_draft_' . auth()->id();
+            $draftData = [
+                'subject' => $request->subject,
+                'body' => $request->body,
+                'target_audience' => $request->target_audience,
+                'message_type' => $request->message_type,
+                'tone' => $request->tone,
+                'topic' => $request->topic,
+                'saved_at' => now()->toISOString(),
+                'admin_id' => auth()->id()
+            ];
+
+            \Cache::put($draftKey, $draftData, 7 * 24 * 60); // Save for 7 days
+
+            Log::info('Broadcast draft saved', [
+                'admin_id' => auth()->id(),
+                'subject' => $request->subject,
+                'target_audience' => $request->target_audience
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Draft saved successfully',
+                'saved_at' => $draftData['saved_at']
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to save broadcast draft', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to save draft'
+            ], 500);
+        }
+    }
+
+    /**
+     * Load broadcast email draft
+     */
+    public function loadBroadcastDraft()
+    {
+        try {
+            $draftKey = 'broadcast_draft_' . auth()->id();
+            $draftData = \Cache::get($draftKey);
+
+            if (!$draftData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No draft found'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'draft' => $draftData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to load broadcast draft', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load draft'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete broadcast email draft
+     */
+    public function deleteBroadcastDraft()
+    {
+        try {
+            $draftKey = 'broadcast_draft_' . auth()->id();
+            \Cache::forget($draftKey);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Draft deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to delete broadcast draft', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete draft'
+            ], 500);
         }
     }
 
@@ -1322,5 +1441,625 @@ Keep it professional, data-driven, and actionable for platform administrators.";
         $totalUsers = User::count();
         
         return $totalUsers > 0 ? round(($usersWithProfiles / $totalUsers) * 100, 2) : 0;
+    }
+
+    /**
+     * Handle AI user insights queries
+     */
+    public function handleUserInsights(Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|max:500',
+            'conversation_history' => 'array|max:20'
+        ]);
+
+        try {
+            set_time_limit(120); // 2 minutes for complex queries
+            
+            $query = $request->input('query');
+            $conversationHistory = $request->input('conversation_history', []);
+            
+            // Analyze the query to determine what data to fetch
+            $queryAnalysis = $this->analyzeUserQuery($query);
+            
+            // Fetch relevant data based on query analysis
+            $userData = $this->fetchUserDataForQuery($queryAnalysis);
+            
+            // Generate AI response with the data
+            $aiResponse = $this->generateUserInsightResponse($query, $userData, $conversationHistory);
+            
+            // Defensive check for 'message' key (OpenAI service returns response in 'message' field)
+            if (isset($aiResponse['success']) && $aiResponse['success'] && isset($aiResponse['message'])) {
+                return response()->json([
+                    'success' => true,
+                    'response' => $aiResponse['message'],
+                    'data' => $userData,
+                    'query_type' => $queryAnalysis['type']
+                ]);
+            } else {
+                \Log::error('AI user insights missing message key', [
+                    'admin_id' => auth()->id(),
+                    'query' => $query,
+                    'ai_response' => $aiResponse,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => $aiResponse['error'] ?? 'AI service did not return a valid response. Please try again later.'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('AI user insights query failed', [
+                'admin_id' => auth()->id(),
+                'query' => $query,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to process user insights query'
+            ], 500);
+        }
+    }
+
+    /**
+     * User Insights page with stats
+     */
+    public function userInsightsPage()
+    {
+        $today = now()->format('Y-m-d');
+        
+        // Active users today
+        $activeUsersToday = DB::table('user_daily_activities')
+            ->where('date', $today)
+            ->distinct('user_id')
+            ->count('user_id');
+        
+        // Platform activity today
+        $platformActivityToday = DB::table('user_daily_activities')
+            ->where('date', $today)
+            ->sum('count');
+        
+        // Premium users
+        $premiumUsers = User::whereNotNull('subscription_plan')
+            ->where('subscription_status', 'active')
+            ->count();
+        
+        // Users at limits today
+        $usersAtLimits = DB::table('user_daily_activities')
+            ->join('users', 'user_daily_activities.user_id', '=', 'users.id')
+            ->where('user_daily_activities.date', $today)
+            ->where(function($query) {
+                $query->where('user_daily_activities.activity', 'profile_views')
+                      ->where('user_daily_activities.count', '>=', 63)
+                      ->orWhere(function($q) {
+                          $q->where('user_daily_activities.activity', 'messages_sent')
+                            ->where('user_daily_activities.count', '>=', 25);
+                      });
+            })
+            ->distinct('users.id')
+            ->count('users.id');
+
+        return Inertia::render('Admin/UserInsights', [
+            'stats' => [
+                'active_users_today' => $activeUsersToday,
+                'platform_activity_today' => $platformActivityToday,
+                'premium_users' => $premiumUsers,
+                'users_at_limits' => $usersAtLimits
+            ]
+        ]);
+    }
+
+    /**
+     * Analyze user query to determine data requirements
+     */
+    private function analyzeUserQuery(string $query): array
+    {
+        $query = strtolower($query);
+        
+        // Check for specific user queries
+        if (preg_match('/user(?:\s+id)?\s+(\d+)|id\s*:?\s*(\d+)/', $query, $matches)) {
+            return [
+                'type' => 'specific_user',
+                'user_id' => $matches[1] ?? $matches[2],
+                'include_activities' => true,
+                'include_profile' => true
+            ];
+        }
+        
+        // Check for user name queries
+        if (preg_match('/user\s+([a-zA-Z\s]+)|for\s+([a-zA-Z\s]+)/', $query, $matches)) {
+            $name = trim($matches[1] ?? $matches[2]);
+            if (strlen($name) > 2) {
+                return [
+                    'type' => 'user_by_name',
+                    'user_name' => $name,
+                    'include_activities' => true,
+                    'include_profile' => true
+                ];
+            }
+        }
+        
+        // Check for activity-based queries
+        if (str_contains($query, 'active') || str_contains($query, 'activity') || str_contains($query, 'engagement')) {
+            return [
+                'type' => 'activity_analysis',
+                'time_range' => $this->extractTimeRange($query),
+                'include_top_users' => true,
+                'limit' => $this->extractLimit($query)
+            ];
+        }
+        
+        // Check for limit-related queries
+        if (str_contains($query, 'limit') || str_contains($query, 'quota') || str_contains($query, 'restriction')) {
+            return [
+                'type' => 'user_limits',
+                'include_at_limit' => true,
+                'time_range' => 'today'
+            ];
+        }
+        
+        // Check for premium/tier queries
+        if (str_contains($query, 'premium') || str_contains($query, 'tier') || str_contains($query, 'subscription')) {
+            return [
+                'type' => 'tier_analysis',
+                'include_conversion' => true,
+                'time_range' => $this->extractTimeRange($query)
+            ];
+        }
+        
+        // Check for upgrade suggestions
+        if (str_contains($query, 'upgrade') || str_contains($query, 'convert') || str_contains($query, 'upsell')) {
+            return [
+                'type' => 'upgrade_candidates',
+                'include_suggestions' => true,
+                'limit' => $this->extractLimit($query)
+            ];
+        }
+        
+        // Default general analytics
+        return [
+            'type' => 'general_analytics',
+            'time_range' => 'today',
+            'include_overview' => true
+        ];
+    }
+
+    /**
+     * Extract time range from query
+     */
+    private function extractTimeRange(string $query): string
+    {
+        if (str_contains($query, 'today')) return 'today';
+        if (str_contains($query, 'yesterday')) return 'yesterday';
+        if (str_contains($query, 'week')) return 'week';
+        if (str_contains($query, 'month')) return 'month';
+        if (str_contains($query, 'year')) return 'year';
+        
+        return 'today'; // default
+    }
+
+    /**
+     * Extract limit from query
+     */
+    private function extractLimit(string $query): int
+    {
+        if (preg_match('/top\s+(\d+)|(\d+)\s+most/', $query, $matches)) {
+            return min((int)($matches[1] ?? $matches[2]), 50); // Max 50
+        }
+        
+        return 10; // default
+    }
+
+    /**
+     * Fetch user data based on query analysis
+     */
+    private function fetchUserDataForQuery(array $analysis): array
+    {
+        $data = [];
+        
+        switch ($analysis['type']) {
+            case 'specific_user':
+                $data = $this->fetchSpecificUserData($analysis['user_id']);
+                break;
+                
+            case 'user_by_name':
+                $data = $this->fetchUserByName($analysis['user_name']);
+                break;
+                
+            case 'activity_analysis':
+                $data = $this->fetchActivityAnalysis($analysis);
+                break;
+                
+            case 'user_limits':
+                $data = $this->fetchUsersAtLimits();
+                break;
+                
+            case 'tier_analysis':
+                $data = $this->fetchTierAnalysis($analysis['time_range']);
+                break;
+                
+            case 'upgrade_candidates':
+                $data = $this->fetchUpgradeCandidates($analysis['limit']);
+                break;
+                
+            case 'general_analytics':
+            default:
+                $data = $this->fetchGeneralAnalytics($analysis['time_range']);
+                break;
+        }
+        
+        // Always include therapist information for context
+        $data['therapist_info'] = $this->fetchTherapistInfo();
+        
+        return $data;
+    }
+
+    /**
+     * Fetch therapist information for AI context
+     */
+    private function fetchTherapistInfo(): array
+    {
+        $therapists = \App\Models\Therapist::with(['bookings' => function($query) {
+            $query->where('created_at', '>=', now()->subDays(30));
+        }])->get();
+        
+        $therapistStats = [
+            'total_therapists' => $therapists->count(),
+            'active_therapists' => $therapists->where('is_active', true)->count(),
+            'total_bookings_30_days' => $therapists->sum(function($therapist) {
+                return $therapist->bookings->count();
+            }),
+            'average_rating' => $therapists->avg('rating'),
+            'top_therapists' => $therapists->sortByDesc('rating')->take(5)->map(function($therapist) {
+                return [
+                    'id' => $therapist->id,
+                    'name' => $therapist->name,
+                    'specialization' => $therapist->specialization,
+                    'rating' => $therapist->rating,
+                    'booking_count' => $therapist->bookings->count(),
+                    'is_active' => $therapist->is_active
+                ];
+            })->values()
+        ];
+        
+        return $therapistStats;
+    }
+
+    /**
+     * Fetch specific user data
+     */
+    private function fetchSpecificUserData(int $userId): array
+    {
+        $user = User::with(['verification', 'profile'])->find($userId);
+        
+        if (!$user) {
+            return ['error' => 'User not found'];
+        }
+        
+        $tierService = app(\App\Services\UserTierService::class);
+        $today = now()->format('Y-m-d');
+        
+        // Get user activities
+        $activities = DB::table('user_daily_activities')
+            ->where('user_id', $userId)
+            ->where('date', $today)
+            ->pluck('count', 'activity')
+            ->toArray();
+        
+        // Get user tier and limits
+        $tier = $tierService->getUserTier($user);
+        $limits = $tierService->getUserLimits($user);
+        
+        // Get recent activity history (last 7 days)
+        $recentActivity = DB::table('user_daily_activities')
+            ->where('user_id', $userId)
+            ->where('date', '>=', now()->subDays(7)->format('Y-m-d'))
+            ->orderBy('date', 'desc')
+            ->get()
+            ->groupBy('date');
+        
+        return [
+            'user_profile' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'tier' => $tier,
+                'is_verified' => $user->is_verified,
+                'created_at' => $user->created_at,
+                'subscription_plan' => $user->subscription_plan,
+                'subscription_status' => $user->subscription_status,
+                'subscription_expires_at' => $user->subscription_expires_at,
+            ],
+            'activities' => $activities,
+            'limits' => $limits,
+            'recent_activity_history' => $recentActivity
+        ];
+    }
+
+    /**
+     * Fetch user by name
+     */
+    private function fetchUserByName(string $name): array
+    {
+        $users = User::where('name', 'LIKE', "%{$name}%")
+            ->limit(5)
+            ->get(['id', 'name', 'email', 'created_at', 'subscription_plan']);
+        
+        if ($users->isEmpty()) {
+            return ['error' => 'No users found with that name'];
+        }
+        
+        if ($users->count() === 1) {
+            return $this->fetchSpecificUserData($users->first()->id);
+        }
+        
+        return [
+            'multiple_users' => $users->toArray(),
+            'message' => 'Multiple users found. Please specify which one:'
+        ];
+    }
+
+    /**
+     * Fetch activity analysis
+     */
+    private function fetchActivityAnalysis(array $analysis): array
+    {
+        $timeRange = $analysis['time_range'];
+        $limit = $analysis['limit'] ?? 10;
+        
+        $dateFilter = $this->getDateFilter($timeRange);
+        
+        // Get most active users
+        $activeUsers = DB::table('user_daily_activities')
+            ->join('users', 'user_daily_activities.user_id', '=', 'users.id')
+            ->where('user_daily_activities.date', '>=', $dateFilter)
+            ->select('users.id', 'users.name', 'users.email', 
+                    DB::raw('SUM(user_daily_activities.count) as total_activity'))
+            ->groupBy('users.id', 'users.name', 'users.email')
+            ->orderBy('total_activity', 'desc')
+            ->limit($limit)
+            ->get();
+        
+        // Get activity breakdown
+        $activityBreakdown = DB::table('user_daily_activities')
+            ->where('date', '>=', $dateFilter)
+            ->select('activity', DB::raw('SUM(count) as total'))
+            ->groupBy('activity')
+            ->orderBy('total', 'desc')
+            ->get()
+            ->pluck('total', 'activity');
+        
+        return [
+            'statistics' => [
+                'time_range' => $timeRange,
+                'total_active_users' => $activeUsers->count(),
+                'total_activities' => $activityBreakdown->sum()
+            ],
+            'top_users' => $activeUsers->toArray(),
+            'activity_breakdown' => $activityBreakdown->toArray()
+        ];
+    }
+
+    /**
+     * Fetch users at limits
+     */
+    private function fetchUsersAtLimits(): array
+    {
+        $today = now()->format('Y-m-d');
+        
+        // Users at profile view limit (90% of limit)
+        $usersAtViewLimit = DB::table('user_daily_activities')
+            ->join('users', 'user_daily_activities.user_id', '=', 'users.id')
+            ->where('user_daily_activities.activity', 'profile_views')
+            ->where('user_daily_activities.date', $today)
+            ->where('user_daily_activities.count', '>=', 63) // 90% of 70
+            ->where(function($query) {
+                $query->whereNull('users.subscription_plan')
+                      ->orWhere('users.subscription_status', '!=', 'active');
+            })
+            ->select('users.id', 'users.name', 'users.email', 'user_daily_activities.count')
+            ->get();
+        
+        // Users at message limit
+        $usersAtMessageLimit = DB::table('user_daily_activities')
+            ->join('users', 'user_daily_activities.user_id', '=', 'users.id')
+            ->where('user_daily_activities.activity', 'messages_sent')
+            ->where('user_daily_activities.date', $today)
+            ->where('user_daily_activities.count', '>=', 25) // Near basic limit
+            ->select('users.id', 'users.name', 'users.email', 'user_daily_activities.count')
+            ->get();
+        
+        return [
+            'users_at_view_limit' => $usersAtViewLimit->toArray(),
+            'users_at_message_limit' => $usersAtMessageLimit->toArray(),
+            'statistics' => [
+                'view_limit_count' => $usersAtViewLimit->count(),
+                'message_limit_count' => $usersAtMessageLimit->count()
+            ]
+        ];
+    }
+
+    /**
+     * Fetch tier analysis
+     */
+    private function fetchTierAnalysis(string $timeRange): array
+    {
+        // Get tier distribution
+        $tierStats = [
+            'free_users' => User::where(function($query) {
+                $query->whereNull('subscription_plan')
+                      ->orWhere('subscription_status', '!=', 'active');
+            })->count(),
+            'basic_users' => User::where('subscription_plan', 'basic')
+                ->where('subscription_status', 'active')->count(),
+            'gold_users' => User::where('subscription_plan', 'gold')
+                ->where('subscription_status', 'active')->count(),
+            'platinum_users' => User::where('subscription_plan', 'platinum')
+                ->where('subscription_status', 'active')->count(),
+        ];
+        
+        // Get recent conversions (last 30 days)
+        $recentConversions = User::whereNotNull('subscription_plan')
+            ->where('subscription_status', 'active')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->count();
+        
+        return [
+            'statistics' => $tierStats,
+            'recent_conversions' => $recentConversions,
+            'conversion_rate' => $tierStats['free_users'] > 0 ? 
+                round(($recentConversions / $tierStats['free_users']) * 100, 2) : 0
+        ];
+    }
+
+    /**
+     * Fetch upgrade candidates
+     */
+    private function fetchUpgradeCandidates(int $limit): array
+    {
+        $today = now()->format('Y-m-d');
+        
+        // Free users with high activity
+        $candidates = DB::table('user_daily_activities')
+            ->join('users', 'user_daily_activities.user_id', '=', 'users.id')
+            ->where('user_daily_activities.date', $today)
+            ->where(function($query) {
+                $query->whereNull('users.subscription_plan')
+                      ->orWhere('users.subscription_status', '!=', 'active');
+            })
+            ->select('users.id', 'users.name', 'users.email', 
+                    DB::raw('SUM(user_daily_activities.count) as total_activity'))
+            ->groupBy('users.id', 'users.name', 'users.email')
+            ->having('total_activity', '>=', 50) // High activity threshold
+            ->orderBy('total_activity', 'desc')
+            ->limit($limit)
+            ->get();
+        
+        return [
+            'upgrade_candidates' => $candidates->toArray(),
+            'statistics' => [
+                'candidate_count' => $candidates->count(),
+                'avg_activity' => $candidates->avg('total_activity')
+            ]
+        ];
+    }
+
+    /**
+     * Fetch general analytics
+     */
+    private function fetchGeneralAnalytics(string $timeRange): array
+    {
+        $dateFilter = $this->getDateFilter($timeRange);
+        
+        $stats = [
+            'total_users' => User::count(),
+            'verified_users' => User::where('is_verified', true)->count(),
+            'premium_users' => User::whereNotNull('subscription_plan')
+                ->where('subscription_status', 'active')->count(),
+            'daily_activities' => DB::table('user_daily_activities')
+                ->where('date', '>=', $dateFilter)
+                ->sum('count'),
+            'active_users_period' => DB::table('user_daily_activities')
+                ->where('date', '>=', $dateFilter)
+                ->distinct('user_id')
+                ->count()
+        ];
+        
+        return ['statistics' => $stats];
+    }
+
+    /**
+     * Get date filter for time range
+     */
+    private function getDateFilter(string $timeRange): string
+    {
+        switch ($timeRange) {
+            case 'yesterday':
+                return now()->subDay()->format('Y-m-d');
+            case 'week':
+                return now()->subWeek()->format('Y-m-d');
+            case 'month':
+                return now()->subMonth()->format('Y-m-d');
+            case 'year':
+                return now()->subYear()->format('Y-m-d');
+            case 'today':
+            default:
+                return now()->format('Y-m-d');
+        }
+    }
+
+    /**
+     * Generate AI response for user insights
+     */
+    private function generateUserInsightResponse(string $query, array $userData, array $conversationHistory): array
+    {
+        try {
+            $openAIService = app(\App\Services\OpenAIService::class);
+            
+            $prompt = $this->buildUserInsightPrompt($query, $userData, $conversationHistory);
+            
+            $messages = [
+                ['role' => 'system', 'content' => 'You are an AI assistant helping admin analyze user data for ZawajAfrica dating platform. Provide clear, actionable insights based on the data provided.'],
+                ['role' => 'user', 'content' => $prompt]
+            ];
+            
+            $response = $openAIService->chat($messages);
+            
+            return $response;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to generate user insight response', [
+                'error' => $e->getMessage(),
+                'query' => $query
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Failed to generate AI response'
+            ];
+        }
+    }
+
+    /**
+     * Build prompt for user insights
+     */
+    private function buildUserInsightPrompt(string $query, array $userData, array $conversationHistory): string
+    {
+        $dataJson = json_encode($userData, JSON_PRETTY_PRINT);
+        
+        $contextHistory = '';
+        if (!empty($conversationHistory)) {
+            $recentMessages = array_slice($conversationHistory, -4); // Last 4 messages
+            $contextHistory = "\n\nRecent conversation context:\n";
+            foreach ($recentMessages as $msg) {
+                $contextHistory .= "- {$msg['role']}: " . substr($msg['content'], 0, 100) . "\n";
+            }
+        }
+        
+        return "Admin Query: {$query}
+
+User Data:
+{$dataJson}
+
+{$contextHistory}
+
+You have access to comprehensive platform data including user activities, therapist information, and platform statistics. 
+
+Therapist Information Available:
+- Total therapists: {$userData['therapist_info']['total_therapists']}
+- Active therapists: {$userData['therapist_info']['active_therapists']}
+- Total bookings (30 days): {$userData['therapist_info']['total_bookings_30_days']}
+- Average therapist rating: {$userData['therapist_info']['average_rating']}
+- Top 5 therapists by rating are also available in the data
+
+Please analyze this data and provide insights that answer the admin's query. Include:
+1. Direct answer to the question
+2. Key patterns or trends observed
+3. Actionable recommendations
+4. Any concerns or opportunities identified
+5. If relevant, include insights about therapist utilization and performance
+
+Keep your response conversational but professional, and focus on actionable insights for platform management.";
     }
 } 

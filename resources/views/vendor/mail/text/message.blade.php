@@ -1,8 +1,8 @@
 <x-mail::layout>
     {{-- Header --}}
     <x-slot:header>
-        <x-mail::header :url="config('app.url')">
-            {{ config('app.name') }}
+        <x-mail::header :url="'https://zawajafrica.online/dashboard'">
+            ZawajAfrica
         </x-mail::header>
     </x-slot:header>
 
@@ -21,7 +21,12 @@
     {{-- Footer --}}
     <x-slot:footer>
         <x-mail::footer>
-            © {{ date('Y') }} {{ config('app.name') }}. @lang('All rights reserved.')
+            © {{ date('Y') }} ZawajAfrica. @lang('All rights reserved.')
+            
+            Connecting African Muslims worldwide with halal relationships.
+            
+            Visit us: https://zawajafrica.online
+            Support: support@zawajafrica.online
         </x-mail::footer>
     </x-slot:footer>
 </x-mail::layout>

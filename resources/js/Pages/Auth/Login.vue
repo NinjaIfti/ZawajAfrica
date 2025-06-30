@@ -1,6 +1,6 @@
 <script setup>
     import { Head, Link, useForm } from '@inertiajs/vue3';
-    import { ref } from 'vue';
+    import { ref, onMounted } from 'vue';
     import InputError from '@/Components/InputError.vue';
     import TermsAndConditionsModal from '@/Components/TermsAndConditionsModal.vue';
 
@@ -11,6 +11,14 @@
         status: {
             type: String,
         },
+    });
+
+    // Auto-redirect mobile users to /mobile-login
+    onMounted(() => {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile && window.location.pathname !== '/mobile-login') {
+            window.location.href = '/mobile-login';
+        }
     });
 
     const form = useForm({

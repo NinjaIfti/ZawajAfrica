@@ -9,6 +9,8 @@
     import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
     import MatchFiltersModal from '@/Components/MatchFiltersModal.vue';
     import TierBadge from '@/Components/TierBadge.vue';
+    import DashboardFeedAd from '@/Components/DashboardFeedAd.vue';
+    import DisplayAd from '@/Components/DisplayAd.vue';
 
     const page = usePage();
     const showPaymentSuccessModal = ref(false);
@@ -627,8 +629,14 @@
                 </div>
             </div>
 
+            <!-- Dashboard Feed Ad (between search and matches) -->
+            <DashboardFeedAd :userTier="userTier" />
+
             <!-- Match Cards Component -->
             <MatchCard :matches="displayMatches" :userTier="userTier" />
+
+            <!-- Display Ad (after matches) -->
+            <DisplayAd :userTier="userTier" placement="after-matches" />
 
             <!-- Loading indicator -->
             <div v-if="isLoading" class="text-center py-8">
