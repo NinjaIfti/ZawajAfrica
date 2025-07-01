@@ -33,6 +33,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone_number',
         'password',
         'gender',
         'interested_in',
@@ -51,6 +52,7 @@ class User extends Authenticatable
         'subscription_plan',
         'subscription_status',
         'subscription_expires_at',
+        'last_activity_at',
         // Monnify KYC fields
         'bvn',
         'nin',
@@ -97,6 +99,7 @@ class User extends Authenticatable
         'kyc_bvn_verified' => 'boolean',
         'kyc_nin_verified' => 'boolean',
         'monnify_reserved_accounts' => 'array',
+        'last_activity_at' => 'datetime',
     ];
 
     /**
@@ -397,5 +400,26 @@ class User extends Authenticatable
         if (!empty($this->monnify_account_reference)) $completed++;
 
         return (int) (($completed / $total) * 100);
+    }
+
+    /**
+     * Check if the user is online.
+     * A user is considered online if they had activity within the last 15 minutes.
+     */
+    public function isOnline(): bool
+    {
+        if (!$this->last_activity_at) {
+            return false;
+        }
+        
+        return $this->last_activity_at->gt(now()->subMinutes(15));
+    }
+
+    /**
+     * Get online status for display in views
+     */
+    public function getIsOnlineAttribute(): bool
+    {
+        return $this->isOnline();
     }
 }

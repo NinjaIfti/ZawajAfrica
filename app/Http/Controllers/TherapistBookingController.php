@@ -421,7 +421,7 @@ class TherapistBookingController extends Controller
                         'payment_reference' => $reference
                     ];
 
-                    // Debug log the payment data being sent
+            
                     \Log::info('Sending payment data to PaymentController', [
                         'payment_data' => $paymentData,
                         'booking_id' => $booking->id,
@@ -433,7 +433,7 @@ class TherapistBookingController extends Controller
                     $paymentRequest = new Request();
                     $paymentRequest->replace($paymentData); // Use replace to completely set the request data
                     
-                    // Debug log to verify request data after replace
+            
                     \Log::info('After replace - PaymentRequest data', [
                         'all_data' => $paymentRequest->all(),
                         'has_id' => $paymentRequest->has('id'),
@@ -460,7 +460,7 @@ class TherapistBookingController extends Controller
                 }
                 
             } catch (\Exception $e) {
-                // Log the error for debugging
+    
                 \Log::error('Booking creation failed', [
                     'user_id' => Auth::id(),
                     'therapist_id' => $validated['therapist_id'],

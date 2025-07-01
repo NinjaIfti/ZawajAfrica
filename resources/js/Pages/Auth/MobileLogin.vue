@@ -9,7 +9,7 @@
     <!-- Main Content -->
     <div class="relative z-10 flex flex-col items-center justify-end w-full px-6 pb-12">
       <div class="flex flex-col items-center">
-        <h1 class="text-3xl font-bold text-[#E6A157] mb-2">ZawajAfrica</h1>
+        <h1 class="text-3xl font-bold text-black-500 mb-2">ZawajAfrica</h1>
         <p class="text-white text-base font-medium text-center mb-6">The First Halal Matchmaking App<br />for People of Color!</p>
       </div>
       <div class="w-full max-w-xs flex flex-col gap-4">

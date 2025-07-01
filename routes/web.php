@@ -199,6 +199,46 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.index');
     Route::get('/notifications/data', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.data');
     
+    // User activity tracking route
+    Route::post('/user/activity', function () {
+        if (auth()->check()) {
+            $user = auth()->user();
+            $user->last_activity_at = now();
+            $user->save();
+            return response()->json(['success' => true]);
+        }
+        return response()->json(['success' => false], 401);
+    })->name('user.activity');
+    
+    // Online status checking route
+    Route::post('/api/users/online-status', function (Illuminate\Http\Request $request) {
+        if (!auth()->check()) {
+            return response()->json(['success' => false], 401);
+        }
+        
+        $userIds = $request->input('user_ids', []);
+        if (empty($userIds) || !is_array($userIds)) {
+            return response()->json(['success' => false, 'error' => 'Invalid user IDs'], 400);
+        }
+        
+        // Limit to 100 users max to prevent abuse
+        $userIds = array_slice($userIds, 0, 100);
+        
+        $users = \App\Models\User::whereIn('id', $userIds)
+            ->select('id', 'last_activity_at')
+            ->get();
+        
+        $onlineStatus = [];
+        foreach ($users as $user) {
+            $onlineStatus[$user->id] = $user->isOnline();
+        }
+        
+        return response()->json([
+            'success' => true,
+            'online_status' => $onlineStatus
+        ]);
+    })->name('api.users.online-status');
+    
     // User subscription refresh route
     Route::get('/api/user/subscription', function () {
         $user = Auth::user();

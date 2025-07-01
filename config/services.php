@@ -53,7 +53,7 @@ return [
         'enabled' => env('OPENAI_ENABLED', true),
         'api_key' => env('OPENAI_API_KEY'),
         'api_url' => env('OPENAI_API_URL', 'https://api.openai.com/v1'),
-        'model' => env('OPENAI_MODEL', 'gpt-4.1-nano'),
+        'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
         'max_tokens' => (int) env('OPENAI_MAX_TOKENS', 2000),
         'temperature' => (float) env('OPENAI_TEMPERATURE', 0.7),
         'top_p' => (float) env('OPENAI_TOP_P', 1.0),
@@ -104,7 +104,7 @@ return [
         'webhook_secret' => env('ZOHO_BOOKINGS_WEBHOOK_SECRET'),
     ],
 
-  
+
 
 
 ];

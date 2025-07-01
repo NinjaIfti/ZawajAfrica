@@ -1,6 +1,6 @@
 <script setup>
     import { Link } from '@inertiajs/vue3';
-    import { ref } from 'vue';
+    import { ref, onMounted, onUnmounted } from 'vue';
     import LikeSuccessModal from '@/Components/LikeSuccessModal.vue';
     import TierBadge from '@/Components/TierBadge.vue';
     import PhotoBlurControl from '@/Components/PhotoBlurControl.vue';
@@ -23,6 +23,10 @@
     
     // Loading states for each match
     const loadingStates = ref({});
+    
+    // Online status tracking
+    const onlineStatusInterval = ref(null);
+    const matchOnlineStatus = ref({});
 
     // Handle like button click
     const handleLike = async match => {
@@ -182,6 +186,62 @@
         const userTier = props.userTier || 'free';
         return userTier === 'platinum';
     };
+
+    // Get real-time online status for a match
+    const isMatchOnline = (match) => {
+        // Use updated status if available, otherwise fall back to original
+        return matchOnlineStatus.value[match.id] !== undefined 
+            ? matchOnlineStatus.value[match.id] 
+            : match.online;
+    };
+
+    // Update online status for all matches
+    const updateOnlineStatus = async () => {
+        if (!props.matches || props.matches.length === 0) return;
+        
+        try {
+            const userIds = props.matches.map(match => match.id);
+            const response = await fetch('/api/users/online-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ user_ids: userIds })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.online_status) {
+                    matchOnlineStatus.value = { ...matchOnlineStatus.value, ...data.online_status };
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update online status:', error);
+        }
+    };
+
+    // Initialize online status tracking
+    onMounted(() => {
+        // Initialize match online status from props
+        props.matches.forEach(match => {
+            matchOnlineStatus.value[match.id] = match.online;
+        });
+        
+        // Update immediately
+        updateOnlineStatus();
+        
+        // Set up periodic updates every 30 seconds
+        onlineStatusInterval.value = setInterval(updateOnlineStatus, 30000);
+    });
+
+    // Cleanup interval on unmount
+    onUnmounted(() => {
+        if (onlineStatusInterval.value) {
+            clearInterval(onlineStatusInterval.value);
+        }
+    });
 </script>
 
 <template>
@@ -208,13 +268,11 @@
                             @unblurred="handlePhotoUnblurred"
                         />
                         
-                        <!-- Debug info (remove after testing) -->
-                        <div v-if="false" class="absolute top-0 left-0 bg-red-500 text-white text-xs p-1 z-50">
-                            Blur: {{ match.photos_blurred }}, Mode: {{ match.photo_blur_mode }}
-                        </div>
+
 
                         <!-- Online Status -->
                         <div
+                            v-if="isMatchOnline(match)"
                             class="absolute left-3 top-3 flex items-center rounded-full bg-black bg-opacity-70 px-2.5 py-1 text-xs text-white"
                         >
                             <span class="mr-1 h-1.5 w-1.5 rounded-full bg-green-500 inline-block"></span>

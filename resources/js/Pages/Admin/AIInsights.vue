@@ -4,6 +4,7 @@
     import Modal from '@/Components/Modal.vue';
     import PrimaryButton from '@/Components/PrimaryButton.vue';
     import SecondaryButton from '@/Components/SecondaryButton.vue';
+    import ZohoCampaignManager from '@/Components/Admin/ZohoCampaignManager.vue';
     import { ref, reactive } from 'vue';
 
     const props = defineProps({
@@ -54,6 +55,9 @@
     const generatedInsights = ref(null);
     const isGeneratingInsights = ref(false);
 
+    // Tab State
+    const activeTab = ref('insights');
+
     const formatDate = dateString => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -71,27 +75,45 @@
 
     // Generate AI Broadcast
     const generateBroadcast = async () => {
+        // Validate form before generating
+        if (!broadcastForm.topic.trim()) {
+            alert('Please enter a topic/subject for the broadcast');
+            return;
+        }
+
         isGenerating.value = true;
         error.value = '';
         
         try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            const requestData = {
+                message_type: broadcastForm.message_type,
+                target_audience: broadcastForm.target_audience,
+                topic: broadcastForm.topic,
+                tone: broadcastForm.tone
+            };
+
             const response = await fetch(route('admin.ai.generate-broadcast'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN': csrfToken || '',
                 },
-                body: JSON.stringify({
-                    tone: 'professional',
-                    include_metrics: true
-                }),
+                body: JSON.stringify(requestData),
             });
 
             const data = await response.json();
 
             if (data.success) {
-                generatedBroadcast.value = data.email;
-                showPreview.value = true;
+                generatedBroadcast.value = {
+                    subject: data.subject,
+                    body: data.body,
+                    preview: data.preview
+                };
+                // Initialize editable content
+                editableContent.subject = data.subject;
+                editableContent.body = data.body;
             } else {
                 error.value = data.error || 'Failed to generate email';
             }
@@ -362,7 +384,55 @@
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <!-- Action Buttons -->
+                <!-- Tab Navigation -->
+                <div class="mb-8">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8">
+                            <button @click="activeTab = 'insights'" 
+                                    :class="[
+                                        'py-2 px-1 border-b-2 font-medium text-sm',
+                                        activeTab === 'insights' 
+                                            ? 'border-purple-500 text-purple-600' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ]">
+                                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                AI Insights & Analytics
+                            </button>
+                            
+                            <button @click="activeTab = 'broadcast'" 
+                                    :class="[
+                                        'py-2 px-1 border-b-2 font-medium text-sm',
+                                        activeTab === 'broadcast' 
+                                            ? 'border-purple-500 text-purple-600' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ]">
+                                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                </svg>
+                                AI Broadcast Generator
+                            </button>
+                            
+                            <button @click="activeTab = 'campaigns'" 
+                                    :class="[
+                                        'py-2 px-1 border-b-2 font-medium text-sm',
+                                        activeTab === 'campaigns' 
+                                            ? 'border-purple-500 text-purple-600' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ]">
+                                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Zoho Campaigns
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Tab Content -->
+                <div v-if="activeTab === 'insights'">
+                    <!-- Action Buttons for Insights -->
                 <div class="mb-8 flex flex-wrap gap-4">
                     <PrimaryButton @click="openBroadcastModal" class="bg-purple-600 hover:bg-purple-700">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -506,6 +576,44 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                </div>
+
+                <!-- Broadcast Tab Content -->
+                <div v-else-if="activeTab === 'broadcast'">
+                    <div class="mb-8">
+                        <PrimaryButton @click="openBroadcastModal" class="bg-purple-600 hover:bg-purple-700">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                            </svg>
+                            Generate AI Broadcast Email
+                        </PrimaryButton>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">AI Email Generator</h3>
+                        <p class="text-gray-600">Use AI to generate personalized broadcast emails for your users. The AI will analyze your platform data and create targeted content based on user segments and engagement patterns.</p>
+                        
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-blue-900">Smart Segmentation</h4>
+                                <p class="text-sm text-blue-700 mt-1">Target specific user groups (premium, basic, free) with tailored messages.</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-green-900">AI-Powered Content</h4>
+                                <p class="text-sm text-green-700 mt-1">Generate engaging content with different tones and messaging styles.</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-purple-900">Quick Deployment</h4>
+                                <p class="text-sm text-purple-700 mt-1">Generate, edit, and send emails directly through Zoho Campaign integration.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campaigns Tab Content -->
+                <div v-else-if="activeTab === 'campaigns'">
+                    <ZohoCampaignManager />
                 </div>
             </div>
         </div>

@@ -162,7 +162,7 @@ class PaymentController extends Controller
     public function initializeTherapistBooking(Request $request)
     {
         try {
-            // Debug log the received data
+    
             Log::info('PaymentController received data', [
                 'all_data' => $request->all(),
                 'has_id' => $request->has('id'),

@@ -463,7 +463,7 @@ class MatchController extends Controller
         }
 
         // Here you would typically create a "pass" record in the database
-        // TODO: Implement user pass tracking to avoid showing same profiles repeatedly
+
 
         return response()->json([
             'success' => true,

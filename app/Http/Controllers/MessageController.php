@@ -64,7 +64,7 @@ class MessageController extends Controller
                 'last_message' => $latestMessage ? $latestMessage->content : '',
                 'last_message_time' => $latestMessage ? $latestMessage->created_at->format('H:i') : '',
                 'unread_count' => $unreadCount,
-                'is_online' => false // Placeholder for online status
+                'is_online' => $conversationUser->isOnline()
             ];
         });
         

@@ -42,13 +42,7 @@ class ProfileController extends Controller
         try {
             $user = Auth::user();
             
-            // Log ALL request data for debugging
-            Log::info('Profile update request - ALL DATA', [
-                'user_id' => $user->id,
-                'all_data' => $request->all(),
-                'is_ajax' => $request->ajax(),
-                'wants_json' => $request->wantsJson()
-            ]);
+
             
             // Explicitly remove location if it's somehow in the request
             $requestData = $request->except(['location']);
@@ -71,11 +65,7 @@ class ProfileController extends Controller
                 'others' => ['sometimes', 'array'],
             ])->validate();
             
-            // Log the validated data for debugging
-            Log::info('Profile update request - VALIDATED DATA', [
-                'user_id' => $user->id,
-                'validated_data' => $validated
-            ]);
+
     
             // Update user's basic info
             if (isset($validated['name'])) {

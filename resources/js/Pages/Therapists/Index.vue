@@ -116,6 +116,7 @@
                                 </div>
                                 <!-- Online status indicator -->
                                 <div
+                                    v-if="therapist.is_online"
                                     class="absolute -bottom-1 -right-1 w-4 h-4 lg:w-5 lg:h-5 bg-green-500 rounded-full border-2 border-white"
                                 ></div>
                             </div>

@@ -11,9 +11,11 @@
     import TierBadge from '@/Components/TierBadge.vue';
     import DashboardFeedAd from '@/Components/DashboardFeedAd.vue';
     import DisplayAd from '@/Components/DisplayAd.vue';
+    import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
 
     const page = usePage();
     const showPaymentSuccessModal = ref(false);
+    const showZohoOptinModal = ref(false);
 
     const props = defineProps({
         user: Object,
@@ -173,7 +175,7 @@
             name: user.name || 'Anonymous',
             age: age || '',
             location: location || '',
-            online: true, // This would be dynamic in a real app
+            online: user.is_online || false,
             image: image,
             compatibility_score: compatibility_score,
             compatibility: compatibility_score, // Keep for backwards compatibility
@@ -190,7 +192,7 @@
                 name: match.name,
                 age: match.age,
                 location: match.location,
-                online: true,
+                online: match.is_online || false,
                 image: match.profile_photo || '/images/placeholder.jpg',
                 compatibility_score: match.compatibility_score || 0,
                 compatibility: match.compatibility_score || 0,
@@ -385,10 +387,21 @@
         if (page.props.flash?.payment_success) {
             showPaymentSuccessModal.value = true;
         }
+
+        // Show Zoho opt-in modal on every login (after a short delay)
+        setTimeout(() => {
+            const hasSkipped = localStorage.getItem('zoho_optin_skipped');
+            // Always show the modal, even if previously skipped (remove this check to respect skipping)
+            showZohoOptinModal.value = true;
+        }, 2000); // Show after 2 seconds
     });
 
     const closePaymentSuccessModal = () => {
         showPaymentSuccessModal.value = false;
+    };
+
+    const closeZohoOptinModal = () => {
+        showZohoOptinModal.value = false;
     };
 
     // Remove event listener when component is unmounted
@@ -686,6 +699,12 @@
             @close="showFiltersModal = false"
             @apply-filters="applyFilters"
             @clear-filters="clearFilters"
+        />
+
+        <!-- Zoho Opt-in Modal -->
+        <ZohoOptinModal
+            :show="showZohoOptinModal"
+            @close="closeZohoOptinModal"
         />
     </div>
 </template>

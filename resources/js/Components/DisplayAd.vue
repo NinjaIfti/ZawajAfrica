@@ -85,7 +85,7 @@ export default {
                         if (window.adsbygoogle) {
                             (window.adsbygoogle = window.adsbygoogle || []).push({})
                             adLoaded.value = true
-                            console.log(`Display ad loaded (${props.placement})`)
+                
                         } else {
                             // Retry after 500ms if script isn't ready
                             setTimeout(tryLoadAd, 500)

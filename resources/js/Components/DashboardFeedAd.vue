@@ -81,7 +81,7 @@ export default {
                         if (window.adsbygoogle) {
                             (window.adsbygoogle = window.adsbygoogle || []).push({})
                             adLoaded.value = true
-                            console.log('Dashboard feed ad loaded')
+                
                         } else {
                             // Retry after 500ms if script isn't ready
                             setTimeout(tryLoadAd, 500)

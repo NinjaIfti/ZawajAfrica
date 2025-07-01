@@ -53,7 +53,7 @@ export default {
         // Initialize AdSense
         const initializeAdSense = () => {
             if (!adSenseConfig.value.enabled || !props.showOnPage) {
-                console.log('AdSense disabled or not allowed on this page')
+    
                 return
             }
 
@@ -82,7 +82,7 @@ export default {
                 script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`
                 script.crossOrigin = 'anonymous'
                 script.onload = () => {
-                    console.log('AdSense script loaded successfully')
+
                     initializeAutoAds()
                 }
                 script.onerror = () => {
@@ -119,7 +119,7 @@ export default {
                 // Push configuration to AdSense
                 ;(window.adsbygoogle = window.adsbygoogle || []).push(autoAdsConfig)
                 
-                console.log('Auto Ads initialized with config:', autoAdsConfig)
+
             } catch (error) {
                 console.error('Error initializing Auto Ads:', error)
             }

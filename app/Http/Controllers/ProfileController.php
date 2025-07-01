@@ -261,4 +261,43 @@ class ProfileController extends Controller
             'targetUserTier' => $targetUserTierInfo,
         ]);
     }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function view($id)
+    {
+        try {
+            $user = Auth::user();
+
+            // Get target user
+            $targetUser = User::with(['appearance', 'lifestyle', 'background', 'about', 'overview', 'interests', 'personality', 'photos'])
+                ->findOrFail($id);
+
+            // Record profile view activity if not viewing own profile
+            if ($user->id !== $targetUser->id) {
+                $tierService = app(\App\Services\UserTierService::class);
+                $canView = $tierService->canViewProfile($user);
+                
+                if (!$canView['allowed']) {
+                    return redirect()->route('dashboard')->with('error', 'Daily profile view limit reached');
+                }
+                
+                $tierService->recordActivity($user, 'profile_views');
+            }
+
+            // Add is_online attribute
+            $targetUser->setAttribute('is_online', $targetUser->isOnline());
+
+            return Inertia::render('Profile/View', [
+                'userData' => $user,
+                'user' => $targetUser,
+                'canUnblurPhotos' => true, // Logic for determining if photos can be unblurred
+                'compatibility' => 85 // Example compatibility score, replace with actual calculation
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error viewing profile: {$e->getMessage()}", ['user_id' => $id]);
+            return redirect()->route('dashboard')->with('error', 'Unable to view profile');
+        }
+    }
 }

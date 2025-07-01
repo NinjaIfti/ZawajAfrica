@@ -53,6 +53,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/ai-broadcast/delete-draft', [AdminController::class, 'deleteBroadcastDraft'])->name('ai.delete-broadcast-draft');
     Route::post('/ai-insights/generate', [AdminController::class, 'generateUserInsights'])->name('ai.insights.generate');
     
+    // Zoho Campaign Management
+    Route::post('/zoho-campaign/import-users', [AdminController::class, 'importUsersToZoho'])->name('zoho.import-users');
+    Route::get('/zoho-campaign/mailing-lists', [AdminController::class, 'getMailingLists'])->name('zoho.mailing-lists');
+    Route::post('/zoho-campaign/create-campaign', [AdminController::class, 'createCampaign'])->name('zoho.create-campaign');
+    Route::get('/zoho-campaign/stats/{campaignKey}', [AdminController::class, 'getCampaignStats'])->name('zoho.campaign-stats');
+    
     // AI User Insights Chatbot
     Route::post('/ai-user-insights', [AdminController::class, 'handleUserInsights'])->name('ai.user-insights');
     Route::get('/user-insights', [AdminController::class, 'userInsightsPage'])->name('user-insights');

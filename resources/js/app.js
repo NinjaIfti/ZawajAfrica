@@ -8,6 +8,7 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import axios from 'axios';
 import csrfUtils from './utils/csrf.js';
+import './utils/activityTracker.js'; // Initialize activity tracking
 
 const appName = import.meta.env.VITE_APP_NAME || 'ZawajAfrica';
 

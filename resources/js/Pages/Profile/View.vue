@@ -296,7 +296,7 @@
             age: age || '?',
             verified: user.is_verified || false,
             location: location || 'Location not specified',
-            online: true, // This would be dynamic in a real app
+            online: user.is_online || false,
             image: image,
             photos: allPhotos,
             compatibility: props.compatibility || 85,

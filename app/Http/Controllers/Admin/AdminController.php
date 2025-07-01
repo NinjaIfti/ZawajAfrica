@@ -181,7 +181,7 @@ class AdminController extends Controller
      */
     public function verifications()
     {
-        // Log current verification statuses for debugging
+
         $allVerifications = DB::table('verifications')->select('id', 'user_id', 'status')->get();
         \Log::info('All verifications:', ['verifications' => $allVerifications]);
         
@@ -193,7 +193,7 @@ class AdminController extends Controller
                     'verifications.verified_at', 'verifications.status', 'verifications.document_type')
             ->get();
             
-        // Debug the approved verifications
+
         \Log::info('Approved users count (direct query): ' . $approvedUsers->count());
         
         // Also check for users with is_verified=true but verification status not approved
@@ -365,7 +365,7 @@ class AdminController extends Controller
             return redirect()->route('admin.verifications')->with('error', 'User has no verification record');
         }
         
-        // Debug before approving
+        
         \Log::info('Before approval:', ['user_id' => $userId, 'verification' => $user->verification]);
         
         DB::transaction(function () use ($user) {
@@ -397,7 +397,7 @@ class AdminController extends Controller
             // Don't fail the approval process if email fails
         }
         
-        // Debug after approving
+        
         $refreshedUser = User::with('verification')->find($userId);
         \Log::info('After approval:', ['user_id' => $userId, 'verification' => $refreshedUser->verification]);
         
@@ -419,7 +419,7 @@ class AdminController extends Controller
             return redirect()->route('admin.verifications')->with('error', 'User has no verification record');
         }
         
-        // Debug before rejecting
+        
         \Log::info('Before rejection:', ['user_id' => $userId, 'verification' => $user->verification]);
         
         $rejectionReason = $request->reason;
@@ -451,7 +451,7 @@ class AdminController extends Controller
             // Don't fail the rejection process if email fails
         }
         
-        // Debug after rejecting
+        
         $refreshedUser = User::with('verification')->find($userId);
         \Log::info('After rejection:', ['user_id' => $userId, 'verification' => $refreshedUser->verification]);
         
@@ -1101,80 +1101,11 @@ class AdminController extends Controller
                 ], 400);
             }
 
-            // Configure Zoho Mail
-            $zohoMailService = app(\App\Services\ZohoMailService::class);
-            
-            if (!$zohoMailService->isConfigured()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Zoho HTTP API not properly configured'
-                ], 500);
-            }
-
-            $sentCount = 0;
-            $failedCount = 0;
-            $batchSize = 5; // Reduced batch size
-            $delayMicroseconds = 500000; // 0.5 seconds instead of 1 second
-
-            // Process in smaller batches with shorter delays
-            $users->chunk($batchSize)->each(function ($userChunk) use ($request, &$sentCount, &$failedCount, $delayMicroseconds, $zohoMailService) {
-                foreach ($userChunk as $user) {
-                    try {
-                        // Use HTTP API for individual email sending
-                        $httpService = app(\App\Services\ZohoHttpEmailService::class);
-                        $result = $httpService->sendNotificationEmail(
-                            'admin',
-                            $user->email,
-                            $request->subject,
-                            $request->body,
-                            $user->name
-                        );
-                        
-                        if ($result['success']) {
-                            $sentCount++;
-                        } else {
-                            $failedCount++;
-                            Log::error('Failed to send broadcast email to user via HTTP API', [
-                                'user_id' => $user->id,
-                                'user_email' => $user->email,
-                                'error' => $result['error']
-                            ]);
-                        }
-                        
-                        // Shorter delay to prevent rate limiting
-                        usleep($delayMicroseconds);
-                        
-                    } catch (\Exception $e) {
-                        $failedCount++;
-                        Log::error('Failed to send broadcast email to user', [
-                            'user_id' => $user->id,
-                            'user_email' => $user->email,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
-            });
-
-            Log::info('Broadcast email campaign completed', [
-                'target_audience' => $request->target_audience,
-                'total_users' => $users->count(),
-                'sent_count' => $sentCount,
-                'failed_count' => $failedCount,
-                'subject' => $request->subject,
-                'is_edited' => $request->input('is_edited', false),
-                'admin_id' => auth()->id()
-            ]);
-
+            // Broadcasting is not available - use Zoho opt-in form instead
             return response()->json([
-                'success' => true,
-                'message' => "Broadcast sent successfully to {$sentCount} users" . 
-                           ($failedCount > 0 ? " ({$failedCount} failed)" : ""),
-                'stats' => [
-                    'total_users' => $users->count(),
-                    'sent_count' => $sentCount,
-                    'failed_count' => $failedCount
-                ]
-            ]);
+                'success' => false,
+                'error' => 'Broadcasting is not available. Please use the Zoho opt-in form for email campaigns.'
+            ], 503);
 
         } catch (\Exception $e) {
             Log::error('Broadcast email campaign failed', [
@@ -2062,4 +1993,5 @@ Please analyze this data and provide insights that answer the admin's query. Inc
 
 Keep your response conversational but professional, and focus on actionable insights for platform management.";
     }
+
 } 
