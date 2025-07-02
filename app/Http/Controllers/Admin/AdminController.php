@@ -1994,4 +1994,168 @@ Please analyze this data and provide insights that answer the admin's query. Inc
 Keep your response conversational but professional, and focus on actionable insights for platform management.";
     }
 
+    /**
+     * Import users to Zoho Campaign
+     */
+    public function importUsersToZoho(Request $request)
+    {
+        $request->validate([
+            'target_audience' => 'required|string|in:all,premium,basic,free',
+            'list_name' => 'nullable|string|max:255',
+            'existing_list_key' => 'nullable|string|max:100'
+        ]);
+
+        try {
+            $zohoCampaignService = new \App\Services\ZohoCampaignService();
+
+            if (!$zohoCampaignService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zoho Campaign is not properly configured. Please check your environment variables.'
+                ], 500);
+            }
+
+            $result = $zohoCampaignService->importUsers(
+                $request->target_audience,
+                $request->list_name,
+                $request->existing_list_key
+            );
+
+            Log::info('Zoho Campaign import request', [
+                'admin_id' => auth()->id(),
+                'target_audience' => $request->target_audience,
+                'result' => $result
+            ]);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to import users to Zoho Campaign', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Import failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Zoho Campaign mailing lists
+     */
+    public function getMailingLists()
+    {
+        try {
+            $zohoCampaignService = new \App\Services\ZohoCampaignService();
+
+            if (!$zohoCampaignService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zoho Campaign is not properly configured. Please check your environment variables.'
+                ], 500);
+            }
+
+            $result = $zohoCampaignService->getMailingLists();
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch Zoho Campaign mailing lists', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch mailing lists: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create and send a Zoho Campaign
+     */
+    public function createCampaign(Request $request)
+    {
+        $request->validate([
+            'list_key' => 'required|string',
+            'subject' => 'required|string|max:255',
+            'content' => 'required|string',
+            'campaign_name' => 'nullable|string|max:255'
+        ]);
+
+        try {
+            $zohoCampaignService = new \App\Services\ZohoCampaignService();
+
+            if (!$zohoCampaignService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zoho Campaign is not properly configured. Please check your environment variables.'
+                ], 500);
+            }
+
+            $result = $zohoCampaignService->createCampaign(
+                $request->list_key,
+                $request->subject,
+                $request->content,
+                $request->campaign_name
+            );
+
+            Log::info('Zoho Campaign creation request', [
+                'admin_id' => auth()->id(),
+                'list_key' => $request->list_key,
+                'subject' => $request->subject,
+                'result' => $result
+            ]);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create Zoho Campaign', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Campaign creation failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Zoho Campaign statistics
+     */
+    public function getCampaignStats(string $campaignKey)
+    {
+        try {
+            $zohoCampaignService = new \App\Services\ZohoCampaignService();
+
+            if (!$zohoCampaignService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zoho Campaign is not properly configured. Please check your environment variables.'
+                ], 500);
+            }
+
+            $result = $zohoCampaignService->getCampaignStats($campaignKey);
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch Zoho Campaign stats', [
+                'admin_id' => auth()->id(),
+                'campaign_key' => $campaignKey,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch campaign stats: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 } 

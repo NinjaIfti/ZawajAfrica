@@ -63,7 +63,7 @@ class DebugZohoTokens extends Command
             }
             $this->line('');
             
-            $response = Http::timeout(30)->post('https://accounts.zoho.com/oauth/v2/token', $requestData);
+            $response = Http::asForm()->timeout(30)->post('https://accounts.zoho.com/oauth/v2/token', $requestData);
             
             $this->info('📡 Response Details:');
             $this->info("Status Code: " . $response->status());

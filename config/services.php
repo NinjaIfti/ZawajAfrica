@@ -104,7 +104,15 @@ return [
         'webhook_secret' => env('ZOHO_BOOKINGS_WEBHOOK_SECRET'),
     ],
 
-
-
+    'zoho_campaign' => [
+        'enabled' => env('ZOHO_CAMPAIGN_ENABLED', false),
+        'client_id' => env('ZOHO_CAMPAIGN_CLIENT_ID'),
+        'client_secret' => env('ZOHO_CAMPAIGN_CLIENT_SECRET'),
+        'refresh_token' => env('ZOHO_CAMPAIGN_REFRESH_TOKEN'),
+        'from_email' => env('ZOHO_CAMPAIGN_FROM_EMAIL', 'admin@zawajafrica.com.ng'),
+        'from_name' => env('ZOHO_CAMPAIGN_FROM_NAME', 'ZawajAfrica'),
+        'data_center' => env('ZOHO_CAMPAIGN_DATA_CENTER', 'com'),
+        'redirect_uri' => env('ZOHO_CAMPAIGN_REDIRECT_URI', 'https://zawajafrica.com.ng/zoho-callback'),
+    ],
 
 ];

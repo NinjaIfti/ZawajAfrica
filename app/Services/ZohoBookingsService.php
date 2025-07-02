@@ -64,7 +64,8 @@ class ZohoBookingsService
     private function refreshAccessToken(): ?string
     {
         try {
-            $response = Http::asForm()->post("https://accounts.zoho.{$this->dataCenter}/oauth/v2/token", [
+            $tokenUrl = "https://accounts.zoho.com/oauth/v2/token";
+            $response = Http::asForm()->post($tokenUrl, [
                 'refresh_token' => $this->refreshToken,
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,

@@ -3,22 +3,8 @@
         <!-- Import Users Section -->
         <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-                <div class="flex items-center justify-between mb-4">
+                <div class="mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Import Users to Zoho Campaign</h3>
-                    <div class="flex space-x-2">
-                        <button @click="refreshMailingLists" 
-                                :disabled="isLoadingLists" 
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-                            <svg v-if="isLoadingLists" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Refresh Lists
-                        </button>
-                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -33,12 +19,50 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">List Name (Optional)</label>
-                        <input v-model="importForm.list_name" 
-                               type="text" 
-                               placeholder="Leave empty for auto-generated name"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">List Option</label>
+                        <select v-model="importForm.list_option" 
+                                @change="onListOptionChange"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="new">Create New List</option>
+                            <option value="existing">Add to Existing List</option>
+                        </select>
                     </div>
+                </div>
+                
+                <!-- New List Name Input (shown when creating new list) -->
+                <div v-if="importForm.list_option === 'new'" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">New List Name</label>
+                    <input v-model="importForm.list_name" 
+                           type="text" 
+                           placeholder="Enter name for new list (leave empty for auto-generated)"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <p class="mt-1 text-sm text-gray-500">If left empty, a name will be auto-generated based on audience and date.</p>
+                </div>
+                
+                <!-- Existing List Selector (shown when adding to existing list) -->
+                <div v-if="importForm.list_option === 'existing'" class="mt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700">Select Existing List</label>
+                        <button @click="refreshMailingLists" 
+                                :disabled="isLoadingLists" 
+                                class="text-xs text-indigo-600 hover:text-indigo-500 disabled:opacity-50">
+                            {{ isLoadingLists ? 'Refreshing...' : 'Refresh' }}
+                        </button>
+                    </div>
+                    <select v-model="importForm.existing_list_key" 
+                            :disabled="isLoadingLists || mailingLists.length === 0"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50">
+                        <option value="">{{ isLoadingLists ? 'Loading lists...' : mailingLists.length === 0 ? 'No lists available' : 'Choose a list...' }}</option>
+                        <option v-for="list in mailingLists" :key="list.listkey" :value="list.listkey">
+                            {{ list.listname }} ({{ list.noofcontacts || 0 }} contacts)
+                        </option>
+                    </select>
+                    <p v-if="!isLoadingLists && mailingLists.length === 0" class="mt-1 text-sm text-orange-600">
+                        No existing lists found. Create a new list first or refresh to check again.
+                    </p>
+                    <p v-else class="mt-1 text-sm text-gray-500">
+                        Users will be added to the selected list.
+                    </p>
                 </div>
                 
                 <div class="mt-4">
@@ -52,7 +76,7 @@
                         <svg v-else class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        {{ isImporting ? 'Importing...' : 'Import Users to Zoho' }}
+                        {{ isImporting ? 'Importing...' : importForm.list_option === 'new' ? 'Create List & Import Users' : 'Add Users to Existing List' }}
                     </button>
                 </div>
 
@@ -92,7 +116,7 @@
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                             <option value="">Select a mailing list...</option>
                             <option v-for="list in mailingLists" :key="list.listkey" :value="list.listkey">
-                                {{ list.listname }} ({{ list.list_count || 0 }} contacts)
+                                {{ list.listname }} ({{ list.noofcontacts || 0 }} contacts)
                             </option>
                         </select>
                     </div>
@@ -186,7 +210,7 @@
                     <div v-for="list in mailingLists" :key="list.listkey" 
                          class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
                         <h4 class="font-medium text-gray-900 mb-2">{{ list.listname }}</h4>
-                        <p class="text-sm text-gray-500 mb-2">{{ list.list_count || 0 }} contacts</p>
+                        <p class="text-sm text-gray-500 mb-2">{{ list.noofcontacts || 0 }} contacts</p>
                         <p class="text-xs text-gray-400">Created: {{ formatDate(list.created_time) }}</p>
                     </div>
                 </div>
@@ -206,7 +230,9 @@ const mailingLists = ref([]);
 
 const importForm = reactive({
     target_audience: 'all',
-    list_name: ''
+    list_option: 'new',
+    list_name: '',
+    existing_list_key: ''
 });
 
 const campaignForm = reactive({
@@ -229,27 +255,58 @@ const clearMessages = () => {
     campaignError.value = '';
 };
 
+const onListOptionChange = () => {
+    // Clear form fields when switching between options
+    importForm.list_name = '';
+    importForm.existing_list_key = '';
+    clearMessages();
+};
+
 const importUsers = async () => {
     clearMessages();
+    
+    // Validate form based on selected option
+    if (importForm.list_option === 'existing' && !importForm.existing_list_key) {
+        importError.value = 'Please select an existing list.';
+        return;
+    }
+    
     isImporting.value = true;
     
     try {
+        // Prepare payload based on selected option
+        const payload = {
+            target_audience: importForm.target_audience
+        };
+        
+        if (importForm.list_option === 'new') {
+            // Creating new list
+            payload.list_name = importForm.list_name;
+        } else {
+            // Using existing list
+            payload.existing_list_key = importForm.existing_list_key;
+        }
+        
         const response = await fetch(route('admin.zoho.import-users'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             },
-            body: JSON.stringify(importForm),
+            body: JSON.stringify(payload),
         });
 
         const data = await response.json();
 
         if (data.success) {
             importSuccess.value = data.message;
-            // Reset form
-            importForm.list_name = '';
-            // Refresh mailing lists
+            // Reset form fields
+            if (importForm.list_option === 'new') {
+                importForm.list_name = '';
+            } else {
+                importForm.existing_list_key = '';
+            }
+            // Refresh mailing lists to show updated contact counts
             await refreshMailingLists();
         } else {
             importError.value = data.error || 'Failed to import users';

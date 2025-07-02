@@ -8,6 +8,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Middleware\TierAccessMiddleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 // Include admin routes
 require __DIR__.'/admin.php';
@@ -465,6 +467,99 @@ Route::get('/mobile-login', function () {
         'canResetPassword' => Route::has('password.request'),
         'status' => session('status'),
     ]);
+});
+
+// Temporary debug route for Zoho Campaign
+Route::get('/debug-zoho-web', function() {
+    $clientId = config('services.zoho_campaign.client_id');
+    $clientSecret = config('services.zoho_campaign.client_secret');
+    $refreshToken = config('services.zoho_campaign.refresh_token');
+    $tokenUrl = "https://accounts.zoho.com/oauth/v2/token";
+
+    $output = [];
+    $output[] = '🔍 Zoho Campaign Debug (Web Context)';
+    $output[] = '';
+    $output[] = 'Configuration:';
+    $output[] = '  client_id: ' . ($clientId ?: 'NULL');
+    $output[] = '  client_secret: ' . ($clientSecret ? substr($clientSecret, 0, 8) . '...' : 'NULL');
+    $output[] = '  refresh_token: ' . ($refreshToken ? substr($refreshToken, 0, 8) . '...' : 'NULL');
+    $output[] = '';
+
+    try {
+        // Test direct token refresh (same as CLI)
+        $response = Http::asForm()->timeout(30)->post($tokenUrl, [
+            'grant_type' => 'refresh_token',
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'refresh_token' => $refreshToken,
+        ]);
+
+        $output[] = 'Direct Token Refresh:';
+        $output[] = '  Status: ' . $response->status();
+        
+        if ($response->successful()) {
+            $data = $response->json();
+            $output[] = '  ✅ SUCCESS: Direct token refresh worked';
+            $output[] = '  Raw Response: ' . $response->body();
+            $output[] = '  Parsed JSON: ' . json_encode($data, JSON_PRETTY_PRINT);
+            $output[] = '  Access Token Key Exists: ' . (isset($data['access_token']) ? 'YES' : 'NO');
+            $output[] = '  Access Token Value: ' . ($data['access_token'] ?? 'NULL');
+            $output[] = '  Expires In: ' . ($data['expires_in'] ?? 'Unknown') . ' seconds';
+        } else {
+            $output[] = '  ❌ FAILED: Direct token refresh failed';
+            $output[] = '  Response: ' . $response->body();
+        }
+    } catch (\Exception $e) {
+        $output[] = '  ❌ EXCEPTION: ' . $e->getMessage();
+    }
+
+    $output[] = '';
+
+    try {
+        // Test service getAccessToken method directly
+        $service = new \App\Services\ZohoCampaignService();
+        Cache::forget('zoho_campaign_access_token');
+        
+        // Use reflection to access private method
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('getAccessToken');
+        $method->setAccessible(true);
+        
+        $token = $method->invoke($service);
+        
+        $output[] = 'Service getAccessToken Test:';
+        if ($token) {
+            $output[] = '  ✅ SUCCESS: getAccessToken returned token';
+            $output[] = '  Token: ' . substr($token, 0, 20) . '...';
+        } else {
+            $output[] = '  ❌ FAILED: getAccessToken returned null';
+        }
+    } catch (\Exception $e) {
+        $output[] = '  ❌ EXCEPTION: ' . $e->getMessage();
+    }
+
+    $output[] = '';
+
+    try {
+        // Test service
+        $service = new \App\Services\ZohoCampaignService();
+        Cache::forget('zoho_campaign_access_token');
+        
+        $result = $service->getMailingLists();
+        
+        $output[] = 'Service Full Test:';
+        if ($result['success']) {
+            $output[] = '  ✅ SUCCESS: Service worked';
+            $output[] = '  Lists found: ' . count($result['lists'] ?? []);
+        } else {
+            $output[] = '  ❌ FAILED: Service failed';
+            $output[] = '  Error: ' . ($result['error'] ?? 'Unknown error');
+        }
+    } catch (\Exception $e) {
+        $output[] = '  ❌ EXCEPTION: ' . $e->getMessage();
+    }
+
+    return response('<pre>' . implode("\n", $output) . '</pre>');
 });
 
 require __DIR__.'/auth.php';
