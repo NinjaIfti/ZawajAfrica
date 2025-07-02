@@ -83,9 +83,7 @@ class ZohoCampaignService
                 $accessToken = $data['access_token'] ?? null;
                 $expiresIn = $data['expires_in'] ?? 3600;
 
-                // Debug logging
                 Log::info('Zoho Campaign token refresh successful', [
-                    'access_token_exists' => isset($data['access_token']),
                     'expires_in' => $expiresIn
                 ]);
 
@@ -124,8 +122,12 @@ class ZohoCampaignService
 
     /**
      * Make authenticated API request
+     * @param string $method
+     * @param string $endpoint
+     * @param array $data
+     * @param bool $isFullUrl If true, $endpoint is a full URL and should not be prefixed with baseUrl
      */
-    private function makeRequest(string $method, string $endpoint, array $data = []): array
+    private function makeRequest(string $method, string $endpoint, array $data = [], bool $isFullUrl = false): array
     {
         $accessToken = $this->getAccessToken();
         
@@ -141,10 +143,20 @@ class ZohoCampaignService
                 'Authorization' => 'Zoho-oauthtoken ' . $accessToken,
             ];
 
-            // All requests should be GET with query parameters for Zoho Campaign API
             $data['resfmt'] = 'JSON'; // Always request JSON format
             
-            $response = Http::withHeaders($headers)->timeout(30)->get($this->baseUrl . $endpoint, $data);
+            $url = $isFullUrl ? $endpoint : $this->baseUrl . $endpoint;
+
+            if (strtoupper($method) === 'POST') {
+                $response = Http::withHeaders($headers)
+                    ->asForm()
+                    ->timeout(30)
+                    ->post($url, $data);
+            } else {
+                $response = Http::withHeaders($headers)
+                    ->timeout(30)
+                    ->get($url, $data);
+            }
 
             Log::info('Zoho Campaign API request details', [
                 'method' => $method,
@@ -178,6 +190,18 @@ class ZohoCampaignService
                 } else {
                     // Try to parse as JSON
                     $data = $response->json();
+                    
+                    // Check for JSON error responses
+                    if (isset($data['status']) && $data['status'] === 'error') {
+                        $errorMessage = $data['message'] ?? 'Unknown API error';
+                        $errorCode = $data['Code'] ?? $data['code'] ?? 'unknown';
+                        
+                        return [
+                            'success' => false,
+                            'error' => "Zoho API Error ({$errorCode}): {$errorMessage}",
+                            'raw_response' => $responseBody
+                        ];
+                    }
                 }
 
                 return [
@@ -198,7 +222,7 @@ class ZohoCampaignService
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => 'Exception: ' . $e->getMessage()
             ];
         }
     }
@@ -360,10 +384,8 @@ class ZohoCampaignService
                     ];
                 }
 
-                // Debug logging to see the actual response structure
                 Log::info('Zoho Campaign list creation response', [
-                    'response_data' => $listResult['data'],
-                    'full_response' => $listResult
+                    'list_key' => $listResult['data']['listkey'] ?? 'unknown'
                 ]);
 
                 // Extract list key from successful response
@@ -456,9 +478,113 @@ class ZohoCampaignService
     }
 
     /**
-     * Create and send a campaign
+     * Create a topic for campaign creation (required for accounts with topic management)
      */
-    public function createCampaign(string $listKey, string $subject, string $content, string $campaignName = ''): array
+    public function createTopic(string $topicName = 'Default Campaign Topic', string $topicDesc = 'Default topic for email campaigns'): array
+    {
+        try {
+            // Use v1.1 endpoint with correct parameter names as form data
+            $topicData = [
+                'topic_name' => $topicName,
+                'topic_desc' => $topicDesc
+            ];
+            
+            // Add product_id if configured (might be required for some accounts)
+            $productId = config('services.zoho_campaign.product_id');
+            if (!empty($productId)) {
+                $topicData['product_id'] = $productId;
+                Log::info('Adding product_id to topic creation', ['product_id' => $productId]);
+            }
+            
+            Log::info('Creating Zoho topic with data', [
+                'topic_data' => $topicData
+            ]);
+            
+            // Try v1.1 first, then fallback to v2 if it redirects
+            $result = $this->makeRequest('POST', '/topics', $topicData);
+            
+            // If v1.1 fails and response indicates v2 redirect, try v2 directly
+            if (!$result['success'] && isset($result['data']['uri']) && str_contains($result['data']['uri'], '/api/v2/')) {
+                Log::info('v1.1 redirected to v2, trying v2 endpoint directly');
+                
+                // Switch to v2 endpoint temporarily
+                $originalBaseUrl = $this->baseUrl;
+                $this->baseUrl = "https://campaigns.zoho.{$this->dataCenter}/api/v2";
+                
+                $result = $this->makeRequest('POST', '/topics', $topicData);
+                
+                // Restore original base URL
+                $this->baseUrl = $originalBaseUrl;
+            }
+            
+            if ($result['success']) {
+                Log::info('Zoho topic created successfully', [
+                    'topic_data' => $result['data']
+                ]);
+                
+                return $result;
+            }
+            
+            return [
+                'success' => false,
+                'error' => 'Failed to create topic: ' . ($result['error'] ?? 'Unknown error'),
+                'data' => []
+            ];
+            
+        } catch (Exception $e) {
+            Log::error('Failed to create Zoho topic', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Topic creation failed: ' . $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Get available topics for campaign creation
+     */
+    public function getTopics(): array
+    {
+        try {
+            Log::info('Fetching topics from Zoho Campaigns');
+            
+            $result = $this->makeRequest('GET', '/topics');
+            
+            if ($result['success']) {
+                Log::info('Topics fetched successfully', [
+                    'topics_data' => $result['data']
+                ]);
+                
+                return $result;
+            }
+            
+            return [
+                'success' => false,
+                'error' => 'Failed to fetch topics: ' . ($result['error'] ?? 'Unknown error'),
+                'data' => []
+            ];
+            
+        } catch (Exception $e) {
+            Log::error('Failed to fetch Zoho topics', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Topics fetch failed: ' . $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Create a campaign
+     */
+    public function createCampaign(string $listKey, string $subject, string $content, ?string $campaignName = ''): array
     {
         try {
             // Generate campaign name if not provided
@@ -466,27 +592,107 @@ class ZohoCampaignService
                 $campaignName = $subject . ' - ' . now()->format('M d, Y');
             }
 
-            // Create campaign
-            $campaignData = [
-                'campaignname' => $campaignName,
-                'subject' => $subject,
-                'fromemailid' => $this->fromEmail,
-                'fromemail' => $this->fromName,
-                'list' => [$listKey],
-                'htmlcontent' => $this->formatHtmlContent($content),
-                'textcontent' => strip_tags($content)
-            ];
+            // Instead of using a hardcoded template URL, we'll format the content properly
+            $formattedContent = $this->formatHtmlContent($content);
 
-            $createResult = $this->makeRequest('POST', '/campaigns', $campaignData);
-
-            if (!$createResult['success']) {
-                return [
-                    'success' => false,
-                    'error' => 'Failed to create campaign: ' . $createResult['error']
-                ];
+            // Try to get existing topics first, then create if none exist
+            $topicsResult = $this->getTopics();
+            $validTopicId = null;
+            
+            if ($topicsResult['success'] && !empty($topicsResult['data'])) {
+                // Extract topic ID from existing topics
+                $topicsData = $topicsResult['data'];
+                
+                // Check for topicDetails array (as returned by the API)
+                if (isset($topicsData['topicDetails']) && is_array($topicsData['topicDetails']) && !empty($topicsData['topicDetails'])) {
+                    $firstTopic = $topicsData['topicDetails'][0];
+                    $validTopicId = $firstTopic['topicId'] ?? $firstTopic['topic_id'] ?? $firstTopic['id'] ?? null;
+                } elseif (isset($topicsData['topics']) && is_array($topicsData['topics']) && !empty($topicsData['topics'])) {
+                    $firstTopic = $topicsData['topics'][0];
+                    $validTopicId = $firstTopic['topic_id'] ?? $firstTopic['topicId'] ?? $firstTopic['id'] ?? null;
+                } elseif (is_array($topicsData) && !empty($topicsData)) {
+                    // If topics data is directly an array
+                    $firstTopic = $topicsData[0];
+                    $validTopicId = $firstTopic['topic_id'] ?? $firstTopic['topicId'] ?? $firstTopic['id'] ?? null;
+                }
+                
+                Log::info('Found existing topics', [
+                    'topics_data' => $topicsData,
+                    'extracted_topic_id' => $validTopicId
+                ]);
+            } else {
+                // If no topics exist, try to create one
+                Log::info('No existing topics found, attempting to create one');
+                $topicResult = $this->createTopic("ZawajAfrica Campaign Topic", "Topic for ZawajAfrica email campaigns");
+                
+                if ($topicResult['success'] && !empty($topicResult['data'])) {
+                    $topicData = $topicResult['data'];
+                    $validTopicId = $topicData['topic_id'] ?? $topicData['topicId'] ?? $topicData['id'] ?? null;
+                    
+                    Log::info('Topic creation result', [
+                        'topic_data' => $topicData,
+                        'extracted_topic_id' => $validTopicId
+                    ]);
+                }
             }
 
-            $campaignKey = $createResult['data']['campaign_key'] ?? null;
+            // Use the v1.1 endpoint consistently
+            $fullUrl = "https://campaigns.zoho.{$this->dataCenter}/api/v1.1/createCampaign";
+            $campaignData = [
+                'resfmt' => 'JSON',
+                'campaignname' => $campaignName,
+                'from_email' => $this->fromEmail,
+                'fromname' => $this->fromName,
+                'subject' => $subject,
+                'htmlcontent' => $formattedContent, // Use htmlcontent instead of content_url
+                'list_details' => json_encode([$listKey => []])
+            ];
+            
+            // Add topicId (required for accounts with topic management)
+            $configTopicId = config('services.zoho_campaign.topic_id');
+            if (!empty($configTopicId)) {
+                $campaignData['topicId'] = $configTopicId;
+            } elseif (!empty($validTopicId)) {
+                $campaignData['topicId'] = $validTopicId;
+                Log::info('Using created topicId', ['topicId' => $validTopicId]);
+            } else {
+                // Try without topicId first - maybe it's not actually required
+                Log::info('No topicId available, trying without it');
+            }
+            
+            Log::info('Zoho createCampaign request data', ['request_data' => $campaignData]);
+            $createResult = $this->makeRequest('POST', $fullUrl, $campaignData, true);
+            Log::info('Raw Zoho createCampaign response', [ 'result' => $createResult ]);
+            
+            // If v1.1 fails and response indicates v2 redirect, try v2 directly
+            if (!$createResult['success'] && isset($createResult['data']['uri']) && str_contains($createResult['data']['uri'], '/api/v2/')) {
+                Log::info('Campaign creation v1.1 redirected to v2, trying v2 endpoint directly');
+                
+                $v2Url = "https://campaigns.zoho.{$this->dataCenter}/api/v2/createCampaign";
+                $createResult = $this->makeRequest('POST', $v2Url, $campaignData, true);
+                Log::info('v2 createCampaign response', [ 'result' => $createResult ]);
+            }
+
+            if (!$createResult['success']) {
+                Log::error('Campaign creation failed', [
+                    'error' => $createResult['error'],
+                    'response_data' => $createResult['data'] ?? null
+                ]);
+                return [
+                    'success' => false,
+                    'error' => 'Failed to create campaign: ' . $createResult['error'],
+                    'raw_response' => $createResult
+                ];
+            }
+            
+            Log::info('Campaign creation successful', [
+                'campaign_key' => $createResult['data']['campaignKey'] ?? $createResult['data']['campaign_key'] ?? 'unknown'
+            ]);
+
+            // Check for campaignKey in different possible field names
+            $campaignKey = $createResult['data']['campaignKey'] ?? 
+                          $createResult['data']['campaign_key'] ?? 
+                          $createResult['data']['CampaignKey'] ?? null;
 
             if (!$campaignKey) {
                 return [
@@ -495,21 +701,11 @@ class ZohoCampaignService
                 ];
             }
 
-            // Schedule campaign to send immediately
-            $scheduleResult = $this->makeRequest('POST', "/campaigns/{$campaignKey}/actions/send");
-
-            if ($scheduleResult['success']) {
-                return [
-                    'success' => true,
-                    'message' => "Campaign '{$campaignName}' created and scheduled successfully",
-                    'campaign_key' => $campaignKey
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'error' => 'Campaign created but failed to schedule: ' . $scheduleResult['error']
-                ];
-            }
+            return [
+                'success' => true,
+                'message' => "Campaign '{$campaignName}' created successfully",
+                'campaign_key' => $campaignKey
+            ];
 
         } catch (Exception $e) {
             Log::error('Failed to create Zoho Campaign', [
@@ -526,38 +722,105 @@ class ZohoCampaignService
     }
 
     /**
+     * Send a campaign that has been created
+     * Uses the correct Zoho Campaign API v1.1 endpoint
+     */
+    public function sendCampaign(string $campaignKey): array
+    {
+        try {
+            // Correct endpoint from Zoho documentation
+            $sendUrl = "https://campaigns.zoho.{$this->dataCenter}/api/v1.1/sendcampaign";
+            $sendData = [
+                'resfmt' => 'JSON',
+                'campaignkey' => $campaignKey  // Lowercase 'campaignkey' per documentation
+            ];
+
+            Log::info('Sending Zoho Campaign', [
+                'campaign_key' => $campaignKey,
+                'request_data' => $sendData
+            ]);
+
+            $result = $this->makeRequest('POST', $sendUrl, $sendData, true);
+            
+            if (!$result['success']) {
+                Log::error('Campaign sending failed', [
+                    'campaign_key' => $campaignKey,
+                    'error' => $result['error'],
+                    'response_data' => $result['data'] ?? null
+                ]);
+                return [
+                    'success' => false,
+                    'error' => 'Failed to send campaign: ' . $result['error']
+                ];
+            }
+
+            Log::info('Campaign sent successfully', [
+                'campaign_key' => $campaignKey,
+                'response_data' => $result['data']
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Campaign sent successfully',
+                'data' => $result['data']
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Failed to send Zoho Campaign', [
+                'error' => $e->getMessage(),
+                'campaign_key' => $campaignKey
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Campaign sending failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Create and immediately send a campaign
+     * Now with working send functionality
+     */
+    public function createAndSendCampaign(string $listKey, string $subject, string $content, ?string $campaignName = '', bool $sendImmediately = false): array
+    {
+        // First create the campaign
+        $createResult = $this->createCampaign($listKey, $subject, $content, $campaignName);
+        
+        if (!$createResult['success']) {
+            return $createResult;
+        }
+
+        // If sendImmediately is true, send the campaign
+        if ($sendImmediately) {
+            $campaignKey = $createResult['campaign_key'];
+            $sendResult = $this->sendCampaign($campaignKey);
+            
+            if (!$sendResult['success']) {
+                return [
+                    'success' => false,
+                    'error' => 'Campaign created but failed to send: ' . $sendResult['error'],
+                    'campaign_key' => $campaignKey
+                ];
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Campaign created and sent successfully',
+                'campaign_key' => $campaignKey,
+                'send_data' => $sendResult['data']
+            ];
+        }
+
+        return $createResult;
+    }
+
+    /**
      * Get campaign statistics
      */
     public function getCampaignStats(string $campaignKey): array
     {
         return $this->makeRequest('GET', "/campaigns/{$campaignKey}/stats");
-    }
-
-    /**
-     * Test the connection to Zoho Campaign API
-     */
-    public function testConnection(): array
-    {
-        if (!$this->isConfigured()) {
-            return [
-                'success' => false,
-                'error' => 'Zoho Campaign is not properly configured'
-            ];
-        }
-
-        $result = $this->getMailingLists();
-        
-        if ($result['success']) {
-            return [
-                'success' => true,
-                'message' => 'Successfully connected to Zoho Campaign API'
-            ];
-        }
-
-        return [
-            'success' => false,
-            'error' => 'Failed to connect to Zoho Campaign API: ' . $result['error']
-        ];
     }
 
     /**
@@ -597,31 +860,18 @@ class ZohoCampaignService
      */
     private function formatHtmlContent(string $content): string
     {
-        // Convert line breaks to <br> tags
-        $htmlContent = nl2br($content);
+        // For Zoho Campaign API, we need to keep the content short
+        // Convert line breaks to <br> tags and add basic styling
+        $htmlContent = nl2br(htmlspecialchars($content));
         
-        // Wrap in basic HTML structure
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='utf-8'>
-            <meta name='viewport' content='width=device-width, initial-scale=1'>
-            <title>{$this->fromName}</title>
-        </head>
-        <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;'>
-            <div style='text-align: center; margin-bottom: 30px;'>
-                <h1 style='color: #6B4FA0;'>{$this->fromName}</h1>
-            </div>
-            <div style='background: #f9f9f9; padding: 20px; border-radius: 8px;'>
-                {$htmlContent}
-            </div>
-            <div style='text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;'>
-                <p>Best regards,<br>The {$this->fromName} Team</p>
-                <p><a href='https://zawajafrica.com.ng' style='color: #6B4FA0;'>Visit ZawajAfrica</a></p>
-            </div>
-        </body>
-        </html>";
+        // Create a simple HTML email without full document structure
+        return "<div style='font-family: Arial, sans-serif; color: #333; padding: 10px;'>" .
+               "<h2 style='color: #6B4FA0; text-align: center;'>{$this->fromName}</h2>" .
+               "<div style='background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0;'>" .
+               $htmlContent .
+               "</div>" .
+               "<p style='text-align: center; font-size: 12px; color: #666;'>Best regards,<br>The {$this->fromName} Team</p>" .
+               "</div>";
     }
 
     /**
@@ -639,5 +889,13 @@ class ZohoCampaignService
             'data_center' => $this->dataCenter,
             'base_url' => $this->baseUrl
         ];
+    }
+
+    /**
+     * Get recently sent campaigns
+     */
+    public function getRecentCampaigns(): array
+    {
+        return $this->makeRequest('GET', '/recentsentcampaigns', []);
     }
 }

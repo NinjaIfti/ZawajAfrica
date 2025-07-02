@@ -57,6 +57,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/zoho-campaign/import-users', [AdminController::class, 'importUsersToZoho'])->name('zoho.import-users');
     Route::get('/zoho-campaign/mailing-lists', [AdminController::class, 'getMailingLists'])->name('zoho.mailing-lists');
     Route::post('/zoho-campaign/create-campaign', [AdminController::class, 'createCampaign'])->name('zoho.create-campaign');
+    Route::post('/zoho-campaign/send-campaign', [AdminController::class, 'sendCampaign'])->name('zoho.send-campaign');
     Route::get('/zoho-campaign/stats/{campaignKey}', [AdminController::class, 'getCampaignStats'])->name('zoho.campaign-stats');
     
     // AI User Insights Chatbot

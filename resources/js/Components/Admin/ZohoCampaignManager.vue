@@ -146,7 +146,31 @@
                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"></textarea>
                     </div>
                     
+                    <!-- Send Options -->
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Campaign Action</label>
+                        <div class="space-y-3">
+                            <label class="inline-flex items-center">
+                                <input type="radio" 
+                                       v-model="campaignForm.send_immediately" 
+                                       :value="false" 
+                                       class="form-radio h-4 w-4 text-indigo-600">
+                                <span class="ml-2 text-sm text-gray-700">Create as Draft</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" 
+                                       v-model="campaignForm.send_immediately" 
+                                       :value="true" 
+                                       class="form-radio h-4 w-4 text-indigo-600">
+                                <span class="ml-2 text-sm text-gray-700">Create and Send Immediately</span>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Drafts can be reviewed and sent later through the Zoho Campaign interface.
+                        </p>
+                    </div>
+                    
+                    <div class="flex space-x-3">
                         <button @click="createCampaign" 
                                 :disabled="!campaignForm.list_key || !campaignForm.subject || !campaignForm.content || isCreatingCampaign" 
                                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
@@ -157,7 +181,7 @@
                             <svg v-else class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
-                            {{ isCreatingCampaign ? 'Creating & Sending...' : 'Create & Send Campaign' }}
+                            {{ isCreatingCampaign ? 'Creating Draft...' : 'Create Campaign Draft' }}
                         </button>
                     </div>
 
@@ -239,7 +263,8 @@ const campaignForm = reactive({
     list_key: '',
     campaign_name: '',
     subject: '',
-    content: ''
+    content: '',
+    send_immediately: false
 });
 
 const importSuccess = ref('');
@@ -367,6 +392,7 @@ const createCampaign = async () => {
             campaignForm.subject = '';
             campaignForm.content = '';
             campaignForm.list_key = '';
+            campaignForm.send_immediately = false;
         } else {
             campaignError.value = data.error || 'Failed to create campaign';
         }

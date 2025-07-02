@@ -2083,7 +2083,8 @@ Keep your response conversational but professional, and focus on actionable insi
             'list_key' => 'required|string',
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
-            'campaign_name' => 'nullable|string|max:255'
+            'campaign_name' => 'nullable|string|max:255',
+            'send_immediately' => 'nullable|boolean'
         ]);
 
         try {
@@ -2096,17 +2097,32 @@ Keep your response conversational but professional, and focus on actionable insi
                 ], 500);
             }
 
-            $result = $zohoCampaignService->createCampaign(
-                $request->list_key,
-                $request->subject,
-                $request->content,
-                $request->campaign_name
-            );
+            $sendImmediately = $request->boolean('send_immediately', false);
+
+            if ($sendImmediately) {
+                // Use the createAndSendCampaign method for immediate sending
+                $result = $zohoCampaignService->createAndSendCampaign(
+                    $request->list_key,
+                    $request->subject,
+                    $request->content,
+                    $request->campaign_name,
+                    true
+                );
+            } else {
+                // Just create the campaign as draft
+                $result = $zohoCampaignService->createCampaign(
+                    $request->list_key,
+                    $request->subject,
+                    $request->content,
+                    $request->campaign_name
+                );
+            }
 
             Log::info('Zoho Campaign creation request', [
                 'admin_id' => auth()->id(),
                 'list_key' => $request->list_key,
                 'subject' => $request->subject,
+                'send_immediately' => $sendImmediately,
                 'result' => $result
             ]);
 
@@ -2122,6 +2138,49 @@ Keep your response conversational but professional, and focus on actionable insi
             return response()->json([
                 'success' => false,
                 'error' => 'Campaign creation failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send an existing Zoho Campaign
+     */
+    public function sendCampaign(Request $request)
+    {
+        $request->validate([
+            'campaign_key' => 'required|string'
+        ]);
+
+        try {
+            $zohoCampaignService = new \App\Services\ZohoCampaignService();
+
+            if (!$zohoCampaignService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Zoho Campaign is not properly configured. Please check your environment variables.'
+                ], 500);
+            }
+
+            $result = $zohoCampaignService->sendCampaign($request->campaign_key);
+
+            Log::info('Zoho Campaign send request', [
+                'admin_id' => auth()->id(),
+                'campaign_key' => $request->campaign_key,
+                'result' => $result
+            ]);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send Zoho Campaign', [
+                'admin_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'campaign_key' => $request->campaign_key ?? 'unknown'
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Campaign sending failed: ' . $e->getMessage()
             ], 500);
         }
     }
