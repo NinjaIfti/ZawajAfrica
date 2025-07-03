@@ -12,10 +12,13 @@
     import DashboardFeedAd from '@/Components/DashboardFeedAd.vue';
     import DisplayAd from '@/Components/DisplayAd.vue';
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
+    import Modal from '@/Components/Modal.vue';
 
     const page = usePage();
     const showPaymentSuccessModal = ref(false);
     const showZohoOptinModal = ref(false);
+    const showPhoneModal = ref(false);
+    const phoneForm = ref({ phone_number: '', error: '', loading: false });
 
     const props = defineProps({
         user: Object,
@@ -394,6 +397,13 @@
             // Always show the modal, even if previously skipped (remove this check to respect skipping)
             showZohoOptinModal.value = true;
         }, 2000); // Show after 2 seconds
+
+        // Check if user is missing phone_number
+        const user = page.props.auth?.user || props.user;
+        if (user && (!user.phone_number || user.phone_number.trim() === '')) {
+            showPhoneModal.value = true;
+            phoneForm.value.phone_number = '';
+        }
     });
 
     const closePaymentSuccessModal = () => {
@@ -404,12 +414,38 @@
         showZohoOptinModal.value = false;
     };
 
+    const submitPhoneNumber = async () => {
+        phoneForm.value.loading = true;
+        phoneForm.value.error = '';
+        try {
+            // Get current user details
+            const user = page.props.auth?.user || props.user;
+            await axios.patch('/profile', {
+                name: user.name,
+                email: user.email,
+                phone_number: phoneForm.value.phone_number
+            });
+            showPhoneModal.value = false;
+            window.location.reload();
+        } catch (error) {
+            phoneForm.value.error = error.response?.data?.errors?.phone_number?.[0] || 'Failed to update phone number.';
+        } finally {
+            phoneForm.value.loading = false;
+        }
+    };
+
     // Remove event listener when component is unmounted
     onUnmounted(() => {
         document.removeEventListener('click', closeDropdown);
         document.removeEventListener('click', closeMobileMenu);
         document.body.classList.remove('overflow-hidden');
     });
+
+    const validatePhoneInput = (e) => {
+        const input = e.target.value;
+        const sanitizedInput = input.replace(/[^0-9+\-\(\)\s]/g, '');
+        phoneForm.value.phone_number = sanitizedInput;
+    };
 </script>
 
 <template>
@@ -706,6 +742,31 @@
             :show="showZohoOptinModal"
             @close="closeZohoOptinModal"
         />
+
+        <Modal :show="showPhoneModal" :closeable="false" maxWidth="sm">
+            <div class="p-8 flex flex-col items-center">
+                <h2 class="text-2xl font-bold mb-2 text-purple-700">Add Your Phone Number</h2>
+                <p class="mb-4 text-gray-600 text-center">For your security and to continue using ZawajAfrica, please enter your phone number. You will not be able to use the app until you provide it.</p>
+                <input
+                    v-model="phoneForm.phone_number"
+                    type="tel"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
+                    placeholder="Enter your phone number"
+                    :disabled="phoneForm.loading"
+                    pattern="[0-9+\-\(\)\s]+"
+                    @input="validatePhoneInput"
+                />
+                <div v-if="phoneForm.error" class="text-red-600 text-sm mb-2">{{ phoneForm.error }}</div>
+                <button
+                    @click="submitPhoneNumber"
+                    :disabled="phoneForm.loading || !phoneForm.phone_number"
+                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg transition duration-200 mt-2 disabled:opacity-50"
+                >
+                    <span v-if="phoneForm.loading">Saving...</span>
+                    <span v-else>Save Phone Number</span>
+                </button>
+            </div>
+        </Modal>
     </div>
 </template>
 

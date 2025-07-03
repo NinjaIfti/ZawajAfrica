@@ -34,6 +34,19 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    // OTP Routes
+    Route::post('otp/send', [App\Http\Controllers\Auth\OtpController::class, 'sendOTP'])
+        ->name('otp.send');
+    
+    Route::post('otp/verify', [App\Http\Controllers\Auth\OtpController::class, 'verifyOTP'])
+        ->name('otp.verify');
+    
+    Route::post('otp/resend', [App\Http\Controllers\Auth\OtpController::class, 'resendOTP'])
+        ->name('otp.resend');
+    
+    Route::get('otp/status', [App\Http\Controllers\Auth\OtpController::class, 'checkStatus'])
+        ->name('otp.status');
 });
 
 // Social Authentication Routes

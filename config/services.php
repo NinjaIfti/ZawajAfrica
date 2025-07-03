@@ -28,6 +28,14 @@ return [
         'key' => env('RESEND_KEY'),
     ],
 
+    'mailersend' => [
+        'api_key' => env('MAILERSEND_API_KEY'),
+        'api_url' => env('MAILERSEND_API_URL', 'https://api.mailersend.com/v1'),
+        'from_email' => env('MAILERSEND_FROM_EMAIL', 'admin@zawajafrica.com.ng'),
+        'from_name' => env('MAILERSEND_FROM_NAME', 'ZawajAfrica'),
+        'enabled' => env('MAILERSEND_ENABLED', false),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
