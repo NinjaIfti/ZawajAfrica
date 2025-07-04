@@ -32,7 +32,7 @@ class NewMessage extends Notification implements ShouldQueue
      */
     public function via($notifiable)
     {
-        return ['database', 'mail'];
+        return ['database'];
     }
 
     /**
@@ -40,6 +40,10 @@ class NewMessage extends Notification implements ShouldQueue
      */
     public function toMail($notifiable)
     {
+        // Configure Zoho Mail before sending
+        $zohoMailService = app(\App\Services\ZohoMailService::class);
+        $zohoMailService->configureMailer();
+
         $messagePreview = strlen($this->message->content) > 100 
             ? substr($this->message->content, 0, 100) . '...' 
             : $this->message->content;

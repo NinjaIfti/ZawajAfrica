@@ -27,7 +27,7 @@ class ZohoMailService
      */
     public function configureMailer(): void
     {
-        Log::debug('ZohoMailService: Using HTTP API, no SMTP configuration needed');
+        // Removed verbose logging to keep logs clean
     }
 
     /**
@@ -44,14 +44,10 @@ class ZohoMailService
     public function sendWithSender(string $senderType, $mailable, $to): bool
     {
         try {
-            // Extract email content from mailable
             $emailAddress = is_string($to) ? $to : $to->email;
             $userName = is_string($to) ? '' : ($to->name ?? '');
-            
-            // Render the mailable to get subject and body
             $rendered = $mailable->render();
             $subject = $mailable->subject ?? 'ZawajAfrica Notification';
-            
             $result = $this->httpEmailService->sendNotificationEmail(
                 $senderType,
                 $emailAddress,
@@ -59,26 +55,20 @@ class ZohoMailService
                 $rendered,
                 $userName
             );
-            
             if ($result['success']) {
-                Log::info("Email sent successfully via HTTP API with {$senderType} sender", [
-                    'to' => $emailAddress,
-                    'subject' => $subject
-                ]);
+                // Success: do not log email content or recipient
                 return true;
             } else {
-                Log::error("Failed to send email via HTTP API with {$senderType} sender", [
+                \Log::error("Failed to send email via HTTP API with {$senderType} sender", [
                     'error' => $result['error'],
-                    'to' => $emailAddress,
-                    'subject' => $subject
+                    'user_id' => is_object($to) ? ($to->id ?? null) : null
                 ]);
                 return false;
             }
-            
         } catch (\Exception $e) {
-            Log::error("HTTP API email service failed", [
+            \Log::error("HTTP API email service failed", [
                 'error' => $e->getMessage(),
-                'to' => is_string($to) ? $to : $to->email ?? 'unknown',
+                'user_id' => is_object($to) ? ($to->id ?? null) : null,
                 'sender_type' => $senderType
             ]);
             return false;

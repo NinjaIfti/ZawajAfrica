@@ -615,12 +615,36 @@ class PaymentController extends Controller
 
         // Send subscription confirmation notification
         try {
-            $user->notify(new \App\Notifications\SubscriptionPurchased(
+            $notification = new \App\Notifications\SubscriptionPurchased(
                 $metadata['plan'],
                 $paymentData['amount'] / 100,
                 $paymentData['reference'],
                 $expiresAt->toDateTime()
-            ));
+            );
+            
+            // Send database notification
+            $user->notify($notification);
+            
+            // Send email via Zoho Mail service separately
+            dispatch(function () use ($user, $notification) {
+                try {
+                    $zohoMailService = app(\App\Services\ZohoMailService::class);
+                    if ($zohoMailService->isConfigured()) {
+                        $zohoMailService->sendWithSender('admin', $notification->toMail($user), $user);
+                        \Log::info("Subscription email sent successfully via Zoho", [
+                            'user_id' => $user->id,
+                            'user_email' => $user->email
+                        ]);
+                    } else {
+                        \Log::warning("Zoho Mail not configured for subscription notifications");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send subscription email via Zoho", [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            })->afterResponse();
             
             Log::info('Subscription confirmation email sent successfully', [
                 'user_id' => $user->id,

@@ -18,7 +18,7 @@ class ZohoHttpEmailService
     public function __construct()
     {
         $this->apiUrl = 'https://mail.zoho.com/api';
-        $this->accessToken = config('services.zoho_mail.api_token');
+        $this->accessToken = $this->getValidAccessToken();
         $this->accountId = config('services.zoho_mail.account_id');
         $this->fromEmail = config('services.zoho_mail.from_address');
         $this->fromName = config('services.zoho_mail.from_name', 'ZawajAfrica');
@@ -28,6 +28,71 @@ class ZohoHttpEmailService
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ];
+    }
+
+    /**
+     * Get valid access token (generate from refresh token if needed)
+     */
+    private function getValidAccessToken(): ?string
+    {
+        // First try to get from cache
+        $cachedToken = \Cache::get('zoho_mail_access_token');
+        if ($cachedToken) {
+            return $cachedToken;
+        }
+
+        // Generate new token from refresh token
+        return $this->generateAccessTokenFromRefreshToken();
+    }
+
+    /**
+     * Generate access token from refresh token
+     */
+    public function generateAccessTokenFromRefreshToken(): ?string
+    {
+        $refreshToken = env('ZOHO_REFRESH_TOKEN');
+        $clientId = env('ZOHO_CLIENT_ID');
+        $clientSecret = env('ZOHO_CLIENT_SECRET');
+
+        if (!$refreshToken || !$clientId || !$clientSecret) {
+            Log::error('Zoho OAuth credentials missing in environment variables');
+            return null;
+        }
+
+        try {
+            $response = Http::asForm()->post('https://accounts.zoho.com/oauth/v2/token', [
+                'refresh_token' => $refreshToken,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'grant_type' => 'refresh_token'
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $accessToken = $data['access_token'];
+                $expiresIn = $data['expires_in'] ?? 3600; // Default 1 hour
+
+                // Cache the token for slightly less than expiry time
+                \Cache::put('zoho_mail_access_token', $accessToken, $expiresIn - 300); // 5 minutes buffer
+
+                Log::info('Zoho access token generated successfully', [
+                    'expires_in' => $expiresIn
+                ]);
+
+                return $accessToken;
+            } else {
+                Log::error('Failed to generate Zoho access token', [
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+                return null;
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception while generating Zoho access token', [
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 
     /**
@@ -49,28 +114,13 @@ class ZohoHttpEmailService
                 'error' => 'Zoho HTTP Email not properly configured'
             ];
         }
-
         try {
             $payload = $this->buildEmailPayload($to, $subject, $body, $toName, $options);
-            
-            Log::info('Sending email via Zoho HTTP API', [
-                'to' => $to,
-                'subject' => $subject
-            ]);
-
-            $response = Http::withHeaders($this->headers)
+            $response = \Http::withHeaders($this->headers)
                           ->timeout(30)
                           ->post($this->apiUrl . '/accounts/' . $this->accountId . '/messages', $payload);
-
             if ($response->successful()) {
                 $responseData = $response->json();
-                
-                Log::info('Email sent successfully via Zoho HTTP API', [
-                    'to' => $to,
-                    'subject' => $subject,
-                    'message_id' => $responseData['messageId'] ?? 'unknown'
-                ]);
-
                 return [
                     'success' => true,
                     'message_id' => $responseData['messageId'] ?? null,
@@ -78,29 +128,20 @@ class ZohoHttpEmailService
                 ];
             } else {
                 $error = $response->json()['error'] ?? 'Unknown error';
-                
-                Log::error('Zoho HTTP API email failed', [
-                    'to' => $to,
-                    'subject' => $subject,
+                \Log::error('Zoho HTTP API email failed', [
                     'status' => $response->status(),
-                    'error' => $error,
-                    'response' => $response->body()
+                    'error' => $error
                 ]);
-
                 return [
                     'success' => false,
                     'error' => "Zoho API Error: {$error}",
                     'status_code' => $response->status()
                 ];
             }
-
         } catch (Exception $e) {
-            Log::error('Zoho HTTP email exception', [
-                'to' => $to,
-                'subject' => $subject,
+            \Log::error('Zoho HTTP email exception', [
                 'error' => $e->getMessage()
             ]);
-
             return [
                 'success' => false,
                 'error' => $e->getMessage()

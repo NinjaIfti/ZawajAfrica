@@ -77,8 +77,10 @@ return [
         'from_address' => env('ZOHO_MAIL_FROM_ADDRESS'),
         'from_name' => env('ZOHO_MAIL_FROM_NAME', 'ZawajAfrica'),
         
-        // Zoho HTTP API Configuration (no SMTP needed)
-        'api_token' => env('ZOHO_MAIL_API_TOKEN'),
+        // Zoho OAuth Configuration
+        'refresh_token' => env('ZOHO_REFRESH_TOKEN'),
+        'client_id' => env('ZOHO_CLIENT_ID'),
+        'client_secret' => env('ZOHO_CLIENT_SECRET'),
         'account_id' => env('ZOHO_MAIL_ACCOUNT_ID'),
         
         // Multiple email addresses for different purposes

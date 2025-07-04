@@ -76,9 +76,12 @@ class NewLikeReceived extends Notification implements ShouldQueue // Implement S
     private function sendEmailNotification($notifiable)
     {
         try {
-            // Configure Zoho Mail before sending
+            // Use Zoho Mail service to send email
             $zohoMailService = app(ZohoMailService::class);
-            $zohoMailService->configureMailer();
+            if (!$zohoMailService->isConfigured()) {
+                \Log::warning('Zoho Mail not configured for like notifications');
+                return;
+            }
 
             $canReveal = $this->canRevealLiker();
             
@@ -102,17 +105,28 @@ class NewLikeReceived extends Notification implements ShouldQueue // Implement S
                           "Best regards,\nZawajAfrica Team";
             }
 
-            // Send simple text email
-            \Mail::raw($content, function ($message) use ($notifiable, $subject) {
-                $message->to($notifiable->email)
-                        ->subject($subject);
-            });
+            // Send email via Zoho Mail service
+            $result = $zohoMailService->sendNotificationEmail(
+                'support',
+                $notifiable->email,
+                $subject,
+                $this->convertPlainTextToHtml($content),
+                $notifiable->name
+            );
 
-            \Log::info('Like email sent successfully (delayed)', [
-                'liker_id' => $this->liker->id,
-                'receiver_id' => $notifiable->id,
-                'subject' => $subject
-            ]);
+            if ($result['success']) {
+                \Log::info('Like email sent successfully via Zoho (delayed)', [
+                    'liker_id' => $this->liker->id,
+                    'receiver_id' => $notifiable->id,
+                    'subject' => $subject
+                ]);
+            } else {
+                \Log::error('Failed to send like email via Zoho', [
+                    'liker_id' => $this->liker->id,
+                    'receiver_id' => $notifiable->id,
+                    'error' => $result['error'] ?? 'Unknown error'
+                ]);
+            }
         } catch (\Exception $e) {
             \Log::error('Failed to send like email', [
                 'liker_id' => $this->liker->id,
@@ -120,6 +134,18 @@ class NewLikeReceived extends Notification implements ShouldQueue // Implement S
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Convert plain text to basic HTML
+     */
+    private function convertPlainTextToHtml(string $text): string
+    {
+        // Convert line breaks to HTML
+        $html = nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+        
+        // Wrap in basic HTML structure
+        return "<div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" . $html . "</div>";
     }
 
     /**

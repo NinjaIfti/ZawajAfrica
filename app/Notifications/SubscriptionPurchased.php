@@ -35,7 +35,7 @@ class SubscriptionPurchased extends Notification
      */
     public function via($notifiable)
     {
-        return ['database', 'mail'];
+        return ['database']; // Handle email separately via Zoho
     }
 
     /**

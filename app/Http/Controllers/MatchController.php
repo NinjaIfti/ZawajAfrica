@@ -390,7 +390,10 @@ class MatchController extends Controller
     {
         try {
             $zohoMailService = app(\App\Services\ZohoMailService::class);
-            $zohoMailService->configureMailer();
+            if (!$zohoMailService->isConfigured()) {
+                \Log::warning('Zoho Mail not configured for like notifications');
+                return;
+            }
 
             // Determine if we can reveal liker's name (based on receiver's tier)
             $tierService = app(\App\Services\UserTierService::class);
@@ -422,16 +425,32 @@ class MatchController extends Controller
                           "Best regards,\nZawajAfrica Team";
             }
 
-            \Mail::raw($content, function ($message) use ($receiver, $subject) {
-                $message->to($receiver->email, $receiver->name)
-                        ->subject($subject);
-            });
+            // Convert plain text to HTML
+            $htmlContent = nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8'));
+            $htmlContent = "<div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" . $htmlContent . "</div>";
 
-            \Log::info('Like email sent successfully', [
-                'liker_id' => $liker->id,
-                'receiver_id' => $receiver->id,
-                'revealed' => $canReveal
-            ]);
+            // Send email via Zoho Mail service
+            $result = $zohoMailService->sendNotificationEmail(
+                'support',
+                $receiver->email,
+                $subject,
+                $htmlContent,
+                $receiver->name
+            );
+
+            if ($result['success']) {
+                \Log::info('Like email sent successfully via Zoho', [
+                    'liker_id' => $liker->id,
+                    'receiver_id' => $receiver->id,
+                    'revealed' => $canReveal
+                ]);
+            } else {
+                \Log::error('Failed to send like email via Zoho', [
+                    'liker_id' => $liker->id,
+                    'receiver_id' => $receiver->id,
+                    'error' => $result['error'] ?? 'Unknown error'
+                ]);
+            }
 
         } catch (\Exception $e) {
             \Log::error('Failed to send like email', [

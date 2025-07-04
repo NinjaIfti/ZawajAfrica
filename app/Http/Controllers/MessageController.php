@@ -191,7 +191,30 @@ class MessageController extends Controller
             $this->tierService->recordActivity($sender, 'messages_sent');
             
             // Send notification to receiver
-            $receiver->notify(new NewMessage($sender, $message));
+            $notification = new NewMessage($sender, $message);
+            
+            // Send database notification immediately
+            $receiver->notify($notification);
+            
+            // Send email notification via Zoho Mail asynchronously
+            dispatch(function () use ($receiver, $notification) {
+                try {
+                    $zohoMailService = app(\App\Services\ZohoMailService::class);
+                    if ($zohoMailService->isConfigured()) {
+                        $zohoMailService->sendWithSender('support', $notification->toMail($receiver), $receiver);
+                        \Log::info("Message notification email sent via Zoho", [
+                            'receiver_id' => $receiver->id
+                        ]);
+                    } else {
+                        \Log::warning("Zoho Mail not configured for message notifications");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send message notification email", [
+                        'receiver_id' => $receiver->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            })->afterResponse();
             
             \Log::info("Message sent successfully", [
                 'message_id' => $message->id,
