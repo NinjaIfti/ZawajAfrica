@@ -24,14 +24,14 @@ const props = defineProps({
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                        User Insights AI Assistant
+                        AI Admin Assistant
                     </h2>
                     <p class="text-sm text-gray-600 mt-1">
-                        Ask questions about user activities, patterns, and platform analytics
+                        Your comprehensive admin helper - generate content, solve problems, analyze data, and more
                     </p>
                 </div>
                 <div class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    Real-time Analytics
+                    Multi-purpose AI Assistant
                 </div>
             </div>
         </template>
@@ -120,23 +120,33 @@ const props = defineProps({
 
                 <!-- Usage Tips -->
                 <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h3 class="text-lg font-medium text-blue-900 mb-4">💡 How to use the AI Assistant</h3>
-                    <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
+                    <h3 class="text-lg font-medium text-blue-900 mb-4">💡 How to use the AI Admin Assistant</h3>
+                    <div class="grid md:grid-cols-3 gap-4 text-sm text-blue-800">
                         <div>
-                            <h4 class="font-medium mb-2">User-specific queries:</h4>
+                            <h4 class="font-medium mb-2">📝 Content Generation:</h4>
                             <ul class="space-y-1 list-disc list-inside">
-                                <li>"Show insights for user ID 123"</li>
-                                <li>"Analyze activity for user John Doe"</li>
-                                <li>"What's the activity pattern for user@email.com"</li>
+                                <li>"Generate a welcome email for new users"</li>
+                                <li>"Create a marketing announcement"</li>
+                                <li>"Write a professional email template"</li>
+                                <li>"Generate content for premium users"</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 class="font-medium mb-2">General analytics:</h4>
+                            <h4 class="font-medium mb-2">🔧 Problem Solving:</h4>
                             <ul class="space-y-1 list-disc list-inside">
-                                <li>"Top 10 most active users today"</li>
-                                <li>"Which users are hitting their daily limits?"</li>
-                                <li>"Show premium user engagement this week"</li>
-                                <li>"Find users who might upgrade to premium"</li>
+                                <li>"Help me solve a user complaint issue"</li>
+                                <li>"Fix a technical problem with messaging"</li>
+                                <li>"Troubleshoot performance issues"</li>
+                                <li>"Resolve security concerns"</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium mb-2">📊 Analytics & Insights:</h4>
+                            <ul class="space-y-1 list-disc list-inside">
+                                <li>"Analyze user engagement trends"</li>
+                                <li>"Show me conversion rate insights"</li>
+                                <li>"Generate a performance report"</li>
+                                <li>"Identify user behavior patterns"</li>
                             </ul>
                         </div>
                     </div>

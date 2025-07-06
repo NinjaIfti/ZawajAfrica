@@ -102,6 +102,10 @@
                                 <p class="mt-1 text-sm text-gray-900">{{ user.email }}</p>
                             </div>
                             <div>
+                                <label class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                <p class="mt-1 text-sm text-gray-900">{{ user.phone_number || 'N/A' }}</p>
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700">Gender</label>
                                 <p class="mt-1 text-sm text-gray-900">{{ user.gender || 'N/A' }}</p>
                             </div>

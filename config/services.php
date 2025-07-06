@@ -125,4 +125,8 @@ return [
         'redirect_uri' => env('ZOHO_CAMPAIGN_REDIRECT_URI', 'https://zawajafrica.com.ng/zoho-callback'),
     ],
 
+    'google' => [
+        'pagespeed_key' => env('GOOGLE_PAGESPEED_KEY'),
+    ],
+
 ];

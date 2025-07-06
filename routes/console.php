@@ -17,3 +17,7 @@ Schedule::command('ai:weekly-reports')->weeklyOn(1, '10:00'); // Send weekly rep
 Schedule::command('ai:send-match-suggestions')->twiceDaily(10, 18); // Send match suggestions at 10 AM and 6 PM
 Schedule::command('emails:send-delayed')->everyMinute()->withoutOverlapping(); // Process delayed like/match emails
 Schedule::command('therapist:send-reminders')->hourly(); // Keep existing therapist reminders
+
+// Birthday reminder automation
+Schedule::command('notifications:send-birthday-reminders --days=7')->dailyAt('10:00'); // Check for birthdays 7 days ahead
+Schedule::command('notifications:send-birthday-reminders --days=1')->dailyAt('10:00'); // Check for birthdays 1 day ahead

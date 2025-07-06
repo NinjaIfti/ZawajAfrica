@@ -1434,6 +1434,61 @@ Keep it professional, data-driven, and actionable for platform administrators.";
     }
 
     /**
+     * Handle comprehensive admin assistant queries
+     */
+    public function handleAdminAssistant(Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|max:1000',
+            'conversation_history' => 'array|max:20'
+        ]);
+
+        try {
+            set_time_limit(180); // 3 minutes for complex admin tasks
+            
+            $query = $request->input('query');
+            $conversationHistory = $request->input('conversation_history', []);
+            
+            // Analyze the query to determine the type of assistance needed
+            $queryAnalysis = $this->analyzeAdminQuery($query);
+            
+            // Generate AI response based on query type
+            $aiResponse = $this->generateAdminAssistantResponse($query, $queryAnalysis, $conversationHistory);
+            
+            if (isset($aiResponse['success']) && $aiResponse['success'] && isset($aiResponse['message'])) {
+                return response()->json([
+                    'success' => true,
+                    'response' => $aiResponse['message'],
+                    'data' => $aiResponse['data'] ?? null,
+                    'query_type' => $queryAnalysis['type']
+                ]);
+            } else {
+                Log::error('AI admin assistant missing message key', [
+                    'admin_id' => auth()->id(),
+                    'query' => $query,
+                    'ai_response' => $aiResponse,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => $aiResponse['error'] ?? 'AI service did not return a valid response. Please try again later.'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('AI admin assistant query failed', [
+                'admin_id' => auth()->id(),
+                'query' => $query,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to process admin assistant query'
+            ], 500);
+        }
+    }
+
+    /**
      * User Insights page with stats
      */
     public function userInsightsPage()
@@ -1992,6 +2047,362 @@ Please analyze this data and provide insights that answer the admin's query. Inc
 5. If relevant, include insights about therapist utilization and performance
 
 Keep your response conversational but professional, and focus on actionable insights for platform management.";
+    }
+
+    /**
+     * Analyze admin query to determine assistance type
+     */
+    private function analyzeAdminQuery(string $query): array
+    {
+        $query = strtolower($query);
+        
+        // Content generation queries
+        if (str_contains($query, 'generate') || str_contains($query, 'create') || str_contains($query, 'write')) {
+            if (str_contains($query, 'email') || str_contains($query, 'message') || str_contains($query, 'template')) {
+                return [
+                    'type' => 'content_generation',
+                    'content_type' => 'email',
+                    'tone' => $this->extractTone($query),
+                    'audience' => $this->extractAudience($query),
+                    'topic' => $this->extractTopic($query)
+                ];
+            }
+            if (str_contains($query, 'announcement') || str_contains($query, 'notification')) {
+                return [
+                    'type' => 'content_generation',
+                    'content_type' => 'announcement',
+                    'tone' => $this->extractTone($query),
+                    'audience' => $this->extractAudience($query),
+                    'topic' => $this->extractTopic($query)
+                ];
+            }
+            if (str_contains($query, 'marketing') || str_contains($query, 'promotion')) {
+                return [
+                    'type' => 'content_generation',
+                    'content_type' => 'marketing',
+                    'tone' => $this->extractTone($query),
+                    'audience' => $this->extractAudience($query),
+                    'topic' => $this->extractTopic($query)
+                ];
+            }
+        }
+        
+        // Problem solving queries
+        if (str_contains($query, 'problem') || str_contains($query, 'issue') || str_contains($query, 'solve') || 
+            str_contains($query, 'fix') || str_contains($query, 'troubleshoot') || str_contains($query, 'help')) {
+            return [
+                'type' => 'problem_solving',
+                'problem_category' => $this->categorizeProblem($query),
+                'urgency' => $this->extractUrgency($query)
+            ];
+        }
+        
+        // Analytics and insights queries
+        if (str_contains($query, 'analyze') || str_contains($query, 'insight') || str_contains($query, 'report') || 
+            str_contains($query, 'data') || str_contains($query, 'statistic') || str_contains($query, 'trend')) {
+            return [
+                'type' => 'analytics_insights',
+                'analysis_type' => $this->categorizeAnalysis($query),
+                'time_range' => $this->extractTimeRange($query),
+                'include_data' => true
+            ];
+        }
+        
+        // Improvement suggestions
+        if (str_contains($query, 'improve') || str_contains($query, 'optimize') || str_contains($query, 'enhance') || 
+            str_contains($query, 'suggest') || str_contains($query, 'recommend') || str_contains($query, 'better')) {
+            return [
+                'type' => 'improvement_suggestions',
+                'area' => $this->extractImprovementArea($query),
+                'include_priorities' => true
+            ];
+        }
+        
+        // General admin assistance
+        return [
+            'type' => 'general_assistance',
+            'include_context' => true
+        ];
+    }
+
+    /**
+     * Generate admin assistant response
+     */
+    private function generateAdminAssistantResponse(string $query, array $queryAnalysis, array $conversationHistory): array
+    {
+        try {
+            $openAIService = app(\App\Services\OpenAIService::class);
+            
+            $prompt = $this->buildAdminAssistantPrompt($query, $queryAnalysis, $conversationHistory);
+            
+            $messages = [
+                ['role' => 'system', 'content' => 'You are an AI assistant helping admin manage the ZawajAfrica dating platform. You can generate content, solve problems, provide insights, and suggest improvements. Be helpful, professional, and actionable.'],
+                ['role' => 'user', 'content' => $prompt]
+            ];
+            
+            $response = $openAIService->chat($messages);
+            
+            // If this is a content generation request, try to extract structured content
+            if ($queryAnalysis['type'] === 'content_generation' && $response['success']) {
+                $extractedContent = $this->extractGeneratedContent($response['message'], $queryAnalysis['content_type']);
+                if ($extractedContent) {
+                    $response['data'] = ['generated_content' => $extractedContent];
+                }
+            }
+            
+            return $response;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to generate admin assistant response', [
+                'error' => $e->getMessage(),
+                'query' => $query
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Failed to generate AI response'
+            ];
+        }
+    }
+
+    /**
+     * Build prompt for admin assistant
+     */
+    private function buildAdminAssistantPrompt(string $query, array $queryAnalysis, array $conversationHistory): string
+    {
+        $contextHistory = '';
+        if (!empty($conversationHistory)) {
+            $recentMessages = array_slice($conversationHistory, -4);
+            $contextHistory = "\n\nRecent conversation context:\n";
+            foreach ($recentMessages as $msg) {
+                $contextHistory .= "- {$msg['role']}: " . substr($msg['content'], 0, 100) . "\n";
+            }
+        }
+        
+        $platformContext = $this->getPlatformContext();
+        
+        $basePrompt = "Admin Query: {$query}
+
+Platform Context:
+{$platformContext}
+
+{$contextHistory}
+
+Query Type: {$queryAnalysis['type']}";
+
+        switch ($queryAnalysis['type']) {
+            case 'content_generation':
+                return $basePrompt . "\n\n" . $this->buildContentGenerationPrompt($queryAnalysis);
+            
+            case 'problem_solving':
+                return $basePrompt . "\n\n" . $this->buildProblemSolvingPrompt($queryAnalysis);
+            
+            case 'analytics_insights':
+                return $basePrompt . "\n\n" . $this->buildAnalyticsPrompt($queryAnalysis);
+            
+            case 'improvement_suggestions':
+                return $basePrompt . "\n\n" . $this->buildImprovementPrompt($queryAnalysis);
+            
+            default:
+                return $basePrompt . "\n\nPlease provide helpful assistance for this admin query. Be specific, actionable, and professional.";
+        }
+    }
+
+    /**
+     * Build content generation prompt
+     */
+    private function buildContentGenerationPrompt(array $analysis): string
+    {
+        $contentType = $analysis['content_type'];
+        $tone = $analysis['tone'] ?? 'professional';
+        $audience = $analysis['audience'] ?? 'all';
+        $topic = $analysis['topic'] ?? 'general';
+        
+        return "Generate {$contentType} content for ZawajAfrica platform.
+
+Requirements:
+- Content Type: {$contentType}
+- Tone: {$tone}
+- Target Audience: {$audience}
+- Topic: {$topic}
+
+For emails, provide both subject and body. For announcements, focus on clear communication. For marketing, be engaging and conversion-focused.
+
+If generating email content, structure your response as:
+Subject: [Email Subject]
+[Email Body Content]";
+    }
+
+    /**
+     * Build problem solving prompt
+     */
+    private function buildProblemSolvingPrompt(array $analysis): string
+    {
+        $category = $analysis['problem_category'] ?? 'general';
+        $urgency = $analysis['urgency'] ?? 'normal';
+        
+        return "Help solve a platform problem.
+
+Problem Category: {$category}
+Urgency: {$urgency}
+
+Please provide:
+1. Problem analysis
+2. Root cause identification
+3. Step-by-step solution
+4. Prevention measures
+5. Additional resources if needed
+
+Be thorough and actionable in your response.";
+    }
+
+    /**
+     * Build analytics prompt
+     */
+    private function buildAnalyticsPrompt(array $analysis): string
+    {
+        $analysisType = $analysis['analysis_type'] ?? 'general';
+        $timeRange = $analysis['time_range'] ?? 'recent';
+        
+        return "Provide analytics and insights for the platform.
+
+Analysis Type: {$analysisType}
+Time Range: {$timeRange}
+
+Please provide:
+1. Key findings and trends
+2. Data interpretation
+3. Actionable insights
+4. Recommendations based on data
+5. Areas requiring attention
+
+Focus on actionable insights that can improve platform performance.";
+    }
+
+    /**
+     * Build improvement prompt
+     */
+    private function buildImprovementPrompt(array $analysis): string
+    {
+        $area = $analysis['area'] ?? 'general';
+        
+        return "Suggest improvements for the platform.
+
+Focus Area: {$area}
+
+Please provide:
+1. Current state analysis
+2. Specific improvement suggestions
+3. Implementation priorities
+4. Expected outcomes
+5. Resource requirements
+
+Be specific and actionable in your recommendations.";
+    }
+
+    /**
+     * Get platform context for AI
+     */
+    private function getPlatformContext(): string
+    {
+        $totalUsers = User::count();
+        $premiumUsers = User::whereNotNull('subscription_plan')
+            ->where('subscription_status', 'active')
+            ->count();
+        $activeUsers = User::where('updated_at', '>=', now()->subDays(7))->count();
+        
+        return "ZawajAfrica is a Muslim dating platform with:
+- Total Users: {$totalUsers}
+- Premium Users: {$premiumUsers}
+- Active Users (7 days): {$activeUsers}
+- Features: User matching, messaging, profile verification, therapist bookings, premium subscriptions
+- Target Audience: Muslim singles looking for marriage
+- Platform Goals: Facilitate meaningful connections, ensure user safety, drive premium conversions";
+    }
+
+    /**
+     * Extract generated content from AI response
+     */
+    private function extractGeneratedContent(string $response, string $contentType): ?array
+    {
+        if ($contentType === 'email') {
+            // Try to extract subject and body
+            if (preg_match('/Subject:\s*(.+?)(?:\n|$)/i', $response, $subjectMatch) &&
+                preg_match('/(?:Subject:.+?\n)(.*)/s', $response, $bodyMatch)) {
+                return [
+                    'subject' => trim($subjectMatch[1]),
+                    'body' => trim($bodyMatch[1])
+                ];
+            }
+        }
+        
+        // For other content types, return the full response as body
+        return [
+            'body' => $response
+        ];
+    }
+
+    /**
+     * Helper methods for query analysis
+     */
+    private function extractTone(string $query): string
+    {
+        if (str_contains($query, 'formal') || str_contains($query, 'professional')) return 'formal';
+        if (str_contains($query, 'friendly') || str_contains($query, 'casual')) return 'friendly';
+        if (str_contains($query, 'exciting') || str_contains($query, 'energetic')) return 'exciting';
+        return 'professional';
+    }
+
+    private function extractAudience(string $query): string
+    {
+        if (str_contains($query, 'premium') || str_contains($query, 'paid')) return 'premium';
+        if (str_contains($query, 'new') || str_contains($query, 'welcome')) return 'new_users';
+        if (str_contains($query, 'all') || str_contains($query, 'everyone')) return 'all';
+        return 'all';
+    }
+
+    private function extractTopic(string $query): string
+    {
+        // Extract topic from query - this is a simplified version
+        $query = strtolower($query);
+        if (str_contains($query, 'welcome')) return 'welcome';
+        if (str_contains($query, 'feature')) return 'new_features';
+        if (str_contains($query, 'update')) return 'platform_update';
+        if (str_contains($query, 'promotion')) return 'promotion';
+        return 'general';
+    }
+
+    private function categorizeProblem(string $query): string
+    {
+        if (str_contains($query, 'technical') || str_contains($query, 'bug')) return 'technical';
+        if (str_contains($query, 'user') || str_contains($query, 'complaint')) return 'user_issue';
+        if (str_contains($query, 'performance') || str_contains($query, 'slow')) return 'performance';
+        if (str_contains($query, 'security') || str_contains($query, 'safety')) return 'security';
+        return 'general';
+    }
+
+    private function extractUrgency(string $query): string
+    {
+        if (str_contains($query, 'urgent') || str_contains($query, 'critical')) return 'high';
+        if (str_contains($query, 'important')) return 'medium';
+        return 'normal';
+    }
+
+    private function categorizeAnalysis(string $query): string
+    {
+        if (str_contains($query, 'user') || str_contains($query, 'engagement')) return 'user_engagement';
+        if (str_contains($query, 'revenue') || str_contains($query, 'conversion')) return 'revenue';
+        if (str_contains($query, 'performance') || str_contains($query, 'technical')) return 'performance';
+        return 'general';
+    }
+
+    private function extractImprovementArea(string $query): string
+    {
+        if (str_contains($query, 'user') || str_contains($query, 'retention')) return 'user_retention';
+        if (str_contains($query, 'revenue') || str_contains($query, 'conversion')) return 'revenue';
+        if (str_contains($query, 'performance') || str_contains($query, 'speed')) return 'performance';
+        if (str_contains($query, 'safety') || str_contains($query, 'security')) return 'safety';
+        return 'general';
     }
 
     /**

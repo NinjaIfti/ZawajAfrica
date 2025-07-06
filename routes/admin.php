@@ -63,5 +63,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // AI User Insights Chatbot
     Route::post('/ai-user-insights', [AdminController::class, 'handleUserInsights'])->name('ai.user-insights');
     Route::get('/user-insights', [AdminController::class, 'userInsightsPage'])->name('user-insights');
+    
+    // AI Admin Assistant
+    Route::post('/ai-admin-assistant', [AdminController::class, 'handleAdminAssistant'])->name('ai.admin-assistant');
+
+    // GPT API Integration
+    Route::post('/gpt-api/command', [\App\Http\Controllers\Admin\GptApiController::class, 'handleCommand'])->name('gpt.command');
+    Route::get('/gpt-api/commands', [\App\Http\Controllers\Admin\GptApiController::class, 'getAvailableCommands'])->name('gpt.commands');
+    Route::post('/gpt-api/seo-audit', [\App\Http\Controllers\Admin\GptApiController::class, 'runSeoAudit'])->name('gpt.seo-audit');
+    Route::get('/gpt-integration', [\App\Http\Controllers\Admin\GptApiController::class, 'gptIntegrationPage'])->name('gpt.integration');
 
 }); 

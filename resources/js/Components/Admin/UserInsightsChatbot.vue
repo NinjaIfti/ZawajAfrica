@@ -1,7 +1,7 @@
 <template>
-    <div class="user-insights-chatbot bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div class="admin-assistant-chatbot bg-white border border-gray-200 rounded-lg shadow-sm">
         <!-- Chat Header -->
-        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 rounded-t-lg">
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 rounded-t-lg">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
@@ -10,8 +10,8 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-white font-medium">AI User Insights</h3>
-                        <p class="text-white text-sm opacity-90">Ask me about user activities and patterns</p>
+                        <h3 class="text-white font-medium">AI Admin Assistant</h3>
+                        <p class="text-white text-sm opacity-90">Your comprehensive admin helper</p>
                     </div>
                 </div>
                 <button @click="clearChat" class="text-white hover:text-gray-200 transition-colors">
@@ -26,40 +26,74 @@
         <div ref="messagesContainer" class="h-96 overflow-y-auto p-4 space-y-4">
             <!-- Welcome Message -->
             <div v-if="messages.length === 0" class="text-center py-8">
-                <div class="w-16 h-16 mx-auto bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                 </div>
-                <h4 class="text-lg font-medium text-gray-900 mb-2">User Insights AI Assistant</h4>
-                <p class="text-gray-600 mb-4">Ask me questions about user activities, patterns, and insights.</p>
+                <h4 class="text-lg font-medium text-gray-900 mb-2">AI Admin Assistant</h4>
+                <p class="text-gray-600 mb-4">I can help you with various admin tasks, generate content, solve problems, and provide insights.</p>
                 
                 <!-- Quick Action Buttons -->
                 <div class="grid grid-cols-2 gap-2 max-w-md mx-auto">
                     <button 
-                        @click="askQuickQuestion('Show me top 5 most active users today')"
-                        class="text-sm bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors"
+                        @click="askQuickQuestion('Generate a welcome email for new users')"
+                        class="text-sm bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors"
                     >
-                        📊 Top Active Users
+                        📧 Generate Email
                     </button>
                     <button 
-                        @click="askQuickQuestion('Which users hit their daily limits?')"
+                        @click="askQuickQuestion('Analyze user engagement and suggest improvements')"
                         class="text-sm bg-purple-50 text-purple-700 px-3 py-2 rounded-lg hover:bg-purple-100 transition-colors"
                     >
-                        ⚠️ Users at Limits
+                        📊 User Analysis
                     </button>
                     <button 
-                        @click="askQuickQuestion('Show premium user engagement this week')"
+                        @click="askQuickQuestion('Help me solve a platform issue')"
                         class="text-sm bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors"
                     >
-                        💎 Premium Insights
+                        🔧 Problem Solving
                     </button>
                     <button 
-                        @click="askQuickQuestion('Find users who need upgrade suggestions')"
+                        @click="askQuickQuestion('Suggest ways to improve user retention')"
                         class="text-sm bg-orange-50 text-orange-700 px-3 py-2 rounded-lg hover:bg-orange-100 transition-colors"
                     >
-                        🚀 Upgrade Candidates
+                        💡 Improvement Ideas
                     </button>
+                </div>
+
+                <!-- Task Categories -->
+                <div class="mt-6 max-w-2xl mx-auto">
+                    <h5 class="text-sm font-medium text-gray-700 mb-3">What can I help you with?</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h6 class="font-medium text-gray-800 mb-2">📝 Content Generation</h6>
+                            <ul class="text-gray-600 space-y-1">
+                                <li>• Email templates</li>
+                                <li>• Announcements</li>
+                                <li>• Marketing copy</li>
+                                <li>• User communications</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h6 class="font-medium text-gray-800 mb-2">📊 Analytics & Insights</h6>
+                            <ul class="text-gray-600 space-y-1">
+                                <li>• User behavior analysis</li>
+                                <li>• Performance metrics</li>
+                                <li>• Trend identification</li>
+                                <li>• Data interpretation</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h6 class="font-medium text-gray-800 mb-2">🔧 Problem Solving</h6>
+                            <ul class="text-gray-600 space-y-1">
+                                <li>• Technical issues</li>
+                                <li>• User complaints</li>
+                                <li>• Process optimization</li>
+                                <li>• Strategy planning</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -67,51 +101,80 @@
             <div v-for="(message, index) in messages" :key="index" class="flex" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
                 <div class="max-w-3xl" :class="message.role === 'user' ? 'ml-12' : 'mr-12'">
                     <!-- User Message -->
-                    <div v-if="message.role === 'user'" class="bg-indigo-600 text-white rounded-lg px-4 py-2">
+                    <div v-if="message.role === 'user'" class="bg-blue-600 text-white rounded-lg px-4 py-2">
                         <p class="text-sm">{{ message.content }}</p>
                     </div>
                     
                     <!-- AI Response -->
                     <div v-else class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
                         <div class="flex items-start space-x-3">
-                            <div class="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                                 </svg>
                             </div>
                             <div class="flex-1">
                                 <div class="prose prose-sm max-w-none">
-                                    <div v-if="message.data" class="mb-3">
-                                        <!-- User Data Display -->
-                                        <div v-if="message.data.user_profile" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                                            <h5 class="font-medium text-blue-900 mb-2">User Profile</h5>
-                                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                                <div><span class="font-medium">Name:</span> {{ message.data.user_profile.name }}</div>
-                                                <div><span class="font-medium">Email:</span> {{ message.data.user_profile.email }}</div>
-                                                <div><span class="font-medium">Tier:</span> {{ message.data.user_profile.tier }}</div>
-                                                <div><span class="font-medium">Joined:</span> {{ formatDate(message.data.user_profile.created_at) }}</div>
+                                    <!-- Generated Content Display -->
+                                    <div v-if="message.data && message.data.generated_content" class="mb-3">
+                                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                                            <h5 class="font-medium text-blue-900 mb-2">Generated Content</h5>
+                                            <div v-if="message.data.generated_content.subject" class="mb-2">
+                                                <span class="font-medium text-sm">Subject:</span>
+                                                <div class="text-sm bg-white p-2 rounded border">{{ message.data.generated_content.subject }}</div>
+                                            </div>
+                                            <div v-if="message.data.generated_content.body">
+                                                <span class="font-medium text-sm">Content:</span>
+                                                <div class="text-sm bg-white p-2 rounded border max-h-32 overflow-y-auto">{{ message.data.generated_content.body }}</div>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <!-- Activity Data Display -->
-                                        <div v-if="message.data.activities" class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                                            <h5 class="font-medium text-green-900 mb-2">Recent Activities</h5>
-                                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                                <div v-for="(count, activity) in message.data.activities" :key="activity">
-                                                    <span class="font-medium">{{ formatActivityName(activity) }}:</span> {{ count }}
-                                                </div>
-                                            </div>
+                                    <!-- User Data Display -->
+                                    <div v-if="message.data && message.data.user_profile" class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                                        <h5 class="font-medium text-green-900 mb-2">User Profile</h5>
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                            <div><span class="font-medium">Name:</span> {{ message.data.user_profile.name }}</div>
+                                            <div><span class="font-medium">Email:</span> {{ message.data.user_profile.email }}</div>
+                                            <div><span class="font-medium">Tier:</span> {{ message.data.user_profile.tier }}</div>
+                                            <div><span class="font-medium">Joined:</span> {{ formatDate(message.data.user_profile.created_at) }}</div>
                                         </div>
+                                    </div>
 
-                                        <!-- Statistics Display -->
-                                        <div v-if="message.data.statistics" class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
-                                            <h5 class="font-medium text-purple-900 mb-2">Platform Statistics</h5>
-                                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                                <div v-for="(value, key) in message.data.statistics" :key="key">
-                                                    <span class="font-medium">{{ formatStatKey(key) }}:</span> {{ value }}
-                                                </div>
+                                    <!-- Activity Data Display -->
+                                    <div v-if="message.data && message.data.activities" class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
+                                        <h5 class="font-medium text-purple-900 mb-2">Recent Activities</h5>
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                            <div v-for="(count, activity) in message.data.activities" :key="activity">
+                                                <span class="font-medium">{{ formatActivityName(activity) }}:</span> {{ count }}
                                             </div>
                                         </div>
+                                    </div>
+
+                                    <!-- Statistics Display -->
+                                    <div v-if="message.data && message.data.statistics" class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                                        <h5 class="font-medium text-orange-900 mb-2">Platform Statistics</h5>
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                            <div v-for="(value, key) in message.data.statistics" :key="key">
+                                                <span class="font-medium">{{ formatStatKey(key) }}:</span> {{ value }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons for Generated Content -->
+                                    <div v-if="message.data && message.data.generated_content" class="flex space-x-2 mb-3">
+                                        <button 
+                                            @click="copyToClipboard(message.data.generated_content.body)"
+                                            class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+                                        >
+                                            📋 Copy Content
+                                        </button>
+                                        <button 
+                                            @click="useAsEmailTemplate(message.data.generated_content)"
+                                            class="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors"
+                                        >
+                                            📧 Use as Email
+                                        </button>
                                     </div>
                                     
                                     <div class="whitespace-pre-wrap text-gray-700">{{ message.content }}</div>
@@ -126,13 +189,13 @@
             <div v-if="isLoading" class="flex justify-start">
                 <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mr-12">
                     <div class="flex items-center space-x-3">
-                        <div class="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center">
-                            <svg class="w-3 h-3 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-3 h-3 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         </div>
-                        <span class="text-gray-600 text-sm">Analyzing user data...</span>
+                        <span class="text-gray-600 text-sm">Processing your request...</span>
                     </div>
                 </div>
             </div>
@@ -144,14 +207,14 @@
                 <input
                     v-model="newMessage"
                     type="text"
-                    placeholder="Ask about user activities, patterns, or insights..."
-                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Ask me anything - generate content, solve problems, analyze data..."
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     :disabled="isLoading"
                 >
                 <button
                     type="submit"
                     :disabled="!newMessage.trim() || isLoading"
-                    class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     <svg v-if="isLoading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -182,7 +245,7 @@ onMounted(() => {
 
 const loadChatHistory = () => {
     try {
-        const savedMessages = localStorage.getItem('userInsightsChatHistory')
+        const savedMessages = localStorage.getItem('adminAssistantChatHistory')
         if (savedMessages) {
             messages.value = JSON.parse(savedMessages)
         }
@@ -193,7 +256,7 @@ const loadChatHistory = () => {
 
 const saveChatHistory = () => {
     try {
-        localStorage.setItem('userInsightsChatHistory', JSON.stringify(messages.value))
+        localStorage.setItem('adminAssistantChatHistory', JSON.stringify(messages.value))
     } catch (error) {
         console.error('Error saving chat history:', error)
     }
@@ -236,6 +299,22 @@ const formatStatKey = (key) => {
     ).join(' ')
 }
 
+const copyToClipboard = async (text) => {
+    try {
+        await navigator.clipboard.writeText(text)
+        alert('Content copied to clipboard!')
+    } catch (error) {
+        console.error('Failed to copy:', error)
+        alert('Failed to copy to clipboard')
+    }
+}
+
+const useAsEmailTemplate = (content) => {
+    // Emit event or use a global state management solution
+    // For now, we'll just show an alert
+    alert('Email template ready! You can now use this content in your email system.')
+}
+
 const sendMessage = async () => {
     if (!newMessage.value.trim()) return
 
@@ -255,7 +334,7 @@ const sendMessage = async () => {
     scrollToBottom()
 
     try {
-        const response = await fetch(route('admin.ai.user-insights'), {
+        const response = await fetch(route('admin.ai.admin-assistant'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -310,7 +389,7 @@ const askQuickQuestion = (question) => {
 const clearChat = () => {
     if (confirm('Are you sure you want to clear the chat history?')) {
         messages.value = []
-        localStorage.removeItem('userInsightsChatHistory')
+        localStorage.removeItem('adminAssistantChatHistory')
     }
 }
 </script>
@@ -325,7 +404,7 @@ const clearChat = () => {
     margin: 0;
 }
 
-.user-insights-chatbot {
+.admin-assistant-chatbot {
     min-height: 600px;
     display: flex;
     flex-direction: column;
