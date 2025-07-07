@@ -154,7 +154,7 @@ class ZohoHttpEmailService
      */
     private function buildEmailPayload(string $to, string $subject, string $body, string $toName = '', array $options = []): array
     {
-        $isPlainText = $options['content_type'] === 'text/plain';
+        $isPlainText = ($options['content_type'] ?? 'text/html') === 'text/plain';
         $mailFormat = $isPlainText ? 'plaintext' : 'html';
         
         // If sending as HTML but content appears to be plain text, convert it

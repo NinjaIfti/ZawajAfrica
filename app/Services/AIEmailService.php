@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\ChatbotConversation;
 use App\Services\OpenAIService;
 use App\Services\ZohoMailService;
+use App\Services\ZohoHttpEmailService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
@@ -13,11 +14,13 @@ class AIEmailService
 {
     private OpenAIService $openAIService;
     private ZohoMailService $zohoMailService;
+    private ZohoHttpEmailService $zohoHttpEmailService;
 
-    public function __construct(OpenAIService $openAIService, ZohoMailService $zohoMailService)
+    public function __construct(OpenAIService $openAIService, ZohoMailService $zohoMailService, ZohoHttpEmailService $zohoHttpEmailService)
     {
         $this->openAIService = $openAIService;
         $this->zohoMailService = $zohoMailService;
+        $this->zohoHttpEmailService = $zohoHttpEmailService;
     }
 
     /**
@@ -365,16 +368,39 @@ Subject: [subject line]
     }
 
     /**
-     * Send email using Zoho Mail service
+     * Send email using Zoho HTTP Email service
      */
-    private function sendEmail(string $to, string $subject, string $body, string $toName = ''): void
+    private function sendEmail(string $to, string $subject, string $body, string $toName = '', string $senderType = 'support'): void
     {
-        $this->zohoMailService->configureMailer();
+        // Use Zoho HTTP Email service directly for reliable delivery
+        $result = $this->zohoHttpEmailService->sendNotificationEmail(
+            $senderType,
+            $to,
+            $subject,
+            $this->convertPlainTextToHtml($body),
+            $toName
+        );
 
-        Mail::raw($body, function ($message) use ($to, $subject, $toName) {
-            $message->to($to, $toName)
-                   ->subject($subject);
-        });
+        if (!$result['success']) {
+            Log::error('Failed to send AI email via Zoho HTTP', [
+                'to' => $to,
+                'subject' => $subject,
+                'error' => $result['error'] ?? 'Unknown error'
+            ]);
+            throw new \Exception('Failed to send email: ' . ($result['error'] ?? 'Unknown error'));
+        }
+    }
+
+    /**
+     * Convert plain text to HTML for better email rendering
+     */
+    private function convertPlainTextToHtml(string $text): string
+    {
+        // Convert line breaks to HTML
+        $html = nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+        
+        // Wrap in basic HTML structure
+        return '<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">' . $html . '</div>';
     }
 
 
