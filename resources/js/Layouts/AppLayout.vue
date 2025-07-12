@@ -91,6 +91,9 @@
         <main>
             <slot />
         </main>
+        
+        <!-- WhatsApp Widget -->
+        <WhatsAppWidget :user="$page.props.auth.user" />
     </div>
 </template>
 
@@ -99,6 +102,7 @@ import { ref } from 'vue'
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import AdSenseManager from '@/Components/AdSenseManager.vue'
 import AdSenseNotice from '@/Components/AdSenseNotice.vue'
+import WhatsAppWidget from '@/Components/WhatsAppWidget.vue'
 
 defineProps({
     title: {

@@ -426,6 +426,7 @@ Route::get('/matches/profile/{id}', function($id) {
 // Subscription routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/subscription', [App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::get('/subscription/manual-payment', [App\Http\Controllers\SubscriptionController::class, 'showManualPayment'])->name('subscription.manual-payment');
     Route::post('/subscription/purchase', [App\Http\Controllers\SubscriptionController::class, 'purchase'])->name('subscription.purchase');
 });
 

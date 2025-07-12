@@ -129,6 +129,37 @@ class SubscriptionController extends Controller
     }
     
     /**
+     * Show manual payment page for selected plan
+     */
+    public function showManualPayment(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Format profile photo URL if it exists
+        if ($user->profile_photo) {
+            $user->profile_photo = asset('storage/' . $user->profile_photo);
+        }
+        
+        // Get plan from query parameter or default to Basic
+        $planName = $request->query('plan', 'Basic');
+        
+        // Define subscription plans with pricing
+        $planPrices = [
+            'Basic' => ['name' => 'Basic', 'naira' => 8000, 'usd' => 10],
+            'Gold' => ['name' => 'Gold', 'naira' => 15000, 'usd' => 15],
+            'Platinum' => ['name' => 'Platinum', 'naira' => 25000, 'usd' => 25]
+        ];
+        
+        $selectedPlan = $planPrices[$planName] ?? $planPrices['Basic'];
+        
+        return Inertia::render('Subscription/ManualPayment', [
+            'user' => $user,
+            'selectedPlan' => $selectedPlan,
+            'userGender' => $user->gender ?? 'male',
+        ]);
+    }
+    
+    /**
      * Process a subscription purchase.
      */
     public function purchase(Request $request)

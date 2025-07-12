@@ -332,6 +332,31 @@
 
            
 
+            <!-- Manual Payment Notice -->
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6 mb-8">
+                <div class="flex items-center mb-4">
+                    <svg class="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-900">📱 Manual Payment Available</h2>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4 text-sm">
+                    <div class="bg-white rounded-lg p-4">
+                        <h3 class="font-semibold text-green-700 mb-2">🇳🇬 Nigerian Users</h3>
+                        <p class="text-gray-600">Pay via bank transfer to Access Bank and send proof via WhatsApp for instant activation</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4">
+                        <h3 class="font-semibold text-blue-700 mb-2">🌍 International Users</h3>
+                        <p class="text-gray-600">Pay via PayPal or USD bank transfer and send proof via WhatsApp for instant activation</p>
+                    </div>
+                </div>
+                <div class="mt-4 text-center">
+                    <p class="text-green-700 font-medium">
+                        💬 WhatsApp: +234 703 772 7643 • Fast activation within 24 hours
+                    </p>
+                </div>
+            </div>
+
             <!-- Subscription Plans Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div
@@ -460,10 +485,20 @@
                         </div>
 
                         <!-- Subscribe button -->
+                        <!-- Manual Payment Button (Primary) -->
+                        <Link
+                            :href="route('subscription.manual-payment', { plan: plan.name })"
+                            v-if="getPlanStatus(plan.name) !== 'current' && termsAgreed[plan.name]"
+                            class="mt-6 w-full py-3 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white text-center block"
+                        >
+                            📱 Pay Manually - {{ plan.name }}
+                        </Link>
+
+                        <!-- Online Payment Button (Secondary) -->
                         <button
                             @click="selectPlan(plan.name)"
                             :disabled="isButtonDisabled(plan.name)"
-                            class="mt-6 w-full py-3 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+                            class="mt-3 w-full py-3 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
                             :class="{
                                 'bg-green-600 text-white cursor-default': getPlanStatus(plan.name) === 'current',
                                 'bg-purple-600 hover:bg-purple-700 text-white':
@@ -512,7 +547,7 @@
                                 Current Plan
                             </span>
                             <span v-else>
-                                {{ getButtonText(plan.name) }}
+                                💳 {{ getButtonText(plan.name) }} (Online)
                             </span>
                         </button>
                     </div>
