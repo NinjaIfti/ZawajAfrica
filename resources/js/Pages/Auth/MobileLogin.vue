@@ -16,7 +16,12 @@
         <button class="w-full py-3 rounded-lg bg-[#E6A157] text-white text-lg font-semibold shadow" @click="goToRegister">Create Account</button>
         <button class="w-full py-3 rounded-lg border border-white text-white text-lg font-semibold bg-transparent" @click="showLogin = true">Sign in</button>
       </div>
-      <button class="mt-6 text-white underline text-sm" @click="openTermsModal">Terms & Conditions</button>
+      <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm">
+        <button class="text-white underline hover:text-gray-200" @click="openAboutModal">About Us</button>
+        <button class="text-white underline hover:text-gray-200" @click="openTermsModal">Terms & Conditions</button>
+        <button class="text-white underline hover:text-gray-200" @click="openPrivacyModal">Privacy Policy</button>
+        <button class="text-white underline hover:text-gray-200" @click="openContactModal">Contact Us</button>
+      </div>
     </div>
 
     <!-- Slide-up Login Form -->
@@ -46,6 +51,9 @@
     </transition>
 
     <TermsAndConditionsModal :show="showTermsModal" @close="closeTermsModal" />
+    <PrivacyPolicyModal :show="showPrivacyModal" @close="closePrivacyModal" />
+    <AboutUsModal :show="showAboutModal" @close="closeAboutModal" />
+    <ContactUsModal :show="showContactModal" @close="closeContactModal" />
   </div>
 </template>
 
@@ -54,9 +62,15 @@ import { ref } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
 import TermsAndConditionsModal from '@/Components/TermsAndConditionsModal.vue';
+import PrivacyPolicyModal from '@/Components/PrivacyPolicyModal.vue';
+import AboutUsModal from '@/Components/AboutUsModal.vue';
+import ContactUsModal from '@/Components/ContactUsModal.vue';
 
 const showLogin = ref(false);
 const showTermsModal = ref(false);
+const showPrivacyModal = ref(false);
+const showAboutModal = ref(false);
+const showContactModal = ref(false);
 
 const props = defineProps({
   canResetPassword: Boolean,
@@ -94,6 +108,27 @@ const openTermsModal = () => {
 };
 const closeTermsModal = () => {
   showTermsModal.value = false;
+};
+
+const openPrivacyModal = () => {
+  showPrivacyModal.value = true;
+};
+const closePrivacyModal = () => {
+  showPrivacyModal.value = false;
+};
+
+const openAboutModal = () => {
+  showAboutModal.value = true;
+};
+const closeAboutModal = () => {
+  showAboutModal.value = false;
+};
+
+const openContactModal = () => {
+  showContactModal.value = true;
+};
+const closeContactModal = () => {
+  showContactModal.value = false;
 };
 </script>
 
