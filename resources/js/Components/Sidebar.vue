@@ -333,7 +333,7 @@
             <div class="flex flex-row justify-center space-x-4">
                 <!-- WhatsApp -->
                 <a 
-                    href="https://wa.me/qr/DQN37GVLFCV6J1" 
+                    href="https://wa.me/message/ZXKYMGHM6GG6D1" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="text-green-600 hover:text-green-800 transition-colors"
