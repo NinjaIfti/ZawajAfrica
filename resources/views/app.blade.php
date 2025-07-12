@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="google-adsense-account" content="ca-pub-8389265465942244">
+        <meta name="adsterra-site-verification" content="adsterra-verification-code">
 
         <title>{{ config('app.name', 'ZawajAfrica') }}</title>
         
@@ -23,13 +23,13 @@
         <!-- FontAwesome -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-        <!-- AdSense Script (only for eligible users) -->
+        <!-- Adsterra Script (only for eligible users) -->
         @php
-            $adSenseService = app(\App\Services\AdSenseService::class);
+            $adsterraService = app(\App\Services\AdsterraService::class);
             $user = auth()->user();
         @endphp
-        @if($adSenseService->shouldShowAds($user) && $adSenseService->shouldShowAdsOnPage(request()))
-            {!! $adSenseService->generateAdSenseScript() !!}
+        @if($adsterraService->shouldShowAds($user) && $adsterraService->shouldShowAdsOnPage(request()))
+            {!! $adsterraService->generateAdsterraScript() !!}
         @endif
 
         <!-- Scripts -->

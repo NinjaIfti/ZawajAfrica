@@ -1,6 +1,9 @@
 <script setup>
     import { Head, Link, useForm } from '@inertiajs/vue3';
+    import { ref } from 'vue';
     import InputError from '@/Components/InputError.vue';
+    import TermsAndConditionsModal from '@/Components/TermsAndConditionsModal.vue';
+    import PrivacyPolicyModal from '@/Components/PrivacyPolicyModal.vue';
 
     defineProps({
         status: {
@@ -12,8 +15,27 @@
         email: '',
     });
 
+    const showTermsModal = ref(false);
+    const showPrivacyModal = ref(false);
+
     const submit = () => {
         form.post(route('password.email'));
+    };
+
+    const openTermsModal = () => {
+        showTermsModal.value = true;
+    };
+
+    const closeTermsModal = () => {
+        showTermsModal.value = false;
+    };
+
+    const openPrivacyModal = () => {
+        showPrivacyModal.value = true;
+    };
+
+    const closePrivacyModal = () => {
+        showPrivacyModal.value = false;
     };
 </script>
 
@@ -70,7 +92,8 @@
 
             <!-- Terms & Conditions -->
             <div class="absolute bottom-[5%] left-1/2 -translate-x-1/2 text-center text-white z-10">
-                <a href="#" class="text-white underline">Terms & Conditions</a>
+                <button @click="openTermsModal" class="text-white underline hover:text-gray-200 cursor-pointer mr-4">Terms & Conditions</button>
+                <button @click="openPrivacyModal" class="text-white underline hover:text-gray-200 cursor-pointer">Privacy Policy</button>
             </div>
         </div>
 
@@ -169,6 +192,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- Terms and Conditions Modal -->
+        <TermsAndConditionsModal 
+            :show="showTermsModal" 
+            @close="closeTermsModal" 
+        />
+        
+        <!-- Privacy Policy Modal -->
+        <PrivacyPolicyModal 
+            :show="showPrivacyModal" 
+            @close="closePrivacyModal" 
+        />
     </div>
 </template>
 

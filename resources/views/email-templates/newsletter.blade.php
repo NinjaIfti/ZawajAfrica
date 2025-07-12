@@ -274,7 +274,7 @@
             <p style="margin-top: 20px; font-size: 12px; color: #95a5a6;">
                 &copy; {{ date('Y') }} ZawajAfrica. All rights reserved.<br>
                 You're receiving this because you're part of our amazing community.<br>
-                <a href="#" style="color: #3498db;">Update preferences</a> | <a href="#" style="color: #3498db;">Unsubscribe</a>
+                <a href="#" style="color: #3498db;">Update preferences</a> | <a href="#" style="color: #3498db;">Unsubscribe</a> | <a href="https://zawajafrica.online/privacy-policy" style="color: #3498db;">Privacy Policy</a>
             </p>
         </div>
     </div>

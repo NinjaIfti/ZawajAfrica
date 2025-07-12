@@ -19,6 +19,8 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+
+
 // Dashboard with user profile data
 Route::get('/dashboard', function () {
     $user = auth()->user();
@@ -290,46 +292,100 @@ Route::middleware('auth')->group(function () {
         ]);
     })->name('api.tier-usage');
 
-    // AdSense API routes
-    Route::prefix('api/adsense')->name('api.adsense.')->group(function () {
+    // Adsterra API routes
+    Route::prefix('api/adsterra')->name('api.adsterra.')->group(function () {
         Route::post('/consent', function (Request $request) {
-            $adSenseService = app(\App\Services\AdSenseService::class);
+            $adsterraService = app(\App\Services\AdsterraService::class);
             
             $request->validate([
                 'consent' => 'required|boolean',
-                'personalized_ads' => 'boolean',
-                'data_processing' => 'boolean'
             ]);
             
-            $adSenseService->updateConsent($request, $request->only([
-                'consent', 'personalized_ads', 'data_processing'
+            $adsterraService->updateConsent($request, $request->only([
+                'consent'
             ]));
             
             return response()->json(['success' => true]);
         })->name('consent');
         
         Route::get('/config', function (Request $request) {
-            $adSenseService = app(\App\Services\AdSenseService::class);
+            $adsterraService = app(\App\Services\AdsterraService::class);
             $user = Auth::user();
             
             return response()->json([
-                'config' => $adSenseService->getAdSenseConfig($user),
-                'show_on_page' => $adSenseService->shouldShowAdsOnPage($request),
-                'consent' => $adSenseService->getConsentStatus($request)
+                'config' => $adsterraService->getAdsterraConfig($user),
+                'show_on_page' => $adsterraService->shouldShowAdsOnPage($request),
+                'consent' => $adsterraService->getConsentStatus($request)
             ]);
         })->name('config');
         
         Route::post('/impression', function (Request $request) {
-            $adSenseService = app(\App\Services\AdSenseService::class);
+            $adsterraService = app(\App\Services\AdsterraService::class);
             $user = Auth::user();
             
             if ($user) {
-                $adSenseService->logAdImpression($user, $request->input('ad_type', 'auto'), 
+                $adsterraService->logAdImpression($user, $request->input('ad_type', 'banner'), 
                     $request->input('metadata', []));
             }
             
             return response()->json(['success' => true]);
         })->name('impression');
+        
+        Route::post('/click', function (Request $request) {
+            $adsterraService = app(\App\Services\AdsterraService::class);
+            $user = Auth::user();
+            
+            if ($user) {
+                $adsterraService->logAdClick($user, $request->input('ad_type', 'banner'), 
+                    $request->input('metadata', []));
+            }
+            
+            return response()->json(['success' => true]);
+        })->name('click');
+        
+        Route::post('/track', function (Request $request) {
+            $adsterraService = app(\App\Services\AdsterraService::class);
+            $user = Auth::user();
+            
+            $request->validate([
+                'event_type' => 'required|string',
+                'data' => 'array'
+            ]);
+            
+            $eventType = $request->input('event_type');
+            $data = $request->input('data', []);
+            
+            switch ($eventType) {
+                case 'script_loaded':
+                case 'ad_loaded':
+                    if ($user) {
+                        $adsterraService->logAdImpression($user, $data['ad_type'] ?? 'banner', $data);
+                    }
+                    break;
+                    
+                case 'ad_clicked':
+                    if ($user) {
+                        $adsterraService->logAdClick($user, $data['ad_type'] ?? 'banner', $data);
+                    }
+                    break;
+                    
+                case 'error':
+                    $adsterraService->logAdError($data['error'] ?? 'Unknown error', $data);
+                    break;
+            }
+            
+            return response()->json(['success' => true]);
+        })->name('track');
+        
+        Route::get('/health', function () {
+            $adsterraService = app(\App\Services\AdsterraService::class);
+            $health = $adsterraService->healthCheck();
+            
+            return response()->json($health)
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
+        })->name('health');
     });
 
     // KYC Routes for Monnify verification

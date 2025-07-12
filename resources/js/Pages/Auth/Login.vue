@@ -3,6 +3,7 @@
     import { ref, onMounted } from 'vue';
     import InputError from '@/Components/InputError.vue';
     import TermsAndConditionsModal from '@/Components/TermsAndConditionsModal.vue';
+    import PrivacyPolicyModal from '@/Components/PrivacyPolicyModal.vue';
 
     defineProps({
         canResetPassword: {
@@ -28,6 +29,7 @@
     });
 
     const showTermsModal = ref(false);
+    const showPrivacyModal = ref(false);
 
     const submit = () => {
         // Refresh CSRF token before login attempt
@@ -58,6 +60,14 @@
 
     const closeTermsModal = () => {
         showTermsModal.value = false;
+    };
+
+    const openPrivacyModal = () => {
+        showPrivacyModal.value = true;
+    };
+
+    const closePrivacyModal = () => {
+        showPrivacyModal.value = false;
     };
 
     // Social login function
@@ -102,7 +112,8 @@
 
             <!-- Terms & Conditions -->
             <div class="absolute bottom-[5%] left-1/2 -translate-x-1/2 text-center text-white z-10">
-                <button @click="openTermsModal" class="text-white underline hover:text-gray-200 cursor-pointer">Terms & Conditions</button>
+                <button @click="openTermsModal" class="text-white underline hover:text-gray-200 cursor-pointer mr-4">Terms & Conditions</button>
+                <button @click="openPrivacyModal" class="text-white underline hover:text-gray-200 cursor-pointer">Privacy Policy</button>
             </div>
         </div>
 
@@ -251,6 +262,12 @@
         <TermsAndConditionsModal 
             :show="showTermsModal" 
             @close="closeTermsModal" 
+        />
+        
+        <!-- Privacy Policy Modal -->
+        <PrivacyPolicyModal 
+            :show="showPrivacyModal" 
+            @close="closePrivacyModal" 
         />
     </div>
 </template>

@@ -4,15 +4,15 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use App\Services\AdSenseService;
+use App\Services\AdsterraService;
 
 class HandleInertiaRequests extends Middleware
 {
-    protected AdSenseService $adSenseService;
+    protected AdsterraService $adsterraService;
 
-    public function __construct(AdSenseService $adSenseService)
+    public function __construct(AdsterraService $adsterraService)
     {
-        $this->adSenseService = $adSenseService;
+        $this->adsterraService = $adsterraService;
     }
 
     /**
@@ -74,11 +74,11 @@ class HandleInertiaRequests extends Middleware
                 'token' => csrf_token(),
                 'header' => 'X-CSRF-TOKEN',
             ],
-            // AdSense configuration for frontend
-            'adsense' => [
-                'config' => $this->adSenseService->getAdSenseConfig($user),
-                'show_on_page' => $this->adSenseService->shouldShowAdsOnPage($request),
-                'consent' => $this->adSenseService->getConsentStatus($request),
+            // Adsterra configuration for frontend
+            'adsterra' => [
+                'config' => $this->adsterraService->getAdsterraConfig($user),
+                'show_on_page' => $this->adsterraService->shouldShowAdsOnPage($request),
+                'consent' => $this->adsterraService->getConsentStatus($request),
             ],
         ];
     }

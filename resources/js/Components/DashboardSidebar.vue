@@ -4,7 +4,7 @@
     import AppHeader from '@/Components/AppHeader.vue';
     import TherapistWidget from '@/Components/TherapistWidget.vue';
     import MessagesWidget from '@/Components/MessagesWidget.vue';
-    import DisplayAd from '@/Components/DisplayAd.vue';
+    import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
 
     const props = defineProps({
         user: Object,
@@ -46,7 +46,7 @@
         <TherapistWidget :therapists="therapists" />
 
         <!-- Sidebar Display Ad -->
-        <DisplayAd :userTier="getUserTier()" placement="sidebar" />
+                    <AdsterraDisplayAd zone-name="sidebar" />
 
         <!-- Messages Widget Component -->
         <MessagesWidget :messages="messages" />

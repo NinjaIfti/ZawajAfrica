@@ -1,14 +1,14 @@
 <template>
     <div class="min-h-screen bg-gray-50">
-        <!-- AdSense Manager Component -->
-        <AdSenseManager 
-            :adsense-config="$page.props.adsense.config"
-            :show-on-page="$page.props.adsense.show_on_page"
-            :consent-data="$page.props.adsense.consent"
+        <!-- Adsterra Manager Component -->
+        <AdsterraManager 
+            :adsterra-config="$page.props.adsterra.config"
+            :show-on-page="$page.props.adsterra.show_on_page"
+            :consent-data="$page.props.adsterra.consent"
         />
         
-        <!-- AdSense Notice for Free Users -->
-        <AdSenseNotice 
+        <!-- Adsterra Notice for Free Users -->
+        <AdsterraNotice 
             :user-tier="getUserTier()"
             :current-page="getCurrentPageName()"
         />
@@ -100,8 +100,8 @@
 <script setup>
 import { ref } from 'vue'
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import AdSenseManager from '@/Components/AdSenseManager.vue'
-import AdSenseNotice from '@/Components/AdSenseNotice.vue'
+import AdsterraManager from '@/Components/AdsterraManager.vue'
+import AdsterraNotice from '@/Components/AdsterraNotice.vue'
 import WhatsAppWidget from '@/Components/WhatsAppWidget.vue'
 
 defineProps({
@@ -135,7 +135,7 @@ document.addEventListener('click', (event) => {
     }
 });
 
-// Helper methods for AdSense components
+// Helper methods for Adsterra components
 const getUserTier = () => {
     const user = usePage().props.auth.user
     if (!user?.subscription_plan || user?.subscription_status !== 'active') {

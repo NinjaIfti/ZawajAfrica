@@ -9,8 +9,7 @@
     import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
     import MatchFiltersModal from '@/Components/MatchFiltersModal.vue';
     import TierBadge from '@/Components/TierBadge.vue';
-    import DashboardFeedAd from '@/Components/DashboardFeedAd.vue';
-    import DisplayAd from '@/Components/DisplayAd.vue';
+    import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
     import Modal from '@/Components/Modal.vue';
 
@@ -391,11 +390,15 @@
             showPaymentSuccessModal.value = true;
         }
 
-        // Show Zoho opt-in modal on every login (after a short delay)
+        // Show Zoho opt-in modal only if user hasn't skipped or signed up
         setTimeout(() => {
             const hasSkipped = localStorage.getItem('zoho_optin_skipped');
-            // Always show the modal, even if previously skipped (remove this check to respect skipping)
-            showZohoOptinModal.value = true;
+            const hasSignedUp = localStorage.getItem('zoho_optin_completed');
+            
+            // Only show modal if user hasn't skipped and hasn't signed up
+            if (!hasSkipped && !hasSignedUp) {
+                showZohoOptinModal.value = true;
+            }
         }, 2000); // Show after 2 seconds
 
         // Check if user is missing phone_number
@@ -679,13 +682,13 @@
             </div>
 
             <!-- Dashboard Feed Ad (between search and matches) -->
-            <DashboardFeedAd :userTier="userTier" />
+                                        <AdsterraDisplayAd zone-name="feed" />
 
             <!-- Match Cards Component -->
             <MatchCard :matches="displayMatches" :userTier="userTier" />
 
             <!-- Display Ad (after matches) -->
-            <DisplayAd :userTier="userTier" placement="after-matches" />
+                                    <AdsterraDisplayAd zone-name="banner" />
 
             <!-- Loading indicator -->
             <div v-if="isLoading" class="text-center py-8">

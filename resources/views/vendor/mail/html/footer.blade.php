@@ -10,6 +10,7 @@
 <a href="https://zawajafrica.online/profile" style="color: #718096; text-decoration: none; margin: 0 12px; font-size: 13px;">My Profile</a>
 <a href="https://zawajafrica.online/matches" style="color: #718096; text-decoration: none; margin: 0 12px; font-size: 13px;">Browse Matches</a>
 <a href="https://zawajafrica.online/me/settings" style="color: #718096; text-decoration: none; margin: 0 12px; font-size: 13px;">Settings</a>
+<a href="https://zawajafrica.online/privacy-policy" style="color: #718096; text-decoration: none; margin: 0 12px; font-size: 13px;">Privacy Policy</a>
 </div>
 
 <div style="margin: 16px 0; color: #a0aec0; font-size: 12px; line-height: 1.5;">

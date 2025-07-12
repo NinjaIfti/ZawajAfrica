@@ -94,10 +94,13 @@
                 </div>
             </div>
             
-            <!-- Skip button -->
-            <div class="p-4 text-center border-t">
-                <button @click="skipOptin" class="text-gray-500 hover:text-gray-700 text-sm">
+            <!-- Skip buttons -->
+            <div class="p-4 text-center border-t space-y-2">
+                <button @click="skipOptin" class="text-gray-500 hover:text-gray-700 text-sm block w-full">
                     Maybe later
+                </button>
+                <button @click="dontShowAgain" class="text-gray-400 hover:text-gray-600 text-xs">
+                    Don't show this again
                 </button>
             </div>
         </div>
@@ -137,6 +140,11 @@ export default {
         },
         skipOptin() {
             localStorage.setItem('zoho_optin_skipped', 'true')
+            this.closeModal()
+        },
+        dontShowAgain() {
+            localStorage.setItem('zoho_optin_skipped', 'true')
+            localStorage.setItem('zoho_optin_permanent_dismiss', 'true')
             this.closeModal()
         },
         handleSignup() {
@@ -213,6 +221,9 @@ export default {
             this.showSuccess()
         },
         showSuccess() {
+            // Mark as completed in localStorage
+            localStorage.setItem('zoho_optin_completed', 'true')
+            
             const successDiv = document.getElementById('Zc_SignupSuccess2')
             if (successDiv) {
                 successDiv.style.display = 'block'
@@ -259,6 +270,8 @@ export default {
             // Add the form submit handler
             window.runOnFormSubmit_sf3z64bd6d6e23993fa70b064e6d0607901c0f3a03a5b16d09df2b462bb40db71104 = (th) => {
                 console.log('Zoho form submitted successfully via callback')
+                // Mark as completed in localStorage
+                localStorage.setItem('zoho_optin_completed', 'true')
                 this.showSuccess()
             }
         },
@@ -274,6 +287,16 @@ export default {
             } catch (error) {
                 console.error('Error initializing Zoho form:', error)
             }
+        }
+    },
+    // Global method to reset newsletter popup state (for testing)
+    created() {
+        // Add global method to reset newsletter state
+        window.resetNewsletterPopup = () => {
+            localStorage.removeItem('zoho_optin_skipped')
+            localStorage.removeItem('zoho_optin_completed')
+            localStorage.removeItem('zoho_optin_permanent_dismiss')
+            console.log('Newsletter popup state reset - reload page to see popup again')
         }
     }
 }

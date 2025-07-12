@@ -8,19 +8,44 @@ use Exception;
 
 class MailerSendService
 {
-    private string $apiKey;
-    private string $apiUrl;
-    private string $fromEmail;
-    private string $fromName;
+    private ?string $apiKey;
+    private ?string $apiUrl;
+    private ?string $fromEmail;
+    private ?string $fromName;
     private bool $enabled;
 
     public function __construct()
     {
-        $this->apiKey = config('services.mailersend.api_key');
-        $this->apiUrl = config('services.mailersend.api_url');
-        $this->fromEmail = config('services.mailersend.from_email');
-        $this->fromName = config('services.mailersend.from_name');
-        $this->enabled = config('services.mailersend.enabled', false);
+        try {
+            $this->apiKey = config('services.mailersend.api_key');
+            $this->apiUrl = config('services.mailersend.api_url', 'https://api.mailersend.com/v1');
+            $this->fromEmail = config('services.mailersend.from_email');
+            $this->fromName = config('services.mailersend.from_name', 'ZawajAfrica');
+            $this->enabled = config('services.mailersend.enabled', false);
+
+            // Log configuration status for debugging
+            if (app()->environment('production')) {
+                Log::info('MailerSend configuration loaded', [
+                    'api_key_set' => !empty($this->apiKey),
+                    'api_url' => $this->apiUrl,
+                    'from_email_set' => !empty($this->fromEmail),
+                    'from_name' => $this->fromName,
+                    'enabled' => $this->enabled
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('MailerSend configuration error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Set safe defaults
+            $this->apiKey = null;
+            $this->apiUrl = 'https://api.mailersend.com/v1';
+            $this->fromEmail = null;
+            $this->fromName = 'ZawajAfrica';
+            $this->enabled = false;
+        }
     }
 
     /**
@@ -32,14 +57,96 @@ class MailerSendService
     }
 
     /**
+     * Get detailed configuration status for debugging
+     */
+    public function getConfigurationStatus(): array
+    {
+        return [
+            'enabled' => $this->enabled,
+            'api_key_set' => !empty($this->apiKey),
+            'api_key_length' => $this->apiKey ? strlen($this->apiKey) : 0,
+            'api_url_set' => !empty($this->apiUrl),
+            'api_url' => $this->apiUrl,
+            'from_email_set' => !empty($this->fromEmail),
+            'from_email' => $this->fromEmail,
+            'from_name_set' => !empty($this->fromName),
+            'from_name' => $this->fromName,
+            'is_configured' => $this->isConfigured(),
+            'missing_env_vars' => $this->getMissingEnvironmentVariables()
+        ];
+    }
+
+    /**
+     * Get list of missing environment variables
+     */
+    private function getMissingEnvironmentVariables(): array
+    {
+        $missing = [];
+        
+        if (empty(env('MAILERSEND_API_KEY'))) {
+            $missing[] = 'MAILERSEND_API_KEY';
+        }
+        
+        if (empty(env('MAILERSEND_FROM_EMAIL'))) {
+            $missing[] = 'MAILERSEND_FROM_EMAIL';
+        }
+        
+        if (env('MAILERSEND_ENABLED') === null) {
+            $missing[] = 'MAILERSEND_ENABLED';
+        }
+        
+        return $missing;
+    }
+
+    /**
+     * Validate configuration and provide helpful error messages
+     */
+    public function validateConfiguration(): array
+    {
+        $issues = [];
+        
+        if (!$this->enabled) {
+            $issues[] = 'MailerSend is disabled. Set MAILERSEND_ENABLED=true in your .env file.';
+        }
+        
+        if (empty($this->apiKey)) {
+            $issues[] = 'MailerSend API key is missing. Set MAILERSEND_API_KEY in your .env file.';
+        }
+        
+        if (empty($this->fromEmail)) {
+            $issues[] = 'MailerSend from email is missing. Set MAILERSEND_FROM_EMAIL in your .env file.';
+        }
+        
+        if (empty($this->apiUrl)) {
+            $issues[] = 'MailerSend API URL is missing. Set MAILERSEND_API_URL in your .env file.';
+        }
+        
+        return [
+            'is_valid' => empty($issues),
+            'issues' => $issues,
+            'missing_env_vars' => $this->getMissingEnvironmentVariables()
+        ];
+    }
+
+    /**
      * Send OTP verification email
      */
     public function sendOTP(string $to, string $otp, string $toName = ''): array
     {
         if (!$this->isConfigured()) {
+            $validation = $this->validateConfiguration();
+            
+            Log::warning('MailerSend OTP send failed - service not configured', [
+                'to' => $to,
+                'validation' => $validation,
+                'status' => $this->getConfigurationStatus()
+            ]);
+            
             return [
                 'success' => false,
-                'error' => 'MailerSend not properly configured'
+                'error' => 'Email service not configured. Please check server configuration.',
+                'details' => $validation['issues'],
+                'missing_env_vars' => $validation['missing_env_vars']
             ];
         }
 
@@ -56,9 +163,19 @@ class MailerSendService
     public function sendPasswordReset(string $to, string $resetUrl, string $toName = ''): array
     {
         if (!$this->isConfigured()) {
+            $validation = $this->validateConfiguration();
+            
+            Log::warning('MailerSend password reset send failed - service not configured', [
+                'to' => $to,
+                'validation' => $validation,
+                'status' => $this->getConfigurationStatus()
+            ]);
+            
             return [
                 'success' => false,
-                'error' => 'MailerSend not properly configured'
+                'error' => 'Email service not configured. Please check server configuration.',
+                'details' => $validation['issues'],
+                'missing_env_vars' => $validation['missing_env_vars']
             ];
         }
 
@@ -74,11 +191,19 @@ class MailerSendService
      */
     private function sendEmail(string $to, string $toName, string $subject, string $htmlContent, string $textContent): array
     {
+        // Validate configuration before sending
+        if (!$this->isConfigured()) {
+            return [
+                'success' => false,
+                'error' => 'MailerSend not properly configured - missing API key or from email'
+            ];
+        }
+
         try {
             $payload = [
                 'from' => [
                     'email' => $this->fromEmail,
-                    'name' => $this->fromName
+                    'name' => $this->fromName ?? 'ZawajAfrica'
                 ],
                 'to' => [
                     [
@@ -93,7 +218,8 @@ class MailerSendService
 
             Log::info('Sending email via MailerSend', [
                 'to' => $to,
-                'subject' => $subject
+                'subject' => $subject,
+                'api_configured' => $this->isConfigured()
             ]);
 
             $response = Http::withHeaders([
