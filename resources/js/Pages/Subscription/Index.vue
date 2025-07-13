@@ -486,15 +486,39 @@
 
                         <!-- Subscribe button -->
                         <!-- Manual Payment Button (Primary) -->
-                        <Link
-                            :href="route('subscription.manual-payment', { plan: plan.name })"
-                            v-if="getPlanStatus(plan.name) !== 'current' && termsAgreed[plan.name]"
-                            class="mt-6 w-full py-3 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white text-center block"
-                        >
-                            📱 Pay Manually - {{ plan.name }}
-                        </Link>
+                        <div v-if="getPlanStatus(plan.name) !== 'current'" class="mt-6">
+                            <Link
+                                v-if="termsAgreed[plan.name]"
+                                :href="route('subscription.manual-payment', { plan: plan.name })"
+                                class="w-full py-3 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white text-center block"
+                            >
+                                📱 Pay Manually - {{ plan.name }}
+                            </Link>
+                            <button
+                                v-else
+                                disabled
+                                class="w-full py-3 px-4 rounded-md font-medium bg-gray-400 cursor-not-allowed text-white text-center"
+                            >
+                                📱 Agree to Terms to Pay Manually - {{ plan.name }}
+                            </button>
+                        </div>
+                        <div v-else class="mt-6">
+                            <button
+                                disabled
+                                class="w-full py-3 px-4 rounded-md font-medium bg-green-600 text-white text-center cursor-default flex items-center justify-center"
+                            >
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                                Current Plan
+                            </button>
+                        </div>
 
-                        <!-- Online Payment Button (Secondary) -->
+                        <!-- Online Payment Button (Secondary)
                         <button
                             @click="selectPlan(plan.name)"
                             :disabled="isButtonDisabled(plan.name)"
@@ -549,7 +573,7 @@
                             <span v-else>
                                 💳 {{ getButtonText(plan.name) }} (Online)
                             </span>
-                        </button>
+                        </button> -->
                     </div>
                 </div>
             </div>

@@ -207,6 +207,8 @@
                 <span>AI Chatbot</span>
             </Link>
 
+            <!-- KYC Verification - Hidden for now -->
+            <!--
             <Link
                 :href="route('kyc.index')"
                 class="flex items-center rounded-lg px-4 py-3 text-base font-medium"
@@ -227,13 +229,14 @@
                     />
                 </svg>
                 <span>KYC Verification</span>
-                <!-- Add a small badge if KYC is not verified -->
+                
                 <span v-if="user && user.kyc_status !== 'verified'" class="ml-auto">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                         !
                     </span>
                 </span>
             </Link>
+            -->
 
             <Link
                 :href="route('notifications.index')"

@@ -41,7 +41,7 @@ const closeModal = () => {
                             ZawajAfrica is committed to protecting your privacy and ensuring your personal information is handled with the utmost care and respect.
                         </p>
                         <p class="text-sm mt-2 opacity-90">
-                            <strong>Effective Date:</strong> October 7, 2025<br>
+                            <strong>Effective Date:</strong> JUNE 1, 2025<br>
                             <strong>Website:</strong> https://zawajafrica.online
                         </p>
                     </div>
@@ -154,43 +154,7 @@ const closeModal = () => {
                             </p>
                         </div>
 
-                        <!-- Contact Us -->
-                        <div>
-                            <h4 class="text-xl font-semibold text-[#654396] mb-3">10. Contact Us</h4>
-                            <p class="text-gray-700 mb-4">
-                                If you have any questions or concerns about your privacy, please contact:
-                            </p>
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <div class="space-y-2">
-                                    <p class="text-gray-700">
-                                        <strong>📧 Email:</strong> 
-                                        <a href="mailto:support@zawajafrica.com.ng" class="text-[#654396] hover:underline">
-                                            support@zawajafrica.com.ng
-                                        </a>
-                                        <span class="mx-2">|</span>
-                                        <a href="mailto:info@zawajafrica.online" class="text-[#654396] hover:underline">
-                                            info@zawajafrica.online
-                                        </a>
-                                    </p>
-                                    <p class="text-gray-700">
-                                        <strong>📱 Call/WhatsApp:</strong> 
-                                        <a href="https://wa.me/2347037727643" target="_blank" class="text-[#654396] hover:underline">
-                                            +234 703 772 7643
-                                        </a>
-                                    </p>
-                                    <p class="text-gray-700">
-                                        <strong>🏢 Address:</strong> 
-                                        <span>No 378 Gadangami plaza, BUK road, Kano, Nigeria</span>
-                                    </p>
-                                    <p class="text-gray-700">
-                                        <strong>🌐 Website:</strong> 
-                                        <a href="https://zawajafrica.online" target="_blank" class="text-[#654396] hover:underline">
-                                            https://zawajafrica.online
-                                        </a>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
             </div>

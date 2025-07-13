@@ -12,6 +12,9 @@
     import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
     import Modal from '@/Components/Modal.vue';
+   
+    import MobileHeader from '@/Components/MobileHeader.vue';
+
 
     const page = usePage();
     const showPaymentSuccessModal = ref(false);
@@ -54,19 +57,100 @@
         isRightSidebarVisible.value = !isRightSidebarVisible.value;
     };
 
-    // State for profile dropdown visibility
+    // Profile dropdown functionality
     const profileDropdownOpen = ref(false);
+    const showDeleteConfirmation = ref(false);
+    const showPasswordModal = ref(false);
+    const passwordForm = ref({
+        current_password: '',
+        password: '',
+        password_confirmation: ''
+    });
+    const passwordErrors = ref({});
+    const passwordLoading = ref(false);
 
-    // Add state for language selection
-    const currentLanguage = ref('English');
-    const languages = ref(['English', 'Arabic', 'French', 'Swahili']);
-
-    // Function to change language
-    const changeLanguage = language => {
-        currentLanguage.value = language;
-        // Here you would add logic to actually change the app language
+    // Show password change modal
+    const showPasswordChangeModal = () => {
         profileDropdownOpen.value = false;
+        showPasswordModal.value = true;
+        // Reset form and errors
+        passwordForm.value = {
+            current_password: '',
+            password: '',
+            password_confirmation: ''
+        };
+        passwordErrors.value = {};
     };
+
+    // Handle password change
+    const changePassword = () => {
+        passwordLoading.value = true;
+        passwordErrors.value = {};
+
+        router.put(
+            route('password.update'),
+            passwordForm.value,
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showPasswordModal.value = false;
+                    passwordLoading.value = false;
+                    // Show success message
+                    alert('Password changed successfully!');
+                },
+                onError: (errors) => {
+                    passwordErrors.value = errors;
+                    passwordLoading.value = false;
+                }
+            }
+        );
+    };
+
+    const cancelPasswordChange = () => {
+        showPasswordModal.value = false;
+        passwordForm.value = {
+            current_password: '',
+            password: '',
+            password_confirmation: ''
+        };
+        passwordErrors.value = {};
+    };
+
+    // Delete account function
+    const confirmDeleteAccount = () => {
+        profileDropdownOpen.value = false;
+        showDeleteConfirmation.value = true;
+    };
+
+    const deleteAccount = () => {
+        router.delete(
+            route('profile.destroy'),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Redirect to home page after account deletion
+                    window.location.href = '/';
+                },
+                onError: (errors) => {
+                    console.error('Failed to delete account:', errors);
+                    alert('Failed to delete account. Please try again.');
+                }
+            }
+        );
+        showDeleteConfirmation.value = false;
+    };
+
+    const cancelDeleteAccount = () => {
+        showDeleteConfirmation.value = false;
+    };
+
+    // Close dropdown when clicking outside
+    const closeDropdown = event => {
+        if (!event.target.closest('.profile-dropdown')) {
+            profileDropdownOpen.value = false;
+        }
+    };
+
 
     // Custom logout function
     const logout = () => {
@@ -364,13 +448,7 @@
         return matches.value;
     });
 
-    // Close the profile dropdown when clicking outside
-    const closeDropdown = e => {
-        // If the click is outside the dropdown and the dropdown is open, close it
-        if (profileDropdownOpen.value && !e.target.closest('.profile-dropdown')) {
-            profileDropdownOpen.value = false;
-        }
-    };
+
 
     // Close mobile menu when clicking outside
     const closeMobileMenu = e => {
@@ -382,8 +460,8 @@
 
     // Add click event listener when component is mounted
     onMounted(() => {
-        document.addEventListener('click', closeDropdown);
         document.addEventListener('click', closeMobileMenu);
+        document.addEventListener('click', closeDropdown);
 
         // Check for payment success on page load
         if (page.props.flash?.payment_success) {
@@ -439,8 +517,8 @@
 
     // Remove event listener when component is unmounted
     onUnmounted(() => {
-        document.removeEventListener('click', closeDropdown);
         document.removeEventListener('click', closeMobileMenu);
+        document.removeEventListener('click', closeDropdown);
         document.body.classList.remove('overflow-hidden');
     });
 
@@ -455,88 +533,13 @@
     <Head title="Dashboard" />
 
     <div class="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
-        <!-- Mobile header with hamburger menu and welcome text - Only visible on mobile -->
-        <div class="fixed top-0 left-0 right-0 z-50 bg-purple-600 shadow-md p-4 flex items-center md:hidden">
-            <button @click="toggleMobileMenu" class="mobile-menu-toggle p-1 mr-3" aria-label="Toggle menu">
-                <svg
-                    class="h-6 w-6 text-white"
-                    :class="{ hidden: isMobileMenuOpen }"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <svg
-                    class="h-6 w-6 text-white"
-                    :class="{ hidden: !isMobileMenuOpen }"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-
-            <!-- Welcome text beside hamburger on mobile -->
-            <div class="flex items-center gap-2">
-                <h1 class="text-lg font-bold text-white">Welcome {{ $page.props.auth.user.name }}!</h1>
-                <TierBadge :tier="currentUserTier" size="xs" />
-            </div>
-
-            <!-- Profile dropdown on mobile - right aligned -->
-            <div class="profile-dropdown relative ml-auto">
-                <button @click="profileDropdownOpen = !profileDropdownOpen" class="flex items-center">
-                    <img
-                        :src="$page.props.auth.user.profile_photo || '/images/placeholder.jpg'"
-                        alt="Profile"
-                        class="h-8 w-8 rounded-full object-cover"
-                    />
-                </button>
-
-                <!-- Dropdown Menu -->
-                <div
-                    v-if="profileDropdownOpen"
-                    class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
-                >
-                    <div class="px-4 py-2 border-b border-gray-100">
-                        <p class="text-sm text-gray-500">Signed in as</p>
-                        <p class="text-sm font-medium text-gray-900 truncate">{{ $page.props.auth.user.email }}</p>
-                    </div>
-
-                    <!-- Language Selector -->
-                    <div class="px-4 py-2 border-b border-gray-100">
-                        <p class="text-sm text-gray-500 mb-1">Language</p>
-                        <div class="flex flex-wrap gap-1">
-                            <button
-                                v-for="language in languages"
-                                :key="language"
-                                @click="changeLanguage(language)"
-                                class="text-xs px-2 py-1 rounded-full"
-                                :class="
-                                    language === currentLanguage
-                                        ? 'bg-purple-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                "
-                            >
-                                {{ language }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <Link :href="route('me.profile')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Settings
-                    </Link>
-
-                    <button
-                        @click="logout"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                        Logout
-                    </button>
-                </div>
-            </div>
-        </div>
+        <!-- Mobile Header Component -->
+        <MobileHeader 
+            :user="$page.props.auth.user" 
+            :user-tier="currentUserTier" 
+            :is-mobile-menu-open="isMobileMenuOpen"
+            @toggle-mobile-menu="toggleMobileMenu"
+        />
 
         <!-- Mobile Menu Overlay -->
         <div
@@ -555,14 +558,26 @@
 
         <!-- Main Content - Add left margin on desktop to account for fixed sidebar -->
         <div class="flex-1 px-4 py-4 md:p-8 mt-16 md:mt-0 md:ml-64">
-            <!-- Welcome and Search - Only visible on desktop -->
+            <!-- Header for desktop -->
             <div class="mb-6 md:mb-8 hidden md:block">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
-                        <TierBadge :tier="currentUserTier" size="sm" />
+                <div class="flex items-center justify-between mb-4 md:mb-6">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-2xl font-bold">Welcome {{ $page.props.auth.user.name }}!</h1>
+                            <TierBadge :tier="currentUserTier" size="sm" />
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 md:space-x-3">
+                        <!-- Notifications -->
+                        <NotificationBell />
+
+                        
                     </div>
                 </div>
+            </div>
+
+            <!-- Search section - Only visible on desktop -->
+            <div class="mb-6 md:mb-8 hidden md:block">
 
                 <!-- Search bar with integrated filter button - desktop -->
                 <div class="flex items-center rounded-lg border border-gray-300 bg-white">
@@ -770,6 +785,112 @@
                 </button>
             </div>
         </Modal>
+
+        <!-- Password Change Modal -->
+        <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Change Password</h3>
+                
+                <form @submit.prevent="changePassword" class="space-y-4">
+                    <!-- Current Password -->
+                    <div>
+                        <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">
+                            Current Password
+                        </label>
+                        <input
+                            id="current_password"
+                            v-model="passwordForm.current_password"
+                            type="password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            :class="{ 'border-red-500': passwordErrors.current_password }"
+                            required
+                        />
+                        <div v-if="passwordErrors.current_password" class="text-red-500 text-sm mt-1">
+                            {{ passwordErrors.current_password }}
+                        </div>
+                    </div>
+
+                    <!-- New Password -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+                            New Password
+                        </label>
+                        <input
+                            id="password"
+                            v-model="passwordForm.password"
+                            type="password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            :class="{ 'border-red-500': passwordErrors.password }"
+                            required
+                        />
+                        <div v-if="passwordErrors.password" class="text-red-500 text-sm mt-1">
+                            {{ passwordErrors.password }}
+                        </div>
+                    </div>
+
+                    <!-- Confirm New Password -->
+                    <div>
+                        <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Confirm New Password
+                        </label>
+                        <input
+                            id="password_confirmation"
+                            v-model="passwordForm.password_confirmation"
+                            type="password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            :class="{ 'border-red-500': passwordErrors.password_confirmation }"
+                            required
+                        />
+                        <div v-if="passwordErrors.password_confirmation" class="text-red-500 text-sm mt-1">
+                            {{ passwordErrors.password_confirmation }}
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button
+                            type="button"
+                            @click="cancelPasswordChange"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                            :disabled="passwordLoading"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            :disabled="passwordLoading"
+                        >
+                            {{ passwordLoading ? 'Changing...' : 'Change Password' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Account Confirmation Modal -->
+        <div v-if="showDeleteConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Delete Account</h3>
+                <p class="text-gray-600 mb-6">
+                    Are you sure you want to delete your account? This action cannot be undone and will permanently remove all your data, matches, and messages.
+                </p>
+                <div class="flex justify-end space-x-3">
+                    <button
+                        @click="cancelDeleteAccount"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="deleteAccount"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                    >
+                        Delete Account
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -780,6 +901,8 @@
             padding-top: 1rem;
         }
     }
+
+
 
     /* Prevent scrolling when mobile menu is open */
     :global(.overflow-hidden) {
