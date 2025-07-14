@@ -17,34 +17,34 @@
             <!-- Ad Container - Completely isolated from Vue reactivity -->
             <!-- Use v-show instead of v-if to avoid DOM removal issues -->
             <div v-show="!hasExternalContent" class="vue-managed-placeholder">
-                <div v-if="isLoading" class="flex items-center justify-center py-8">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
-                    <span class="ml-2 text-sm text-gray-600">Loading ad...</span>
+            <div v-if="isLoading" class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+                <span class="ml-2 text-sm text-gray-600">Loading ad...</span>
+            </div>
+            <div v-else-if="error" class="py-8 text-center">
+                <div class="text-red-500 text-sm mb-2">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    {{ error }}
                 </div>
-                <div v-else-if="error" class="py-8 text-center">
-                    <div class="text-red-500 text-sm mb-2">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        {{ error }}
-                    </div>
-                    <button 
-                        v-if="canRetry" 
-                        @click="retryLoad" 
-                        class="text-blue-500 hover:text-blue-700 text-sm underline"
-                    >
-                        Try again
-                    </button>
+                <button 
+                    v-if="canRetry" 
+                    @click="retryLoad" 
+                    class="text-blue-500 hover:text-blue-700 text-sm underline"
+                >
+                    Try again
+                </button>
                 </div>
                 <div v-else class="text-xs text-gray-400 p-2">
                     Ready for ad...
                 </div>
             </div>
-            
+
             <!-- External ad container - completely separate from Vue DOM -->
             <div ref="adContainer" :id="adElementId" class="adsterra-ad-container min-h-[100px]" 
                  v-show="hasExternalContent" style="display: none;">
                 <!-- External ad script will populate this -->
             </div>
-            
+
             <!-- Debug: Show container content after load (outside ad container) -->
             <div v-if="debug" class="text-xs bg-blue-100 p-2 mt-2 rounded border">
                 <div v-if="adLoaded">
@@ -123,21 +123,21 @@ export default {
 
         const shouldShow = computed(() => {
             try {
-                // Check global Adsterra config first
-                if (!adsterraConfig.value?.enabled) {
-                    return false
-                }
+            // Check global Adsterra config first
+            if (!adsterraConfig.value?.enabled) {
+                return false
+            }
 
-                // Check if ads should show on this page
-                const showOnPage = page.props.adsterra?.show_on_page
-                if (!showOnPage) {
-                    return false
-                }
+            // Check if ads should show on this page
+            const showOnPage = page.props.adsterra?.show_on_page
+            if (!showOnPage) {
+                return false
+            }
 
-                // Check if this placement is enabled
-                if (!isPlacementEnabled.value) {
-                    return false
-                }
+            // Check if this placement is enabled
+            if (!isPlacementEnabled.value) {
+                return false
+            }
 
                 // Check if zone is configured
                 const zoneId = adsterraConfig.value.ad_zones?.[props.zoneName]
@@ -148,7 +148,7 @@ export default {
                     return false
                 }
 
-                return true
+            return true
             } catch (err) {
                 console.error('Error in shouldShow computed:', err)
                 return false
@@ -220,7 +220,7 @@ export default {
 
                 // Wait for Vue to finish rendering
                 await nextTick()
-                
+
                 // Use Vue ref to get container
                 const container = adContainer.value
                 if (!container) {
@@ -285,13 +285,13 @@ export default {
                     console.error(`Failed to load Adsterra script for zone ${props.zoneName}:`, e)
                     console.error(`Script URL was: ${script.src}`)
                     if (container) {
-                        container.innerHTML = `
+                container.innerHTML = `
                             <div style="background: #fef2f2; padding: 16px; text-align: center; border-radius: 8px; border: 1px solid #fecaca;">
                                 <div style="color: #dc2626; font-size: 14px;">Advertisement</div>
                                 <div style="color: #ef4444; font-size: 12px; margin-top: 4px;">Script failed to load</div>
                                 <div style="color: #6b7280; font-size: 10px; margin-top: 4px;">${script.src}</div>
-                            </div>
-                        `
+                    </div>
+                `
                     }
                 }
                 
@@ -328,7 +328,7 @@ export default {
                     // The timeout will handle showing fallback
                 } else {
                     isLoading.value = false
-                    adLoaded.value = true
+                adLoaded.value = true
                     console.log(`AdsterraDisplayAd: External content detected for zone ${props.zoneName}`)
                 }
                 
