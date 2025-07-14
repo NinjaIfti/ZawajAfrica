@@ -19,11 +19,6 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Ad test route for debugging (accessible to all)
-Route::get('/ad-test', function () {
-    return Inertia::render('AdTest');
-})->name('ad.test');
-
 // Dashboard with user profile data
 Route::get('/dashboard', function () {
     $user = auth()->user();
