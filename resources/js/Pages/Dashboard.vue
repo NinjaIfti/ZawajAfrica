@@ -12,6 +12,7 @@
     import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
     import Modal from '@/Components/Modal.vue';
+    import NotificationBell from '@/Components/NotificationBell.vue';
    
     import MobileHeader from '@/Components/MobileHeader.vue';
 
@@ -61,6 +62,9 @@
     const profileDropdownOpen = ref(false);
     const showDeleteConfirmation = ref(false);
     const showPasswordModal = ref(false);
+    const deletePassword = ref('');
+    const deletePasswordError = ref('');
+    const deletePasswordLoading = ref(false);
     const passwordForm = ref({
         current_password: '',
         password: '',
@@ -123,21 +127,53 @@
     };
 
     const deleteAccount = () => {
+        showDeleteConfirmation.value = false;
+        showPasswordModal.value = true;
+        deletePassword.value = '';
+        deletePasswordError.value = '';
+    };
+
+    const confirmPasswordAndDelete = () => {
+        if (!deletePassword.value.trim()) {
+            deletePasswordError.value = 'Password is required';
+            return;
+        }
+
+        deletePasswordLoading.value = true;
+        deletePasswordError.value = '';
+
         router.delete(
             route('profile.destroy'),
             {
+                data: {
+                    password: deletePassword.value
+                },
                 preserveScroll: true,
                 onSuccess: () => {
                     // Redirect to home page after account deletion
                     window.location.href = '/';
                 },
                 onError: (errors) => {
+                    deletePasswordLoading.value = false;
                     console.error('Failed to delete account:', errors);
-                    alert('Failed to delete account. Please try again.');
+                    if (errors.password) {
+                        deletePasswordError.value = 'Invalid password. Please try again.';
+                    } else {
+                        deletePasswordError.value = 'Failed to delete account. Please try again.';
+                    }
+                },
+                onFinish: () => {
+                    deletePasswordLoading.value = false;
                 }
             }
         );
-        showDeleteConfirmation.value = false;
+    };
+
+    const cancelPasswordModal = () => {
+        showPasswordModal.value = false;
+        deletePassword.value = '';
+        deletePasswordError.value = '';
+        deletePasswordLoading.value = false;
     };
 
     const cancelDeleteAccount = () => {
@@ -891,6 +927,40 @@
                 </div>
             </div>
         </div>
+
+        <!-- Password Confirmation Modal -->
+        <Modal :show="showPasswordModal" :closeable="false" maxWidth="sm">
+            <div class="p-8 flex flex-col items-center">
+                <h2 class="text-2xl font-bold mb-2 text-red-700">Confirm Account Deletion</h2>
+                <p class="mb-4 text-gray-600 text-center">Please enter your password to confirm account deletion.</p>
+                <input
+                    v-model="deletePassword"
+                    type="password"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-red-500 text-lg"
+                    placeholder="Enter your password"
+                    :disabled="deletePasswordLoading"
+                    @keyup.enter="confirmPasswordAndDelete"
+                />
+                <div v-if="deletePasswordError" class="text-red-600 text-sm mb-2">{{ deletePasswordError }}</div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button
+                        @click="cancelPasswordModal"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        :disabled="deletePasswordLoading"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="confirmPasswordAndDelete"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                        :disabled="deletePasswordLoading || !deletePassword"
+                    >
+                        <span v-if="deletePasswordLoading">Deleting...</span>
+                        <span v-else>Confirm Deletion</span>
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </div>
 </template>
 

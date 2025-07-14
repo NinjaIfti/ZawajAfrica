@@ -411,6 +411,30 @@ Route::middleware('auth')->group(function () {
                 'config' => $adsterraService->getAdsterraConfig($user),
             ]);
         })->name('debug');
+        
+        Route::get('/user-debug', function () {
+            $user = Auth::user();
+            $tierService = app(\App\Services\UserTierService::class);
+            
+            if (!$user) {
+                return response()->json(['error' => 'Not authenticated']);
+            }
+            
+            return response()->json([
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'user_email' => $user->email,
+                'subscription_status' => $user->subscription_status,
+                'subscription_plan' => $user->subscription_plan,
+                'subscription_expires_at' => $user->subscription_expires_at,
+                'user_tier' => $tierService->getUserTier($user),
+                'user_limits' => $tierService->getUserLimits($user),
+                'ads_frequency' => $tierService->getUserLimits($user)['ads_frequency'] ?? 0,
+                'should_show_ads_with_count_0' => $tierService->shouldShowAds($user, 0),
+                'should_show_ads_with_count_1' => $tierService->shouldShowAds($user, 1),
+                'should_show_ads_with_count_10' => $tierService->shouldShowAds($user, 10),
+            ]);
+        })->name('user.debug');
     });
 
     // KYC Routes for Monnify verification

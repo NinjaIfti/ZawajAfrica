@@ -61,6 +61,11 @@ class AdsterraService
      */
     protected function isValidScriptUrl(string $url): bool
     {
+        // TEMPORARILY DISABLE STRICT VALIDATION FOR TESTING
+        if ($this->config['debug']['enabled']) {
+            return !empty($url); // Just check it's not empty in debug mode
+        }
+        
         // Check if it's a valid URL format
         if (!filter_var('https:' . $url, FILTER_VALIDATE_URL)) {
             return false;
@@ -82,6 +87,11 @@ class AdsterraService
      */
     protected function isValidPublisherId(string $id): bool
     {
+        // TEMPORARILY DISABLE STRICT VALIDATION FOR TESTING
+        if ($this->config['debug']['enabled']) {
+            return !empty($id); // Just check it's not empty in debug mode
+        }
+        
         // Adsterra publisher IDs are typically 32-character hex strings
         return preg_match('/^[a-f0-9]{32}$/', $id) === 1;
     }

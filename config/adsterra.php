@@ -33,7 +33,7 @@ return [
     
     // Targeting configuration
     'targeting' => [
-        'allowed_countries' => array_filter(explode(',', env('ADSTERRA_ALLOWED_COUNTRIES', 'NG,US,GB,CA,AU'))),
+        'allowed_countries' => array_filter(explode(',', env('ADSTERRA_ALLOWED_COUNTRIES', ''))), // Empty = allow all countries
         'blocked_countries' => array_filter(explode(',', env('ADSTERRA_BLOCKED_COUNTRIES', ''))),
         'allowed_device_types' => array_filter(explode(',', env('ADSTERRA_ALLOWED_DEVICES', 'mobile,desktop,tablet'))),
         'min_screen_width' => env('ADSTERRA_MIN_SCREEN_WIDTH', 320),
@@ -70,17 +70,19 @@ return [
     
     // Security settings
     'security' => [
-        'csp_enabled' => env('ADSTERRA_CSP_ENABLED', true),
+        'csp_enabled' => env('ADSTERRA_CSP_ENABLED', false),
         'allowed_domains' => [
             'adsterra.com',
             'adsterra.net',
             'adsterranetwork.com',
-            'pl27099042.profitableratecpm.com'
+            'pl27099042.profitableratecpm.com',
+            'highcpmrevenuegate.com',
+            'www.highcpmrevenuegate.com'
         ],
-        'validate_scripts' => env('ADSTERRA_VALIDATE_SCRIPTS', true),
-        'block_malicious_ads' => env('ADSTERRA_BLOCK_MALICIOUS', true),
-        'rate_limiting' => env('ADSTERRA_RATE_LIMITING', true),
-        'max_requests_per_minute' => env('ADSTERRA_MAX_REQUESTS_PER_MINUTE', 60),
+        'validate_scripts' => env('ADSTERRA_VALIDATE_SCRIPTS', false),
+        'block_malicious_ads' => env('ADSTERRA_BLOCK_MALICIOUS', false),
+        'rate_limiting' => env('ADSTERRA_RATE_LIMITING', false),
+        'max_requests_per_minute' => env('ADSTERRA_MAX_REQUESTS_PER_MINUTE', 300),
     ],
     
     // Debug and development

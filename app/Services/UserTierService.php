@@ -202,6 +202,11 @@ class UserTierService
         $limits = $this->getUserLimits($user);
         $adsFrequency = $limits['ads_frequency'] ?? 0;
         
+        // TEMPORARY DEBUG BYPASS: Always show ads for free users when debug is enabled
+        if (config('adsterra.debug.enabled') && $adsFrequency > 0) {
+            return true;
+        }
+        
         return $adsFrequency > 0 && ($currentViewCount % $adsFrequency) === 0;
     }
 

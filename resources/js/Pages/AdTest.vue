@@ -1,259 +1,164 @@
 <template>
-    <AppLayout title="Adsterra Ad Test">
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 bg-white border-b border-gray-200">
-                        <h2 class="text-2xl font-bold mb-4">Adsterra Integration Test</h2>
-                        
-                        <!-- Debug Information -->
-                        <div class="mb-6 p-4 bg-gray-100 rounded-lg">
-                            <h3 class="text-lg font-semibold mb-2">Debug Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <strong>Adsterra Enabled:</strong> 
-                                    <span class="ml-2" :class="adsterraConfig.enabled ? 'text-green-600' : 'text-red-600'">
-                                        {{ adsterraConfig.enabled ? 'Yes' : 'No' }}
-                                    </span>
-                                </div>
-                                <div>
-                                    <strong>Show on Page:</strong> 
-                                    <span class="ml-2" :class="showOnPage ? 'text-green-600' : 'text-red-600'">
-                                        {{ showOnPage ? 'Yes' : 'No' }}
-                                    </span>
-                                </div>
-                                <div>
-                                    <strong>User Tier:</strong> 
-                                    <span class="ml-2">{{ getUserTier() }}</span>
-                                </div>
-                                <div>
-                                    <strong>Script URL:</strong> 
-                                    <span class="ml-2 text-xs break-all">{{ adsterraConfig.script_url }}</span>
-                                </div>
-                                <div>
-                                    <strong>Publisher ID:</strong> 
-                                    <span class="ml-2 text-xs">{{ adsterraConfig.publisher_id }}</span>
-                                </div>
-                                <div>
-                                    <strong>Debug Mode:</strong> 
-                                    <span class="ml-2" :class="adsterraConfig.debug ? 'text-green-600' : 'text-red-600'">
-                                        {{ adsterraConfig.debug ? 'Enabled' : 'Disabled' }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Ad Zones -->
-                        <div class="mb-6 p-4 bg-gray-100 rounded-lg">
-                            <h3 class="text-lg font-semibold mb-2">Configured Ad Zones</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                                <div v-for="(zoneId, zoneName) in adsterraConfig.ad_zones" :key="zoneName">
-                                    <strong>{{ zoneName }}:</strong> 
-                                    <span class="ml-2 text-xs" :class="zoneId ? 'text-green-600' : 'text-red-600'">
-                                        {{ zoneId || 'Not configured' }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Test Ads -->
-                        <div class="space-y-6">
-                            <h3 class="text-lg font-semibold">Test Advertisements</h3>
-                            
-                            <!-- Banner Ad Test -->
-                            <div class="border rounded-lg p-4">
-                                <h4 class="font-medium mb-2">Banner Ad (zone: banner)</h4>
-                                <AdsterraDisplayAd 
-                                    zone-name="banner" 
-                                    placement="test"
-                                    :debug="true"
-                                    class="border-2 border-dashed border-gray-300"
-                                />
-                            </div>
-
-                            <!-- Feed Ad Test -->
-                            <div class="border rounded-lg p-4">
-                                <h4 class="font-medium mb-2">Feed Ad (zone: feed)</h4>
-                                <AdsterraDisplayAd 
-                                    zone-name="feed" 
-                                    placement="test"
-                                    :debug="true"
-                                    class="border-2 border-dashed border-gray-300"
-                                />
-                            </div>
-
-                            <!-- Sidebar Ad Test -->
-                            <div class="border rounded-lg p-4">
-                                <h4 class="font-medium mb-2">Sidebar Ad (zone: sidebar)</h4>
-                                <AdsterraDisplayAd 
-                                    zone-name="sidebar" 
-                                    placement="test"
-                                    :debug="true"
-                                    class="border-2 border-dashed border-gray-300"
-                                />
-                            </div>
-
-                            <!-- Native Ad Test -->
-                            <div class="border rounded-lg p-4">
-                                <h4 class="font-medium mb-2">Native Ad (zone: native)</h4>
-                                <AdsterraDisplayAd 
-                                    zone-name="native" 
-                                    placement="test"
-                                    :debug="true"
-                                    class="border-2 border-dashed border-gray-300"
-                                />
-                            </div>
-                        </div>
-
-                        <!-- Instructions -->
-                        <div class="mt-8 p-4 bg-blue-50 rounded-lg">
-                            <h3 class="text-lg font-semibold mb-2 text-blue-800">Instructions</h3>
-                            <ol class="list-decimal list-inside text-sm space-y-1 text-blue-700">
-                                <li>Check that "Adsterra Enabled" and "Show on Page" are both "Yes"</li>
-                                <li>Verify that ad zones have proper zone IDs configured</li>
-                                <li>Look for ads appearing in the test sections above</li>
-                                <li>Check browser console for any Adsterra-related errors</li>
-                                <li>If you're a paid user, you won't see ads (this is expected)</li>
-                            </ol>
-                        </div>
-
-                        <!-- API Test Button -->
-                        <div class="mt-6 space-y-4">
-                            <button 
-                                @click="testAdsterraAPI" 
-                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mr-4"
-                                :disabled="loading"
-                            >
-                                <span v-if="loading">Testing...</span>
-                                <span v-else>Test Adsterra API</span>
-                            </button>
-
-                            <button 
-                                @click="checkCurrentPageStatus" 
-                                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                :disabled="loading"
-                            >
-                                Check Current Page Status
-                            </button>
-                            
-                            <div v-if="apiTestResult" class="mt-4 p-4 rounded-lg" 
-                                 :class="apiTestResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
-                                <pre class="text-xs overflow-auto">{{ JSON.stringify(apiTestResult.data, null, 2) }}</pre>
-                            </div>
-
-                            <!-- Current Page Status -->
-                            <div v-if="pageStatus" class="mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg">
-                                <h4 class="font-semibold mb-2">Current Page Status:</h4>
-                                <div class="text-sm space-y-1">
-                                    <div><strong>Current URL:</strong> {{ pageStatus.current_url }}</div>
-                                    <div><strong>Current Path:</strong> {{ pageStatus.current_path }}</div>
-                                    <div><strong>Show Ads:</strong> 
-                                        <span :class="pageStatus.should_show_ads ? 'text-green-600' : 'text-red-600'">
-                                            {{ pageStatus.should_show_ads ? 'YES' : 'NO' }}
-                                        </span>
-                                    </div>
-                                    <div><strong>Show on Page:</strong> 
-                                        <span :class="pageStatus.should_show_on_page ? 'text-green-600' : 'text-red-600'">
-                                            {{ pageStatus.should_show_on_page ? 'YES' : 'NO' }}
-                                        </span>
-                                    </div>
-                                    <div v-if="pageStatus.restricted_reason">
-                                        <strong>Restriction Reason:</strong> {{ pageStatus.restricted_reason }}
-                                    </div>
-                                </div>
-                            </div>
+    <Head title="Ad Test" />
+    
+    <div class="min-h-screen bg-gray-100 p-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold mb-8">Adsterra Ad Test Page</h1>
+            
+            <!-- Manual HTML Ad Test -->
+            <div class="bg-white p-6 rounded-lg shadow mb-8">
+                <h2 class="text-xl font-semibold mb-4">Manual HTML Integration Test</h2>
+                <div class="border border-gray-300 p-4 min-h-[250px]">
+                    <div id="40252a1397d95eb269852aea67a5c58f" style="text-align: center; min-height: 200px;">
+                        <div style="padding: 20px; background: #f0f0f0; border: 1px dashed #ccc;">
+                            Manual Ad Container - Zone: 40252a1397d95eb269852aea67a5c58f
                         </div>
                     </div>
                 </div>
+                <button @click="loadManualAd" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Load Manual Ad
+                </button>
+            </div>
+            
+            <!-- Component Test -->
+            <div class="bg-white p-6 rounded-lg shadow mb-8">
+                <h2 class="text-xl font-semibold mb-4">Component Integration Test</h2>
+                <div class="border border-gray-300 p-4">
+                    <AdsterraDisplayAd zone-name="banner" :debug="true" />
+                </div>
+            </div>
+            
+            <!-- Test with Different Zone -->
+            <div class="bg-white p-6 rounded-lg shadow mb-8">
+                <h2 class="text-xl font-semibold mb-4">Test Zone 2</h2>
+                <div class="border border-gray-300 p-4 min-h-[250px]">
+                    <div id="test-zone-2" style="text-align: center; min-height: 200px;">
+                        <div style="padding: 20px; background: #f0f0f0; border: 1px dashed #ccc;">
+                            Test Zone 2 Container
+                        </div>
+                    </div>
+                </div>
+                <button @click="loadTestZone2" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Load Test Zone 2
+                </button>
+            </div>
+            
+            <!-- Debug Info -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Debug Information</h2>
+                <div class="space-y-2 text-sm">
+                    <div><strong>Adsterra Config:</strong> {{ JSON.stringify(adsterraConfig, null, 2) }}</div>
+                    <div><strong>Show on Page:</strong> {{ showOnPage }}</div>
+                    <div><strong>Manual Ad Status:</strong> {{ manualAdStatus }}</div>
+                    <div><strong>Scripts Loaded:</strong> {{ scriptsLoaded }}</div>
+                </div>
             </div>
         </div>
-    </AppLayout>
+    </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
+import { Head, usePage } from '@inertiajs/vue3'
+import { ref, computed, onMounted } from 'vue'
 import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue'
 
 const page = usePage()
-const loading = ref(false)
-const apiTestResult = ref(null)
-const pageStatus = ref(null)
+const manualAdStatus = ref('Not loaded')
+const scriptsLoaded = ref([])
 
 const adsterraConfig = computed(() => page.props.adsterra?.config || {})
 const showOnPage = computed(() => page.props.adsterra?.show_on_page || false)
 
-const getUserTier = () => {
-    const user = page.props.auth?.user
-    if (!user) return 'guest'
-    if (!user.subscription_plan || user.subscription_status !== 'active') {
-        return 'free'
-    }
-    return user.subscription_plan.toLowerCase()
-}
-
-const testAdsterraAPI = async () => {
-    loading.value = true
-    apiTestResult.value = null
+const loadManualAd = async () => {
+    manualAdStatus.value = 'Loading...'
     
     try {
-        const response = await fetch('/api/adsterra/debug', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        // Set up global options
+        window.atOptions = {
+            'key': '40252a1397d95eb269852aea67a5c58f',
+            'format': 'iframe',
+            'height': 250,
+            'width': 300,
+            'params': {}
+        }
+        
+        // Create and load script
+        const script = document.createElement('script')
+        script.type = 'text/javascript'
+        script.async = true
+        script.src = '//www.highcpmrevenuegate.com/40252a1397d95eb269852aea67a5c58f/invoke.js'
+        
+        script.onload = () => {
+            manualAdStatus.value = 'Script loaded'
+            scriptsLoaded.value.push(script.src)
+            console.log('Manual ad script loaded')
+        }
+        
+        script.onerror = (e) => {
+            manualAdStatus.value = 'Script failed to load'
+            console.error('Manual ad script failed:', e)
+        }
+        
+        document.head.appendChild(script)
+        
+        // Check for content after a delay
+        setTimeout(() => {
+            const container = document.getElementById('40252a1397d95eb269852aea67a5c58f')
+            if (container) {
+                console.log('Manual ad container content:', container.innerHTML)
+                if (container.innerHTML.includes('iframe') || container.innerHTML.length > 200) {
+                    manualAdStatus.value = 'Ad content detected'
+                } else {
+                    manualAdStatus.value = 'No ad content detected'
+                }
             }
-        })
+        }, 5000)
         
-        const data = await response.json()
-        
-        apiTestResult.value = {
-            success: response.ok,
-            data: data
-        }
     } catch (error) {
-        apiTestResult.value = {
-            success: false,
-            data: { error: error.message }
-        }
-    } finally {
-        loading.value = false
+        manualAdStatus.value = 'Error: ' + error.message
+        console.error('Manual ad error:', error)
     }
 }
 
-const checkCurrentPageStatus = async () => {
-    loading.value = true
-    pageStatus.value = null
-    
+const loadTestZone2 = async () => {
     try {
-        const response = await fetch('/api/adsterra/config', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            }
-        })
-        
-        const data = await response.json()
-        
-        pageStatus.value = {
-            current_url: window.location.href,
-            current_path: window.location.pathname,
-            should_show_ads: data.config?.enabled || false,
-            should_show_on_page: data.show_on_page || false,
-            restricted_reason: !data.show_on_page ? 'Page is restricted for ads' : null
+        // Try with a different approach - direct script injection
+        const container = document.getElementById('test-zone-2')
+        if (container) {
+            container.innerHTML = `
+                <script type="text/javascript">
+                    atOptions = {
+                        'key' : '40252a1397d95eb269852aea67a5c58f',
+                        'format' : 'iframe',
+                        'height' : 250,
+                        'width' : 300,
+                        'params' : {}
+                    };
+                </script>
+                <script type="text/javascript" src="//www.highcpmrevenuegate.com/40252a1397d95eb269852aea67a5c58f/invoke.js"></script>
+            `
+            
+            // Execute the scripts
+            const scripts = container.querySelectorAll('script')
+            scripts.forEach(script => {
+                if (script.src) {
+                    const newScript = document.createElement('script')
+                    newScript.src = script.src
+                    newScript.async = true
+                    document.head.appendChild(newScript)
+                } else {
+                    eval(script.innerHTML)
+                }
+            })
         }
     } catch (error) {
-        pageStatus.value = {
-            current_url: window.location.href,
-            current_path: window.location.pathname,
-            should_show_ads: false,
-            should_show_on_page: false,
-            restricted_reason: 'Error checking status: ' + error.message
-        }
-    } finally {
-        loading.value = false
+        console.error('Test zone 2 error:', error)
     }
 }
+
+onMounted(() => {
+    console.log('AdTest page mounted')
+    console.log('Adsterra config:', adsterraConfig.value)
+    console.log('Show on page:', showOnPage.value)
+})
 </script> 

@@ -12,6 +12,9 @@
     const showLanguageModal = ref(false);
     const showDeleteConfirmation = ref(false);
     const showPasswordModal = ref(false);
+    const deletePassword = ref('');
+    const deletePasswordError = ref('');
+    const deletePasswordLoading = ref(false);
     const passwordForm = ref({
         current_password: '',
         password: '',
@@ -104,21 +107,53 @@
     };
 
     const deleteAccount = () => {
+        showDeleteConfirmation.value = false;
+        showPasswordModal.value = true;
+        deletePassword.value = '';
+        deletePasswordError.value = '';
+    };
+
+    const confirmPasswordAndDelete = () => {
+        if (!deletePassword.value.trim()) {
+            deletePasswordError.value = 'Password is required';
+            return;
+        }
+
+        deletePasswordLoading.value = true;
+        deletePasswordError.value = '';
+
         router.delete(
             route('profile.destroy'),
             {
+                data: {
+                    password: deletePassword.value
+                },
                 preserveScroll: true,
                 onSuccess: () => {
                     // Redirect to home page after account deletion
                     window.location.href = '/';
                 },
                 onError: (errors) => {
+                    deletePasswordLoading.value = false;
                     console.error('Failed to delete account:', errors);
-                    alert('Failed to delete account. Please try again.');
+                    if (errors.password) {
+                        deletePasswordError.value = 'Invalid password. Please try again.';
+                    } else {
+                        deletePasswordError.value = 'Failed to delete account. Please try again.';
+                    }
+                },
+                onFinish: () => {
+                    deletePasswordLoading.value = false;
                 }
             }
         );
-        showDeleteConfirmation.value = false;
+    };
+
+    const cancelPasswordModal = () => {
+        showPasswordModal.value = false;
+        deletePassword.value = '';
+        deletePasswordError.value = '';
+        deletePasswordLoading.value = false;
     };
 
     const cancelDeleteAccount = () => {
@@ -309,6 +344,52 @@
                     Delete Account
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Password Confirmation Modal -->
+    <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Password</h3>
+            
+            <form @submit.prevent="confirmPasswordAndDelete" class="space-y-4">
+                <!-- Password -->
+                <div>
+                    <label for="delete_password" class="block text-sm font-medium text-gray-700 mb-1">
+                        Password
+                    </label>
+                    <input
+                        id="delete_password"
+                        v-model="deletePassword"
+                        type="password"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        :class="{ 'border-red-500': deletePasswordError }"
+                        required
+                    />
+                    <div v-if="deletePasswordError" class="text-red-500 text-sm mt-1">
+                        {{ deletePasswordError }}
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button
+                        type="button"
+                        @click="cancelPasswordModal"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        :disabled="deletePasswordLoading"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                        :disabled="deletePasswordLoading"
+                    >
+                        {{ deletePasswordLoading ? 'Deleting...' : 'Delete Account' }}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </template>
