@@ -154,24 +154,70 @@ export default {
                     throw new Error('Ad container not found')
                 }
 
-                // Set up ad element
-                container.innerHTML = `
-                    <div class="adsterra-ad" data-zone="${zoneId}" data-placement="${props.placement}">
-                        <!-- Ad content will be injected here -->
-                    </div>
-                `
+                // Create unique container ID for this ad
+                const adContainerId = `adsterra-container-${zoneId}-${Date.now()}`
+                
+                // Set up actual Adsterra ad element based on zone type
+                let adContent = ''
+                
+                // For different ad types, use different Adsterra implementations
+                if (props.zoneName === 'banner' || props.zoneName === 'sidebar' || props.zoneName === 'feed') {
+                    // Banner/Display ads
+                    adContent = `
+                        <div class="adsterra-ad" data-zone="${zoneId}" data-placement="${props.placement}">
+                            <script type="text/javascript">
+                                atOptions = {
+                                    'key' : '${zoneId}',
+                                    'format' : 'iframe',
+                                    'height' : 250,
+                                    'width' : 300,
+                                    'params' : {}
+                                };
+                                document.write('<scr' + 'ipt type="text/javascript" src="//www.highcpmrevenuegate.com/${zoneId}/invoke.js"></scr' + 'ipt>');
+                            </script>
+                        </div>
+                    `
+                } else if (props.zoneName === 'native') {
+                    // Native ads
+                    adContent = `
+                        <div class="adsterra-ad" data-zone="${zoneId}" data-placement="${props.placement}">
+                            <script type="text/javascript">
+                                atOptions = {
+                                    'key' : '${zoneId}',
+                                    'format' : 'iframe',
+                                    'height' : 300,
+                                    'width' : 160,
+                                    'params' : {}
+                                };
+                                document.write('<scr' + 'ipt type="text/javascript" src="//www.highcpmrevenuegate.com/${zoneId}/invoke.js"></scr' + 'ipt>');
+                            </script>
+                        </div>
+                    `
+                } else {
+                    // Default fallback
+                    adContent = `
+                        <div class="adsterra-ad bg-gray-100 p-4 text-center" data-zone="${zoneId}" data-placement="${props.placement}">
+                            <div class="text-sm text-gray-600">Advertisement</div>
+                            <div class="text-xs text-gray-500 mt-1">Zone: ${props.zoneName}</div>
+                        </div>
+                    `
+                }
 
-                // Simulate ad loading (replace with actual Adsterra integration)
+                container.innerHTML = adContent
+
+                // Wait for ad to load
                 await new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
-                        reject(new Error('Ad load timeout'))
-                    }, adsterraConfig.value.performance?.timeout || 5000)
+                        // Don't reject immediately, just resolve as ads might still load
+                        console.warn(`Adsterra ad load timeout for zone ${props.zoneName}`)
+                        resolve()
+                    }, adsterraConfig.value.performance?.timeout || 8000)
 
-                    // Simulate successful ad load
+                    // For now, just resolve after a short delay since we're using document.write
                     setTimeout(() => {
                         clearTimeout(timeout)
                         resolve()
-                    }, 1000)
+                    }, 2000)
                 })
 
                 const endTime = performance.now()

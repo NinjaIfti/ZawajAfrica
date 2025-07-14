@@ -21,12 +21,14 @@ return [
     
     // Ad zones - Configure these in your Adsterra dashboard
     'ad_zones' => [
-        'banner' => env('ADSTERRA_BANNER_ZONE', ''),
-        'popup' => env('ADSTERRA_POPUP_ZONE', ''),
-        'push' => env('ADSTERRA_PUSH_ZONE', ''),
-        'native' => env('ADSTERRA_NATIVE_ZONE', ''),
-        'video' => env('ADSTERRA_VIDEO_ZONE', ''),
-        'interstitial' => env('ADSTERRA_INTERSTITIAL_ZONE', ''),
+        'banner' => env('ADSTERRA_BANNER_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'popup' => env('ADSTERRA_POPUP_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'push' => env('ADSTERRA_PUSH_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'native' => env('ADSTERRA_NATIVE_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'video' => env('ADSTERRA_VIDEO_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'interstitial' => env('ADSTERRA_INTERSTITIAL_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'feed' => env('ADSTERRA_FEED_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'sidebar' => env('ADSTERRA_SIDEBAR_ZONE', '40252a1397d95eb269852aea67a5c58f'),
     ],
     
     // Targeting configuration
@@ -83,9 +85,9 @@ return [
     
     // Debug and development
     'debug' => [
-        'enabled' => env('ADSTERRA_DEBUG_MODE', false),
-        'console_logging' => env('ADSTERRA_CONSOLE_LOGGING', false),
-        'detailed_errors' => env('ADSTERRA_DETAILED_ERRORS', false),
+        'enabled' => env('ADSTERRA_DEBUG_MODE', true),
+        'console_logging' => env('ADSTERRA_CONSOLE_LOGGING', true),
+        'detailed_errors' => env('ADSTERRA_DETAILED_ERRORS', true),
         'test_ads' => env('ADSTERRA_TEST_ADS', false),
     ],
     

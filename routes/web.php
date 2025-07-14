@@ -19,7 +19,10 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-
+// Ad test route for debugging (accessible to all)
+Route::get('/ad-test', function () {
+    return Inertia::render('AdTest');
+})->name('ad.test');
 
 // Dashboard with user profile data
 Route::get('/dashboard', function () {
@@ -386,6 +389,28 @@ Route::middleware('auth')->group(function () {
                 ->header('Pragma', 'no-cache')
                 ->header('Expires', '0');
         })->name('health');
+        
+        Route::get('/debug', function () {
+            $adsterraService = app(\App\Services\AdsterraService::class);
+            $user = Auth::user();
+            
+            return response()->json([
+                'adsterra_enabled' => config('adsterra.enabled'),
+                'debug_mode' => config('adsterra.debug.enabled'),
+                'script_url' => config('adsterra.script_url'),
+                'publisher_id' => config('adsterra.publisher_id'),
+                'ad_zones' => config('adsterra.ad_zones'),
+                'should_show_ads' => $adsterraService->shouldShowAds($user),
+                'should_show_on_page' => $adsterraService->shouldShowAdsOnPage(request()),
+                'user_tier' => $user ? app(\App\Services\UserTierService::class)->getUserTier($user) : 'guest',
+                'user_subscription' => $user ? [
+                    'status' => $user->subscription_status,
+                    'plan' => $user->subscription_plan,
+                    'expires_at' => $user->subscription_expires_at,
+                ] : null,
+                'config' => $adsterraService->getAdsterraConfig($user),
+            ]);
+        })->name('debug');
     });
 
     // KYC Routes for Monnify verification
