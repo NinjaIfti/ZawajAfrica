@@ -123,6 +123,15 @@ class AdsterraService
             }
 
             // For free users, use tier service logic for ad frequency
+            // TEMPORARILY BYPASS FREQUENCY CHECK FOR TESTING
+            if ($this->config['debug']['enabled']) {
+                $this->logDebug('Free user - DEBUG MODE: bypassing frequency check', [
+                    'user_id' => $user->id, 
+                    'tier' => $userTier
+                ]);
+                return true; // Always show ads for free users in debug mode
+            }
+            
             $shouldShow = $this->tierService->shouldShowAds($user);
             $this->logDebug('Free user - tier service decision', [
                 'user_id' => $user->id, 

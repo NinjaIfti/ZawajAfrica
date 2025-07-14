@@ -118,19 +118,49 @@
                         </div>
 
                         <!-- API Test Button -->
-                        <div class="mt-6">
+                        <div class="mt-6 space-y-4">
                             <button 
                                 @click="testAdsterraAPI" 
-                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mr-4"
                                 :disabled="loading"
                             >
                                 <span v-if="loading">Testing...</span>
                                 <span v-else>Test Adsterra API</span>
                             </button>
+
+                            <button 
+                                @click="checkCurrentPageStatus" 
+                                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                                :disabled="loading"
+                            >
+                                Check Current Page Status
+                            </button>
                             
                             <div v-if="apiTestResult" class="mt-4 p-4 rounded-lg" 
                                  :class="apiTestResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
                                 <pre class="text-xs overflow-auto">{{ JSON.stringify(apiTestResult.data, null, 2) }}</pre>
+                            </div>
+
+                            <!-- Current Page Status -->
+                            <div v-if="pageStatus" class="mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg">
+                                <h4 class="font-semibold mb-2">Current Page Status:</h4>
+                                <div class="text-sm space-y-1">
+                                    <div><strong>Current URL:</strong> {{ pageStatus.current_url }}</div>
+                                    <div><strong>Current Path:</strong> {{ pageStatus.current_path }}</div>
+                                    <div><strong>Show Ads:</strong> 
+                                        <span :class="pageStatus.should_show_ads ? 'text-green-600' : 'text-red-600'">
+                                            {{ pageStatus.should_show_ads ? 'YES' : 'NO' }}
+                                        </span>
+                                    </div>
+                                    <div><strong>Show on Page:</strong> 
+                                        <span :class="pageStatus.should_show_on_page ? 'text-green-600' : 'text-red-600'">
+                                            {{ pageStatus.should_show_on_page ? 'YES' : 'NO' }}
+                                        </span>
+                                    </div>
+                                    <div v-if="pageStatus.restricted_reason">
+                                        <strong>Restriction Reason:</strong> {{ pageStatus.restricted_reason }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -149,6 +179,7 @@ import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue'
 const page = usePage()
 const loading = ref(false)
 const apiTestResult = ref(null)
+const pageStatus = ref(null)
 
 const adsterraConfig = computed(() => page.props.adsterra?.config || {})
 const showOnPage = computed(() => page.props.adsterra?.show_on_page || false)
@@ -185,6 +216,41 @@ const testAdsterraAPI = async () => {
         apiTestResult.value = {
             success: false,
             data: { error: error.message }
+        }
+    } finally {
+        loading.value = false
+    }
+}
+
+const checkCurrentPageStatus = async () => {
+    loading.value = true
+    pageStatus.value = null
+    
+    try {
+        const response = await fetch('/api/adsterra/config', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
+        })
+        
+        const data = await response.json()
+        
+        pageStatus.value = {
+            current_url: window.location.href,
+            current_path: window.location.pathname,
+            should_show_ads: data.config?.enabled || false,
+            should_show_on_page: data.show_on_page || false,
+            restricted_reason: !data.show_on_page ? 'Page is restricted for ads' : null
+        }
+    } catch (error) {
+        pageStatus.value = {
+            current_url: window.location.href,
+            current_path: window.location.pathname,
+            should_show_ads: false,
+            should_show_on_page: false,
+            restricted_reason: 'Error checking status: ' + error.message
         }
     } finally {
         loading.value = false

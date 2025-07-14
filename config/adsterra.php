@@ -91,11 +91,14 @@ return [
         'test_ads' => env('ADSTERRA_TEST_ADS', false),
     ],
     
-    // Page restrictions
+    // Page restrictions - TEMPORARILY DISABLED FOR TESTING
     'restricted_pages' => [
-        'payment', 'subscription', 'verification', 'admin', 'settings',
-        'login', 'register', 'mobile-login', 'password/reset', 'password/confirm', 
-        'email/verify', 'two-factor-challenge', 'forgot-password', 'verify-email'
+        // 'payment', 'subscription', 'verification', 'admin', 'settings',
+        // 'login', 'register', 'mobile-login', 'password/reset', 'password/confirm', 
+        // 'email/verify', 'two-factor-challenge', 'forgot-password', 'verify-email'
+        
+        // Only keep essential restrictions for now
+        'admin', 'payment', 'subscription'
     ],
     
     // Fallback and error handling
