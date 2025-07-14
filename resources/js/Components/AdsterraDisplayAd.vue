@@ -157,53 +157,55 @@ export default {
                 // Create unique container ID for this ad
                 const adContainerId = `adsterra-container-${zoneId}-${Date.now()}`
                 
-                // Set up actual Adsterra ad element based on zone type
-                let adContent = ''
+                // Set up the ad container
+                container.innerHTML = `<div class="adsterra-ad" data-zone="${zoneId}" data-placement="${props.placement}" id="${adContainerId}"></div>`
                 
-                // For different ad types, use different Adsterra implementations
-                if (props.zoneName === 'banner' || props.zoneName === 'sidebar' || props.zoneName === 'feed') {
-                    // Banner/Display ads
-                    adContent = `
-                        <div class="adsterra-ad" data-zone="${zoneId}" data-placement="${props.placement}">
-                            <script type="text/javascript">
-                                atOptions = {
-                                    'key' : '${zoneId}',
-                                    'format' : 'iframe',
-                                    'height' : 250,
-                                    'width' : 300,
-                                    'params' : {}
-                                };
-                                document.write('<scr' + 'ipt type="text/javascript" src="//www.highcpmrevenuegate.com/${zoneId}/invoke.js"></scr' + 'ipt>');
-                            </script>
-                        </div>
-                    `
-                } else if (props.zoneName === 'native') {
-                    // Native ads
-                    adContent = `
-                        <div class="adsterra-ad" data-zone="${zoneId}" data-placement="${props.placement}">
-                            <script type="text/javascript">
-                                atOptions = {
-                                    'key' : '${zoneId}',
-                                    'format' : 'iframe',
-                                    'height' : 300,
-                                    'width' : 160,
-                                    'params' : {}
-                                };
-                                document.write('<scr' + 'ipt type="text/javascript" src="//www.highcpmrevenuegate.com/${zoneId}/invoke.js"></scr' + 'ipt>');
-                            </script>
-                        </div>
-                    `
-                } else {
-                    // Default fallback
-                    adContent = `
-                        <div class="adsterra-ad bg-gray-100 p-4 text-center" data-zone="${zoneId}" data-placement="${props.placement}">
-                            <div class="text-sm text-gray-600">Advertisement</div>
-                            <div class="text-xs text-gray-500 mt-1">Zone: ${props.zoneName}</div>
-                        </div>
-                    `
+                // Dynamically create and inject Adsterra script
+                const script = document.createElement('script')
+                script.type = 'text/javascript'
+                script.async = true
+                
+                // Configure ad options based on zone type
+                let adConfig = {
+                    key: zoneId,
+                    format: 'iframe',
+                    params: {}
                 }
-
-                container.innerHTML = adContent
+                
+                if (props.zoneName === 'banner' || props.zoneName === 'sidebar' || props.zoneName === 'feed') {
+                    adConfig.height = 250
+                    adConfig.width = 300
+                } else if (props.zoneName === 'native') {
+                    adConfig.height = 300
+                    adConfig.width = 160
+                } else {
+                    // Default dimensions
+                    adConfig.height = 200
+                    adConfig.width = 300
+                }
+                
+                // Set global options for Adsterra
+                window.atOptions = adConfig
+                
+                // Load the Adsterra script
+                script.src = `//www.highcpmrevenuegate.com/${zoneId}/invoke.js`
+                
+                // Add error handling
+                script.onerror = () => {
+                    console.warn(`Failed to load Adsterra script for zone ${props.zoneName}`)
+                    // Show fallback content
+                    const fallbackContainer = document.getElementById(adContainerId)
+                    if (fallbackContainer) {
+                        fallbackContainer.innerHTML = `
+                            <div class="bg-gray-100 p-4 text-center rounded">
+                                <div class="text-sm text-gray-600">Advertisement</div>
+                                <div class="text-xs text-gray-500 mt-1">Zone: ${props.zoneName}</div>
+                            </div>
+                        `
+                    }
+                }
+                
+                document.head.appendChild(script)
 
                 // Wait for ad to load
                 await new Promise((resolve, reject) => {
