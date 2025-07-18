@@ -137,9 +137,9 @@ Route::middleware('auth')->group(function () {
 
     // Therapist routes
 Route::get('/therapists', [App\Http\Controllers\TherapistBookingController::class, 'index'])->name('therapists.index');
+Route::get('/therapists/manual-payment', [App\Http\Controllers\TherapistBookingController::class, 'manualPayment'])->name('therapists.manual-payment');
 Route::get('/therapists/{id}', [App\Http\Controllers\TherapistBookingController::class, 'show'])->name('therapists.show');
 Route::post('/therapists/book', [App\Http\Controllers\TherapistBookingController::class, 'store'])->name('therapists.book');
-Route::get('/therapists/manual-payment', [App\Http\Controllers\TherapistBookingController::class, 'manualPayment'])->name('therapists.manual-payment');
 
 // Therapist booking management routes
 Route::get('/my-bookings', [App\Http\Controllers\TherapistBookingController::class, 'userBookings'])->name('therapists.bookings');
