@@ -508,9 +508,10 @@
         setTimeout(() => {
             const hasSkipped = localStorage.getItem('zoho_optin_skipped');
             const hasSignedUp = localStorage.getItem('zoho_optin_completed');
+            const hasPermanentlyDismissed = localStorage.getItem('zoho_optin_permanent_dismiss');
             
-            // Only show modal if user hasn't skipped and hasn't signed up
-            if (!hasSkipped && !hasSignedUp) {
+            // Only show modal if user hasn't skipped, hasn't signed up, and hasn't permanently dismissed
+            if (!hasSkipped && !hasSignedUp && !hasPermanentlyDismissed) {
                 showZohoOptinModal.value = true;
             }
         }, 2000); // Show after 2 seconds

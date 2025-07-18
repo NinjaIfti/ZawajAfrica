@@ -634,4 +634,36 @@ class TherapistBookingController extends Controller
             'message' => "Sent {$reminderType} reminders for " . $upcomingBookings->count() . " bookings"
         ]);
     }
+
+    /**
+     * Show manual payment page for therapist booking
+     */
+    public function manualPayment(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Get therapist information if therapist_id is provided
+        $therapist = null;
+        if ($request->has('therapist_id')) {
+            $therapist = Therapist::find($request->therapist_id);
+        }
+        
+        // Prepare booking data from request parameters
+        $bookingData = [
+            'therapist_id' => $request->get('therapist_id'),
+            'therapist_name' => $request->get('therapist_name'),
+            'appointment_datetime' => $request->get('appointment_datetime'),
+            'session_type' => $request->get('session_type', 'online'),
+            'platform' => $request->get('platform'),
+            'amount' => $request->get('amount'),
+            'selected_date' => $request->get('selected_date'),
+            'selected_time' => $request->get('selected_time'),
+        ];
+        
+        return Inertia::render('Therapists/ManualPayment', [
+            'user' => $user,
+            'therapist' => $therapist,
+            'bookingData' => $bookingData,
+        ]);
+    }
 }

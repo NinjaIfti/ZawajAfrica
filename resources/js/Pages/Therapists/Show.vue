@@ -508,7 +508,37 @@
                 <div class="p-4">
                     <!-- Gateway Options -->
                     <div class="space-y-4 mb-8">
-                        <!-- Monnify Option -->
+                        <!-- Manual Payment Option -->
+                        <div
+                            @click="selectedPaymentGateway = 'manual'"
+                            :class="[
+                                'flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all',
+                                selectedPaymentGateway === 'manual'
+                                    ? 'border-green-500 bg-green-50'
+                                    : 'border-gray-200',
+                            ]"
+                        >
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-sm font-bold">MP</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">Manual Payment</h4>
+                                    <p class="text-sm text-gray-600">Bank transfer or PayPal</p>
+                                </div>
+                            </div>
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </div>
+
+                        <!-- Temporarily Commented Out Payment Gateways -->
+                        <!-- 
                         <div
                             @click="selectedPaymentGateway = 'monnify'"
                             :class="[
@@ -537,7 +567,6 @@
                             </svg>
                         </div>
 
-                        <!-- Paystack Option -->
                         <div
                             @click="selectedPaymentGateway = 'paystack'"
                             :class="[
@@ -565,6 +594,7 @@
                                 />
                             </svg>
                         </div>
+                        -->
                     </div>
 
                     <!-- Booking Summary -->
@@ -975,8 +1005,26 @@
     const proceedWithSelectedGateway = () => {
         if (!selectedPaymentGateway.value) return;
 
-        // Both Monnify and Paystack redirect to their hosted payment pages
-        processPayment();
+        if (selectedPaymentGateway.value === 'manual') {
+            // Handle manual payment - redirect to manual payment page
+            const appointmentDateTime = convertToBookingDate(selectedDate.value) + ' ' + selectedTimeSlot.value;
+            
+            const queryParams = new URLSearchParams({
+                therapist_id: props.therapist.id,
+                therapist_name: props.therapist.name,
+                appointment_datetime: appointmentDateTime,
+                session_type: 'online',
+                platform: selectedPlatform.value,
+                amount: props.therapist.hourly_rate,
+                selected_date: selectedDate.value,
+                selected_time: selectedTimeSlot.value
+            });
+
+            router.visit(route('therapists.manual-payment') + '?' + queryParams.toString());
+        } else {
+            // Both Monnify and Paystack redirect to their hosted payment pages
+            processPayment();
+        }
     };
 
     // Card formatting functions
@@ -1009,6 +1057,12 @@
         isProcessingPayment.value = true;
 
         try {
+            // Skip payment processing for manual payment
+            if (selectedPaymentGateway.value === 'manual') {
+                console.log('Manual payment selected, skipping payment processing');
+                return;
+            }
+
             // Prepare payment data
             const appointmentDateTime = convertToBookingDate(selectedDate.value) + ' ' + selectedTimeSlot.value;
 

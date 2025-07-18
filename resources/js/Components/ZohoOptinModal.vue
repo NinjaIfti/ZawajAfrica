@@ -124,27 +124,49 @@ export default {
     },
     watch: {
         show(newVal) {
-            if (newVal && !this.scriptLoaded) {
-                this.loadZohoAssets()
+            if (newVal) {
+                // Check if user has already completed signup
+                if (this.hasUserCompletedSignup()) {
+                    console.log('User has already completed signup, closing modal')
+                    this.$emit('close')
+                    return
+                }
+                
+                if (!this.scriptLoaded) {
+                    this.loadZohoAssets()
+                }
             }
         }
     },
     mounted() {
         if (this.show) {
+            // Check if user has already completed signup
+            if (this.hasUserCompletedSignup()) {
+                console.log('User has already completed signup, not loading assets')
+                this.$emit('close')
+                return
+            }
+            
             this.loadZohoAssets()
         }
     },
     methods: {
+        hasUserCompletedSignup() {
+            const hasCompleted = localStorage.getItem('zoho_optin_completed')
+            const hasPermanentlyDismissed = localStorage.getItem('zoho_optin_permanent_dismiss')
+            return hasCompleted === 'true' || hasPermanentlyDismissed === 'true'
+        },
         closeModal() {
             this.$emit('close')
         },
         skipOptin() {
             localStorage.setItem('zoho_optin_skipped', 'true')
+            console.log('User skipped newsletter signup')
             this.closeModal()
         },
         dontShowAgain() {
-            localStorage.setItem('zoho_optin_skipped', 'true')
             localStorage.setItem('zoho_optin_permanent_dismiss', 'true')
+            console.log('User permanently dismissed newsletter signup')
             this.closeModal()
         },
         handleSignup() {
@@ -158,10 +180,22 @@ export default {
                 return
             }
             
+            // Always mark as completed first (in case the form submission fails)
+            localStorage.setItem('zoho_optin_completed', 'true')
+            
             // Try to use Zoho's function if available
             if (typeof window.zcWebOptin === 'function') {
                 console.log('Using Zoho zcWebOptin function')
-                window.zcWebOptin()
+                try {
+                    window.zcWebOptin()
+                    // Show success immediately since we've already marked as completed
+                    setTimeout(() => {
+                        this.showSuccess()
+                    }, 1000)
+                } catch (error) {
+                    console.error('Error with Zoho zcWebOptin:', error)
+                    this.submitFormManually(email)
+                }
             } else {
                 // Fallback: submit form manually
                 console.log('Submitting form manually')
@@ -221,7 +255,7 @@ export default {
             this.showSuccess()
         },
         showSuccess() {
-            // Mark as completed in localStorage
+            // Ensure completion is marked in localStorage (in case it wasn't set already)
             localStorage.setItem('zoho_optin_completed', 'true')
             
             const successDiv = document.getElementById('Zc_SignupSuccess2')
@@ -231,9 +265,18 @@ export default {
                     this.closeModal()
                 }, 2000)
             } else {
-                // Fallback success
-                alert('Thank you for signing up!')
-                this.closeModal()
+                // Fallback success - show in the main success div
+                const mainSuccessDiv = document.getElementById('Zc_SignupSuccess')
+                if (mainSuccessDiv) {
+                    mainSuccessDiv.style.display = 'block'
+                    setTimeout(() => {
+                        this.closeModal()
+                    }, 2000)
+                } else {
+                    // Final fallback
+                    alert('Thank you for signing up!')
+                    this.closeModal()
+                }
             }
         },
         loadZohoAssets() {
@@ -270,8 +313,10 @@ export default {
             // Add the form submit handler
             window.runOnFormSubmit_sf3z64bd6d6e23993fa70b064e6d0607901c0f3a03a5b16d09df2b462bb40db71104 = (th) => {
                 console.log('Zoho form submitted successfully via callback')
-                // Mark as completed in localStorage
+                // Ensure completion is marked in localStorage
                 localStorage.setItem('zoho_optin_completed', 'true')
+                // Clear any previous skip flags since user has now completed
+                localStorage.removeItem('zoho_optin_skipped')
                 this.showSuccess()
             }
         },
