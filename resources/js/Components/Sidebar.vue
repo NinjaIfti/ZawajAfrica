@@ -311,7 +311,7 @@
                         d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                     />
                 </svg>
-                <span>Subscription Plans</span>
+                <span>Unlock Premium Access</span>
             </Link>
 
             <button
@@ -367,6 +367,21 @@
                     <i class="fab fa-youtube text-2xl"></i>
                 </a>
             </div>
+        </div>
+
+        <!-- Download App Section -->
+        <div class="p-4 border-t border-gray-200">
+            <a 
+                href="https://drive.google.com/file/d/1daYZy0RWaJ3ST_h0Sbk7BJYWsC4Sw0g8/view?usp=sharing" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="flex items-center justify-center w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg py-3 px-4 transition-all duration-200 transform hover:scale-105 shadow-lg"
+            >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="font-semibold">Download App</span>
+            </a>
         </div>
 
         <!-- Upgrade Membership - Only show if user doesn't have active subscription -->
