@@ -537,8 +537,8 @@
                             </svg>
                         </div>
 
-                        <!-- Temporarily Commented Out Payment Gateways -->
-                        <!-- 
+                        <!-- Payment Gateway Options -->
+                        <!-- Monnify Option (Temporarily Commented Out)
                         <div
                             @click="selectedPaymentGateway = 'monnify'"
                             :class="[
@@ -566,6 +566,7 @@
                                 />
                             </svg>
                         </div>
+                        -->
 
                         <div
                             @click="selectedPaymentGateway = 'paystack'"
@@ -594,7 +595,6 @@
                                 />
                             </svg>
                         </div>
-                        -->
                     </div>
 
                     <!-- Booking Summary -->

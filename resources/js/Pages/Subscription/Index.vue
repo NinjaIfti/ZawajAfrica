@@ -518,7 +518,7 @@
                             </button>
                         </div>
 
-                        <!-- Online Payment Button (Secondary)
+                        <!-- Online Payment Button (Secondary) -->
                         <button
                             @click="selectPlan(plan.name)"
                             :disabled="isButtonDisabled(plan.name)"
@@ -573,7 +573,7 @@
                             <span v-else>
                                 💳 {{ getButtonText(plan.name) }} (Online)
                             </span>
-                        </button> -->
+                        </button>
                     </div>
                 </div>
             </div>
