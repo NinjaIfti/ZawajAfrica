@@ -14,11 +14,13 @@ use Carbon\Carbon;
 class AdsterraService
 {
     protected UserTierService $tierService;
+    protected AdCloseTracker $closeTracker;
     protected array $config;
 
-    public function __construct(UserTierService $tierService)
+    public function __construct(UserTierService $tierService, AdCloseTracker $closeTracker)
     {
         $this->tierService = $tierService;
+        $this->closeTracker = $closeTracker;
         $this->config = config('adsterra');
         
         // Validate configuration on instantiation
@@ -128,6 +130,16 @@ class AdsterraService
                     'tier' => $userTier,
                     'subscription_status' => $user->subscription_status,
                     'subscription_plan' => $user->subscription_plan
+                ]);
+                return false;
+            }
+
+            // Check if user recently closed an ad (2.5 minute delay)
+            if (!$this->closeTracker->canShowAd($user)) {
+                $remainingSeconds = $this->closeTracker->getRemainingDelaySeconds($user);
+                $this->logDebug('User in close delay period', [
+                    'user_id' => $user->id,
+                    'remaining_seconds' => $remainingSeconds
                 ]);
                 return false;
             }

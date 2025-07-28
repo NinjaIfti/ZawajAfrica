@@ -93,14 +93,12 @@ return [
         'test_ads' => env('ADSTERRA_TEST_ADS', false),
     ],
     
-    // Page restrictions - TEMPORARILY DISABLED FOR TESTING
+    // Page restrictions - No ads on login/signup pages
     'restricted_pages' => [
-        // 'payment', 'subscription', 'verification', 'admin', 'settings',
-        // 'login', 'register', 'mobile-login', 'password/reset', 'password/confirm', 
-        // 'email/verify', 'two-factor-challenge', 'forgot-password', 'verify-email'
-        
-        // Only keep essential restrictions for now
-        'admin', 'payment', 'subscription'
+        'login', 'register', 'signup', 'mobile-login', 
+        'admin', 'payment', 'subscription', 'verification',
+        'password/reset', 'password/confirm', 'email/verify', 
+        'two-factor-challenge', 'forgot-password', 'verify-email'
     ],
     
     // Fallback and error handling

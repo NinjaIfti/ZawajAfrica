@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Cache;
 // Include admin routes
 require __DIR__.'/admin.php';
 
+// Ad tracking routes
+Route::post('/api/adsterra/close', [App\Http\Controllers\AdsterraController::class, 'recordAdClose'])->middleware('auth');
+Route::get('/api/adsterra/can-show', [App\Http\Controllers\AdsterraController::class, 'canShowAd'])->middleware('auth');
+
 // Redirect root to login page
 Route::get('/', function () {
     return redirect()->route('login');

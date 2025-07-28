@@ -12,7 +12,16 @@
     <div v-if="shouldShow && (isLoading || hasExternalContent)" class="adsterra-display-ad my-4" :class="className">
         <!-- Adsterra Banner Ad -->
         <div class="bg-gray-100 border border-gray-200 rounded-lg p-4 text-center relative">
-            <div class="text-xs text-gray-500 mb-2">Advertisement</div>
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-xs text-gray-500">Advertisement</div>
+                <button 
+                    @click="closeAd" 
+                    class="text-gray-400 hover:text-gray-600 text-xs px-2 py-1 rounded hover:bg-gray-200 transition-colors"
+                    title="Close ad"
+                >
+                    ✕
+                </button>
+            </div>
             
             <!-- Ad Container - Completely isolated from Vue reactivity -->
             <!-- Use v-show instead of v-if to avoid DOM removal issues -->
@@ -446,6 +455,39 @@ export default {
             }
         }
 
+        const closeAd = async () => {
+            try {
+                // Record that user closed the ad (triggers 2.5 minute delay)
+                const response = await fetch('/api/adsterra/close', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({
+                        ad_type: 'general',
+                        zone_name: props.zoneName
+                    })
+                })
+
+                if (response.ok) {
+                    const result = await response.json()
+                    console.log(`Ad closed. Next ad available in ${result.delay_minutes} minutes`)
+                    
+                    // Hide the current ad
+                    adLoaded.value = false
+                    hasExternalContent.value = false
+                    isLoading.value = false
+                }
+            } catch (err) {
+                console.warn('Failed to record ad close:', err)
+                // Still hide the ad even if API call fails
+                adLoaded.value = false
+                hasExternalContent.value = false
+                isLoading.value = false
+            }
+        }
+
         onMounted(() => {
             if (shouldShow.value) {
                 if (props.lazy) {
@@ -483,6 +525,7 @@ export default {
             childElementsCount,
             hasExternalContent,
             retryLoad,
+            closeAd,
             debug: props.debug
         }
     }
