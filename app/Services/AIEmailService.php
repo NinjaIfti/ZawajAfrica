@@ -125,7 +125,7 @@ Requirements:
 6. Mention our therapist services if appropriate
 7. Include next steps they should take
 8. Keep it under 300 words
-9. End with Islamic greeting (Barakallahu feeki/feek based on gender)
+9. End with Islamic greeting 
 
 Format:
 Subject: [subject line]

@@ -40,7 +40,7 @@ Complete Your Profile
 
 May Allah bless your search and guide you toward a marriage filled with love, understanding, and faith.
 
-**Barakallahu feeki,**  
+
 The ZawajAfrica Team
 
 <x-mail::subcopy>
