@@ -50,9 +50,18 @@ class NotificationController extends Controller
             'read' => $user->readNotifications()->count(),
         ];
         
-        // Temporarily removed type counts due to MySQL ONLY_FULL_GROUP_BY mode issues
-        // This feature can be re-implemented later if needed
-        $typeCounts = [];
+        // Get type counts with proper grouping
+        try {
+            $typeCounts = $user->notifications()
+                ->selectRaw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.type")) as type, COUNT(*) as count')
+                ->whereNotNull('data')
+                ->groupBy(DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.type"))'))
+                ->pluck('count', 'type')
+                ->toArray();
+        } catch (\Exception $e) {
+            // Fallback if JSON extraction fails
+            $typeCounts = [];
+        }
         
         return response()->json([
             'notifications' => $notifications,
@@ -145,16 +154,18 @@ class NotificationController extends Controller
     {
         $user = Auth::user();
         
-        // Get user's notification preferences (you might want to add this to user table)
+        // Get user's notification preferences with defaults
         $settings = [
-            'email_new_matches' => true,
-            'email_new_messages' => true,
-            'email_booking_updates' => true,
-            'email_verification_updates' => true,
-            'push_new_matches' => true,
-            'push_new_messages' => true,
-            'push_booking_updates' => true,
-            'push_profile_views' => false,
+            'email_new_matches' => $user->email_new_matches ?? true,
+            'email_new_messages' => $user->email_new_messages ?? true,
+            'email_birthday_reminders' => $user->email_birthday_reminders ?? true,
+            'email_subscription_updates' => $user->email_subscription_updates ?? true,
+            'email_booking_updates' => $user->email_booking_updates ?? true,
+            'push_new_matches' => $user->push_new_matches ?? true,
+            'push_new_messages' => $user->push_new_messages ?? true,
+            'push_birthday_wishes' => $user->push_birthday_wishes ?? true,
+            'push_subscription_updates' => $user->push_subscription_updates ?? true,
+            'push_profile_views' => $user->push_profile_views ?? false,
         ];
         
         return response()->json(['settings' => $settings]);
@@ -167,15 +178,45 @@ class NotificationController extends Controller
     {
         $request->validate([
             'settings' => 'required|array',
+            'settings.email_new_matches' => 'boolean',
+            'settings.email_new_messages' => 'boolean',
+            'settings.email_birthday_reminders' => 'boolean',
+            'settings.email_subscription_updates' => 'boolean',
+            'settings.email_booking_updates' => 'boolean',
+            'settings.push_new_matches' => 'boolean',
+            'settings.push_new_messages' => 'boolean',
+            'settings.push_birthday_wishes' => 'boolean',
+            'settings.push_subscription_updates' => 'boolean',
+            'settings.push_profile_views' => 'boolean',
         ]);
         
         $user = Auth::user();
         
-        // Store settings (you might want to add a notification_settings JSON column to users table)
-        // For now, we'll use cache
-        cache()->put("notification_settings_{$user->id}", $request->settings, 60 * 60 * 24 * 365); // 1 year
-        
-        return response()->json(['success' => true]);
+        // Update user's notification preferences
+        // Note: You should add these columns to the users table migration
+        try {
+            $user->update($request->settings);
+            
+            \Log::info('Notification settings updated', [
+                'user_id' => $user->id,
+                'settings' => $request->settings
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification settings updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to update notification settings', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update settings'
+            ], 500);
+        }
     }
     
 

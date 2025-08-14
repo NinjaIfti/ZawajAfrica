@@ -323,10 +323,26 @@
             onMounted(() => {
                 document.addEventListener('click', handleClickOutside);
                 fetchNotifications(); // Initial load for count
+                
+                // Poll for new notifications every 30 seconds
+                const pollInterval = setInterval(() => {
+                    if (!isOpen.value) { // Only poll when dropdown is closed to avoid conflicts
+                        fetchNotifications();
+                    }
+                }, 30000);
+                
+                // Store interval for cleanup
+                window.notificationPollInterval = pollInterval;
             });
 
             onUnmounted(() => {
                 document.removeEventListener('click', handleClickOutside);
+                
+                // Clean up polling interval
+                if (window.notificationPollInterval) {
+                    clearInterval(window.notificationPollInterval);
+                    delete window.notificationPollInterval;
+                }
             });
 
             return {

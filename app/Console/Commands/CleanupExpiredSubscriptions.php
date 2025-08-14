@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\User;
+use App\Notifications\SubscriptionExpired;
 use Carbon\Carbon;
 
 class CleanupExpiredSubscriptions extends Command
@@ -53,16 +54,40 @@ class CleanupExpiredSubscriptions extends Command
         
         // Process in batches
         $expiredUsers->chunk($batchSize, function ($users) use (&$processedCount, $progressBar) {
-            $userIds = $users->pluck('id')->toArray();
-            
-            // Batch update all expired subscriptions
-            User::whereIn('id', $userIds)->update([
-                'subscription_status' => 'expired',
-                'updated_at' => now()
-            ]);
-            
-            $processedCount += count($userIds);
-            $progressBar->advance(count($userIds));
+            foreach ($users as $user) {
+                // Update subscription status
+                $user->update([
+                    'subscription_status' => 'expired',
+                    'updated_at' => now()
+                ]);
+                
+                // Send expiry notification if not already sent
+                $cacheKey = "subscription_expired_{$user->id}_" . now()->format('Y-m-d');
+                if (!cache()->has($cacheKey)) {
+                    try {
+                        $user->notify(new SubscriptionExpired(
+                            $user->subscription_plan,
+                            $user->subscription_expires_at
+                        ));
+                        
+                        // Mark as sent
+                        cache()->put($cacheKey, true, now()->addDays(7));
+                        
+                        \Log::info("Subscription expired notification sent", [
+                            'user_id' => $user->id,
+                            'plan' => $user->subscription_plan
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to send subscription expired notification", [
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+                
+                $processedCount++;
+                $progressBar->advance(1);
+            }
         });
         
         $progressBar->finish();
