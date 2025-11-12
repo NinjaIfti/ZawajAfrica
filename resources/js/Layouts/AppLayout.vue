@@ -94,6 +94,13 @@
         
         <!-- WhatsApp Widget -->
         <WhatsAppWidget :user="$page.props.auth.user" />
+        
+        <!-- Floating Therapy Button -->
+        <FloatingTherapyButton 
+            :show-button="true"
+            :pulse-interval="4000"
+            @therapy-clicked="handleTherapyClick"
+        />
     </div>
 </template>
 
@@ -103,6 +110,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import AdsterraManager from '@/Components/AdsterraManager.vue'
 import AdsterraNotice from '@/Components/AdsterraNotice.vue'
 import WhatsAppWidget from '@/Components/WhatsAppWidget.vue'
+import FloatingTherapyButton from '@/Components/FloatingTherapyButton.vue'
 
 defineProps({
     title: {
@@ -151,5 +159,11 @@ const getCurrentPageName = () => {
     if (component.includes('Match')) return 'matches'
     if (component.includes('Profile')) return 'profile'
     return 'other'
+}
+
+// Handle therapy button click
+const handleTherapyClick = () => {
+    console.log('Therapy button clicked - navigating to therapy booking page')
+    // Additional tracking or analytics can be added here
 }
 </script> 

@@ -8,6 +8,13 @@
 
         <title>{{ config('app.name', 'ZawajAfrica') }}</title>
         
+        <!-- PWA Manifest -->
+        <link rel="manifest" href="{{ asset('manifest.json') }}">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="ZawajAfrica">
+        
         <!-- Favicon -->
         <link rel="icon" type="image/png" href="{{ asset('images/fav.png') }}">
         <link rel="shortcut icon" type="image/png" href="{{ asset('images/fav.png') }}">
@@ -39,5 +46,34 @@
     </head>
     <body class="font-sans antialiased">
         @inertia
+        
+        <!-- Social Bar Script for zawajafrica.online -->
+        <script>
+            // Load social bar script with error handling
+            (function() {
+                var script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = '//pl27099042.effectivegatecpm.com/40/25/2a/40252a1397d95eb269852aea67a5c58f.js';
+                script.onerror = function() {
+                    console.log('Social bar script blocked by ad blocker - this is normal in development');
+                };
+                document.head.appendChild(script);
+            })();
+        </script>
+
+        <!-- Service Worker Registration -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(function(registration) {
+                            console.log('ServiceWorker registration successful');
+                        })
+                        .catch(function(err) {
+                            console.log('ServiceWorker registration failed: ', err);
+                        });
+                });
+            }
+        </script>
     </body>
 </html>

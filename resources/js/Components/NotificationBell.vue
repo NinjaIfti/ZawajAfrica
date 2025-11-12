@@ -246,9 +246,18 @@
             const fetchNotifications = async () => {
                 loading.value = true;
                 try {
-                    const response = await axios.get('/notifications/unread');
-                    notifications.value = response.data.notifications;
-                    unreadCount.value = response.data.unread_count;
+                    // Fetch both notifications and message badge data
+                    const [notificationsResponse, badgeResponse] = await Promise.all([
+                        axios.get('/notifications/unread'),
+                        axios.get('/api/message-badge')
+                    ]);
+                    
+                    notifications.value = notificationsResponse.data.notifications;
+                    
+                    // Combine notification count and message count
+                    const notificationCount = notificationsResponse.data.unread_count;
+                    const messageCount = badgeResponse.data.total_unread;
+                    unreadCount.value = notificationCount + messageCount;
                 } catch (error) {
                     console.error('Failed to fetch notifications:', error);
                 } finally {

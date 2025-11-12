@@ -295,6 +295,7 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
         ]);
     })->name('api.tier-usage');
 
+
     // Adsterra API routes
     Route::prefix('api/adsterra')->name('api.adsterra.')->group(function () {
         Route::post('/consent', function (Request $request) {
@@ -345,6 +346,27 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
             
             return response()->json(['success' => true]);
         })->name('click');
+        
+        Route::post('/watch-for-chat', function (Request $request) {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Authentication required'], 401);
+            }
+            
+            $request->validate([
+                'watch_duration' => 'required|integer|min:1'
+            ]);
+            
+            $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+            $result = $adUnlockService->recordAdWatchForChat($user, $request->input('watch_duration'));
+            
+            if ($result['success']) {
+                return response()->json($result);
+            } else {
+                return response()->json($result, 400);
+            }
+        })->name('watch-for-chat');
         
         Route::post('/track', function (Request $request) {
             $adsterraService = app(\App\Services\AdsterraService::class);
@@ -567,6 +589,39 @@ Route::middleware('auth')->get('/api/user', function () {
         'subscription_expires_at' => $user->subscription_expires_at
     ]);
 })->name('api.user');
+
+// Chat Credits API
+Route::middleware('auth')->get('/api/chat-credits', function (Request $request) {
+    $user = Auth::user();
+    
+    $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+    $status = $adUnlockService->getChatUnlockStatus($user);
+    
+    return response()->json($status);
+})->name('api.chat-credits');
+
+// Message Badge API
+Route::middleware('auth')->get('/api/message-badge', function (Request $request) {
+    $user = Auth::user();
+    
+    $badgeService = app(\App\Services\MessageBadgeService::class);
+    $badgeData = $badgeService->getBadgeData($user);
+    
+    return response()->json($badgeData);
+})->name('api.message-badge');
+
+// Recent Messages API for notifications
+Route::middleware('auth')->get('/api/recent-messages', function (Request $request) {
+    $user = Auth::user();
+    
+    $badgeService = app(\App\Services\MessageBadgeService::class);
+    $recentMessages = $badgeService->getRecentUnreadMessages($user, 10);
+    
+    return response()->json([
+        'messages' => $recentMessages,
+        'total_unread' => $badgeService->getUnreadCount($user)
+    ]);
+})->name('api.recent-messages');
 
 Route::get('/mobile-login', function () {
     return inertia('Auth/MobileLogin', [

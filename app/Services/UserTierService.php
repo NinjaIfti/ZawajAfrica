@@ -161,11 +161,25 @@ class UserTierService
                 }
             }
             
-            // Free users without matches cannot send messages
+            // Check if user has ad-unlocked message credits
+            $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+            if ($adUnlockService->hasMessageCredits($user)) {
+                return [
+                    'allowed' => true,
+                    'reason' => 'ad_unlocked_credits',
+                    'message' => 'You can send messages using your ad-unlocked credits.',
+                    'remaining_credits' => $adUnlockService->getRemainingCredits($user),
+                    'expires_at' => $adUnlockService->getCreditExpirationTime($user)?->toISOString()
+                ];
+            }
+            
+            // Free users without matches or credits cannot send messages
             return [
                 'allowed' => false,
                 'reason' => 'free_tier_restriction',
-                'message' => 'Free users cannot send messages. Upgrade to Basic to start messaging!'
+                'message' => 'Free users cannot send messages. Watch an ad to unlock 3 messages or upgrade to Basic!',
+                'can_watch_ad' => $adUnlockService->canWatchMoreAds($user),
+                'remaining_ad_watches' => $adUnlockService->getRemainingAdWatches($user)
             ];
         }
 
@@ -226,7 +240,9 @@ class UserTierService
         'likes_sent',
         'matches_created',
         'profile_updates',
-        'ads_viewed'
+        'ads_viewed',
+        'ads_watched_for_chat',
+        'ad_unlocked_messages'
     ];
 
     /**

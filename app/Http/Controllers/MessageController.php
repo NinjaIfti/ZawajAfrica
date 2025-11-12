@@ -6,6 +6,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Notifications\NewMessage;
 use App\Services\UserTierService;
+use App\Services\MessageBadgeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -13,10 +14,12 @@ use Inertia\Inertia;
 class MessageController extends Controller
 {
     protected UserTierService $tierService;
+    protected MessageBadgeService $badgeService;
 
-    public function __construct(UserTierService $tierService)
+    public function __construct(UserTierService $tierService, MessageBadgeService $badgeService)
     {
         $this->tierService = $tierService;
+        $this->badgeService = $badgeService;
     }
     /**
      * Display the messages index page.
@@ -113,11 +116,8 @@ class MessageController extends Controller
             ];
         });
         
-        // Mark all unread messages as read
-        Message::where('sender_id', $otherUser->id)
-              ->where('receiver_id', $user->id)
-              ->where('is_read', false)
-              ->update(['is_read' => true, 'read_at' => now()]);
+        // Mark all unread messages as read and update badge
+        $this->badgeService->markMessagesAsRead($user, $otherUser);
         
 
         
@@ -153,12 +153,20 @@ class MessageController extends Controller
                 'daily_limit' => $canSend['limit'] ?? 0
             ]);
             
-            return response()->json([
+            $response = [
                 'error' => $canSend['message'],
                 'reason' => $canSend['reason'] ?? 'tier_restriction',
                 'upgrade_prompt' => true,
                 'tier' => $this->tierService->getUserTier($sender)
-            ], 403);
+            ];
+            
+            // Add ad-unlock options for free users
+            if (isset($canSend['can_watch_ad'])) {
+                $response['can_watch_ad'] = $canSend['can_watch_ad'];
+                $response['remaining_ad_watches'] = $canSend['remaining_ad_watches'];
+            }
+            
+            return response()->json($response, 403);
         }
 
         // Check for free user interaction
@@ -179,6 +187,22 @@ class MessageController extends Controller
             ], 403);
         }
         
+        // Use ad-unlocked credit if applicable
+        $usedAdCredit = false;
+        if ($this->tierService->getUserTier($sender) === \App\Services\UserTierService::TIER_FREE && 
+            isset($canSend['reason']) && $canSend['reason'] === 'ad_unlocked_credits') {
+            
+            $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+            $usedAdCredit = $adUnlockService->useMessageCredit($sender);
+            
+            if (!$usedAdCredit) {
+                return response()->json([
+                    'error' => 'Ad-unlocked credits expired. Please watch another ad.',
+                    'reason' => 'credits_expired'
+                ], 403);
+            }
+        }
+
         try {
             $message = Message::create([
                 'sender_id' => $sender->id,
@@ -189,6 +213,9 @@ class MessageController extends Controller
 
             // Record messaging activity
             $this->tierService->recordActivity($sender, 'messages_sent');
+            
+            // Update badge for receiver
+            $this->badgeService->updateBadgeAfterSend($sender, $receiver);
             
             // Send notification to receiver
             $notification = new NewMessage($sender, $message);

@@ -13,6 +13,8 @@
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
     import Modal from '@/Components/Modal.vue';
     import NotificationBell from '@/Components/NotificationBell.vue';
+    import MessageBadgeManager from '@/Components/MessageBadgeManager.vue';
+    import FloatingTherapyButton from '@/Components/FloatingTherapyButton.vue';
    
     import MobileHeader from '@/Components/MobileHeader.vue';
 
@@ -564,6 +566,23 @@
         const sanitizedInput = input.replace(/[^0-9+\-\(\)\s]/g, '');
         phoneForm.value.phone_number = sanitizedInput;
     };
+
+    // Badge event handlers
+    const handleBadgeUpdate = (badgeData) => {
+        console.log('Badge updated:', badgeData);
+        // You can add additional logic here if needed
+    };
+
+    const handleNewMessage = (message) => {
+        console.log('New message received:', message);
+        // You can show a toast notification or update UI here
+    };
+
+    // Handle therapy button click
+    const handleTherapyClick = () => {
+        console.log('Therapy button clicked from Dashboard - navigating to therapy booking page');
+        // Additional tracking or analytics can be added here
+    };
 </script>
 
 <template>
@@ -962,6 +981,21 @@
                 </div>
             </div>
         </Modal>
+
+        <!-- Message Badge Manager (invisible component for badge management) -->
+        <MessageBadgeManager 
+            :user-id="$page.props.auth.user.id"
+            :initial-unread-count="0"
+            @badge-updated="handleBadgeUpdate"
+            @new-message="handleNewMessage"
+        />
+        
+        <!-- Floating Therapy Button -->
+        <FloatingTherapyButton 
+            :show-button="true"
+            :pulse-interval="4000"
+            @therapy-clicked="handleTherapyClick"
+        />
     </div>
 </template>
 
