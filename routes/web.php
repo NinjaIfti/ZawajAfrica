@@ -368,6 +368,25 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
             }
         })->name('watch-for-chat');
         
+        Route::get('/user/messaging-status', function (Request $request) {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Authentication required'], 401);
+            }
+            
+            $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+            $status = $adUnlockService->getChatUnlockStatus($user);
+            
+            return response()->json([
+                'success' => true,
+                'has_credits' => $status['has_credits'] ?? false,
+                'remaining_credits' => $status['remaining_credits'] ?? 0,
+                'can_watch_ads' => $status['available'] ?? false,
+                'expires_at' => $status['credits_expire_at'] ?? null
+            ]);
+        })->name('user.messaging-status');
+        
         Route::post('/track', function (Request $request) {
             $adsterraService = app(\App\Services\AdsterraService::class);
             $user = Auth::user();

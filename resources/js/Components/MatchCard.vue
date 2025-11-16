@@ -4,6 +4,7 @@
     import LikeSuccessModal from '@/Components/LikeSuccessModal.vue';
     import TierBadge from '@/Components/TierBadge.vue';
     import PhotoBlurControl from '@/Components/PhotoBlurControl.vue';
+    import AdUnlockChatModal from '@/Components/AdUnlockChatModal.vue';
 
     const props = defineProps({
         matches: {
@@ -20,6 +21,10 @@
     const showLikeModal = ref(false);
     const likeModalType = ref('like');
     const currentLikedUser = ref(null);
+    
+    // Ad unlock modal state
+    const showAdUnlockModal = ref(false);
+    const selectedMatchForMessage = ref(null);
     
     // Loading states for each match
     const loadingStates = ref({});
@@ -138,9 +143,47 @@
     };
 
     // Handle message button click
-    const handleMessage = match => {
-        // Go to specific conversation with this user
-        window.location.href = route('messages.show', match.id);
+    const handleMessage = async (match) => {
+        const userTier = props.userTier || 'free';
+        
+        // If user is matched or has premium access, go directly to messages
+        if (match.is_matched || match.matched || userTier === 'platinum') {
+            window.location.href = route('messages.show', match.id);
+            return;
+        }
+        
+        // For free users, check if they can send messages or need to watch ads
+        try {
+            const response = await fetch('/api/user/messaging-status', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // If user has ad credits, go directly to messages
+                if (data.has_credits) {
+                    window.location.href = route('messages.show', match.id);
+                } else {
+                    // Show ad unlock modal
+                    selectedMatchForMessage.value = match;
+                    showAdUnlockModal.value = true;
+                }
+            } else {
+                // Fallback: show ad unlock modal
+                selectedMatchForMessage.value = match;
+                showAdUnlockModal.value = true;
+            }
+        } catch (error) {
+            console.error('Error checking messaging status:', error);
+            // Fallback: show ad unlock modal
+            selectedMatchForMessage.value = match;
+            showAdUnlockModal.value = true;
+        }
     };
 
     // Close like modal
@@ -156,6 +199,20 @@
             window.location.href = route('messages.show', currentLikedUser.value);
         } else {
             window.location.href = route('messages');
+        }
+    };
+    
+    // Handle ad unlock modal close
+    const closeAdUnlockModal = () => {
+        showAdUnlockModal.value = false;
+        selectedMatchForMessage.value = null;
+    };
+    
+    // Handle successful ad watch - redirect to messages
+    const handleAdWatchSuccess = () => {
+        closeAdUnlockModal();
+        if (selectedMatchForMessage.value) {
+            window.location.href = route('messages.show', selectedMatchForMessage.value.id);
         }
     };
 
@@ -184,7 +241,12 @@
         
         // If user is Platinum, show message button even if not matched
         const userTier = props.userTier || 'free';
-        return userTier === 'platinum';
+        if (userTier === 'platinum') {
+            return true;
+        }
+        
+        // Show message button for all users (including free) - they can watch ads to unlock
+        return true;
     };
 
     // Get real-time online status for a match
@@ -397,6 +459,14 @@
             :type="likeModalType" 
             @close="closeLikeModal" 
             @message="handleMessageFromModal" 
+        />
+        
+        <!-- Ad Unlock Chat Modal -->
+        <AdUnlockChatModal
+            :show="showAdUnlockModal"
+            :targetUser="selectedMatchForMessage"
+            @close="closeAdUnlockModal"
+            @success="handleAdWatchSuccess"
         />
     </div>
 </template>

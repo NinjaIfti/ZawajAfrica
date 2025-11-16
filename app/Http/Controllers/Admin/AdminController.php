@@ -1101,11 +1101,60 @@ class AdminController extends Controller
                 ], 400);
             }
 
-            // Broadcasting is not available - use Zoho opt-in form instead
-            return response()->json([
-                'success' => false,
-                'error' => 'Broadcasting is not available. Please use the Zoho opt-in form for email campaigns.'
-            ], 503);
+            // Use MailerSend for broadcast emails
+            $mailerSendService = app(\App\Services\MailerSendService::class);
+            
+            if (!$mailerSendService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Email service not configured. Please check MailerSend configuration.'
+                ], 503);
+            }
+
+            // Convert users to array format expected by MailerSend
+            $recipients = $users->map(function ($user) {
+                return [
+                    'email' => $user->email,
+                    'name' => $user->name
+                ];
+            })->toArray();
+
+            Log::info('Starting broadcast email campaign', [
+                'admin_id' => auth()->id(),
+                'subject' => $request->subject,
+                'target_audience' => $request->target_audience,
+                'recipient_count' => count($recipients),
+                'is_edited' => $request->is_edited
+            ]);
+
+            // Send broadcast via MailerSend
+            $result = $mailerSendService->sendBroadcast(
+                $request->subject,
+                $request->body,
+                $recipients
+            );
+
+            if ($result['success']) {
+                Log::info('Broadcast email campaign completed successfully', [
+                    'admin_id' => auth()->id(),
+                    'stats' => $result['stats']
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'stats' => [
+                        'total_users' => $result['stats']['total_users'],
+                        'sent_count' => $result['stats']['sent_count'],
+                        'failed_count' => $result['stats']['failed_count']
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'] ?? 'Failed to send broadcast emails'
+                ], 500);
+            }
 
         } catch (\Exception $e) {
             Log::error('Broadcast email campaign failed', [

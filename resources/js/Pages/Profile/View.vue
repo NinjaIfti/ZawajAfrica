@@ -116,8 +116,44 @@
     };
 
     // Handle message button click
-    const handleMessage = () => {
-        window.location.href = route('messages.show', props.id);
+    const handleMessage = async () => {
+        const userTier = props.userTier || 'free';
+        
+        // If user is matched or has premium access, go directly to messages
+        if (props.isMatched || userTier === 'platinum' || userTier === 'gold') {
+            window.location.href = route('messages.show', props.id);
+            return;
+        }
+        
+        // For free users, check if they can send messages or need to watch ads
+        try {
+            const response = await fetch('/api/user/messaging-status', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // If user has ad credits, go directly to messages
+                if (data.has_credits) {
+                    window.location.href = route('messages.show', props.id);
+                } else {
+                    // Redirect to messages page where the ad unlock modal will be shown
+                    window.location.href = route('messages.show', props.id);
+                }
+            } else {
+                // Fallback: go to messages page
+                window.location.href = route('messages.show', props.id);
+            }
+        } catch (error) {
+            console.error('Error checking messaging status:', error);
+            // Fallback: go to messages page
+            window.location.href = route('messages.show', props.id);
+        }
     };
 
     // Close like modal
@@ -140,7 +176,12 @@
         
         // If user is Platinum or Gold, show message button
         const userTier = props.userTier || 'free';
-        return userTier === 'platinum' || userTier === 'gold';
+        if (userTier === 'platinum' || userTier === 'gold') {
+            return true;
+        }
+        
+        // Show message button for all users (including free) - they can watch ads to unlock
+        return true;
     });
 
     // Check if user can unblur photos based on the target user's blur settings

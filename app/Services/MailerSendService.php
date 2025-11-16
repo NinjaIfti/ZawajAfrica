@@ -439,6 +439,126 @@ class MailerSendService
     }
 
     /**
+     * Send broadcast email to multiple recipients
+     */
+    public function sendBroadcast(string $subject, string $body, array $recipients): array
+    {
+        if (!$this->isConfigured()) {
+            return [
+                'success' => false,
+                'error' => 'MailerSend not properly configured',
+                'total_users' => count($recipients),
+                'sent_count' => 0,
+                'failed_count' => count($recipients)
+            ];
+        }
+
+        $results = [
+            'total_users' => count($recipients),
+            'sent_count' => 0,
+            'failed_count' => 0,
+            'details' => []
+        ];
+
+        Log::info('Starting MailerSend broadcast', [
+            'total_recipients' => count($recipients),
+            'subject' => $subject
+        ]);
+
+        foreach ($recipients as $recipient) {
+            $email = is_array($recipient) ? $recipient['email'] : $recipient;
+            $name = is_array($recipient) ? ($recipient['name'] ?? '') : '';
+
+            // Convert body to both HTML and text
+            $htmlContent = $this->formatBroadcastContent($body, $name);
+            $textContent = strip_tags($body);
+
+            $result = $this->sendEmail($email, $name, $subject, $htmlContent, $textContent);
+            
+            if ($result['success']) {
+                $results['sent_count']++;
+                Log::debug('Broadcast email sent successfully', ['email' => $email]);
+            } else {
+                $results['failed_count']++;
+                Log::warning('Broadcast email failed', [
+                    'email' => $email,
+                    'error' => $result['error']
+                ]);
+            }
+
+            $results['details'][] = [
+                'email' => $email,
+                'name' => $name,
+                'success' => $result['success'],
+                'error' => $result['error'] ?? null,
+                'message_id' => $result['message_id'] ?? null
+            ];
+
+            // Rate limiting to prevent API throttling
+            usleep(100000); // 0.1 seconds between emails
+        }
+
+        Log::info('MailerSend broadcast completed', [
+            'total' => $results['total_users'],
+            'sent' => $results['sent_count'],
+            'failed' => $results['failed_count']
+        ]);
+
+        return [
+            'success' => $results['sent_count'] > 0,
+            'message' => "Broadcast completed: {$results['sent_count']} sent, {$results['failed_count']} failed",
+            'stats' => $results
+        ];
+    }
+
+    /**
+     * Format broadcast content with proper HTML structure
+     */
+    private function formatBroadcastContent(string $body, string $recipientName = ''): string
+    {
+        $greeting = $recipientName ? "Salam Alaikum {$recipientName}!" : "Salam Alaikum!";
+        
+        // Convert line breaks to HTML
+        $formattedBody = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
+        
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>ZawajAfrica Newsletter</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #654396, #8B5A9C); padding: 30px; text-align: center; color: white; border-radius: 10px 10px 0 0; }
+                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+                .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <div class='logo'>💜 ZawajAfrica</div>
+                    <p>Connecting African Muslims Worldwide</p>
+                </div>
+                <div class='content'>
+                    <h2>{$greeting}</h2>
+                    <div style='margin: 20px 0;'>
+                        {$formattedBody}
+                    </div>
+                </div>
+                <div class='footer'>
+                    <p>© " . date('Y') . " ZawajAfrica. Connecting African Muslims worldwide.</p>
+                    <p>If you no longer wish to receive these emails, please contact <a href='mailto:support@zawajafrica.com.ng'>support@zawajafrica.com.ng</a></p>
+                </div>
+            </div>
+        </body>
+        </html>";
+    }
+
+    /**
      * Get service status
      */
     public function getStatus(): array
