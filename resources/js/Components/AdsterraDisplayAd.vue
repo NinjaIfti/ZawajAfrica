@@ -272,8 +272,14 @@ export default {
                     adConfig.height = 300
                     adConfig.width = 250
                 } else if (props.zoneName === 'banner' || props.zoneName === 'feed') {
-                    adConfig.height = 250
+                    adConfig.height = 90
                     adConfig.width = 728
+                } else if (props.zoneName === 'dashboard_banner') {
+                    adConfig.height = 90
+                    adConfig.width = 728
+                } else if (props.zoneName === 'mobile_banner') {
+                    adConfig.height = 50
+                    adConfig.width = 320
                 }
                 
                 // Set global options for Adsterra BEFORE loading script
@@ -288,9 +294,19 @@ export default {
                 script.type = 'text/javascript'
                 script.async = true
                 
-                // Use the script URL from config or fallback to the zone-specific URL
-                const baseScriptUrl = adsterraConfig.value.script_url || `//www.highcpmrevenuegate.com/${zoneId}/invoke.js`
-                script.src = baseScriptUrl.includes(zoneId) ? baseScriptUrl : `//www.highcpmrevenuegate.com/${zoneId}/invoke.js`
+                // Use the configured script URL directly, or construct zone-specific URL
+                let scriptUrl = adsterraConfig.value.script_url
+                
+                // If no configured script URL, construct one based on zone
+                if (!scriptUrl) {
+                    if (zoneId === 'd1214f3bf383ccc9a397125fddd1db47' || zoneId === '32e2ce291e38cfd947a035aeb2c3549c') {
+                        scriptUrl = `//www.highperformanceformat.com/${zoneId}/invoke.js`
+                    } else {
+                        scriptUrl = `//pl27099042.profitableratecpm.com/40/25/2a/${zoneId}.js`
+                    }
+                }
+                
+                script.src = scriptUrl
                 
                 console.log(`AdsterraDisplayAd: Loading script from: ${script.src}`)
                 

@@ -6,7 +6,7 @@ return [
     'test_mode' => env('ADSTERRA_TEST_MODE', false),
     
     // Adsterra configuration - REQUIRED for production
-    'script_url' => env('ADSTERRA_SCRIPT_URL', '//pl27099042.profitableratecpm.com/40/25/2a/40252a1397d95eb269852aea67a5c58f.js'),
+    'script_url' => env('ADSTERRA_SCRIPT_URL', '//www.highperformanceformat.com/d1214f3bf383ccc9a397125fddd1db47/invoke.js'),
     'publisher_id' => env('ADSTERRA_PUBLISHER_ID', '40252a1397d95eb269852aea67a5c58f'),
     
     // Display settings
@@ -29,6 +29,8 @@ return [
         'interstitial' => env('ADSTERRA_INTERSTITIAL_ZONE', '40252a1397d95eb269852aea67a5c58f'),
         'feed' => env('ADSTERRA_FEED_ZONE', '40252a1397d95eb269852aea67a5c58f'),
         'sidebar' => env('ADSTERRA_SIDEBAR_ZONE', '40252a1397d95eb269852aea67a5c58f'),
+        'dashboard_banner' => env('ADSTERRA_DASHBOARD_BANNER_ZONE', 'd1214f3bf383ccc9a397125fddd1db47'),
+        'mobile_banner' => env('ADSTERRA_MOBILE_BANNER_ZONE', '32e2ce291e38cfd947a035aeb2c3549c'),
     ],
     
     // Targeting configuration
@@ -77,7 +79,9 @@ return [
             'adsterranetwork.com',
             'pl27099042.profitableratecpm.com',
             'highcpmrevenuegate.com',
-            'www.highcpmrevenuegate.com'
+            'www.highcpmrevenuegate.com',
+            'www.highperformanceformat.com',
+            'highperformanceformat.com'
         ],
         'validate_scripts' => env('ADSTERRA_VALIDATE_SCRIPTS', false),
         'block_malicious_ads' => env('ADSTERRA_BLOCK_MALICIOUS', false),

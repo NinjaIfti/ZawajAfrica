@@ -1,5 +1,5 @@
 <script setup>
-    import { defineProps } from 'vue';
+    // defineProps is now a compiler macro - no import needed
     import { Link } from '@inertiajs/vue3';
 
     defineProps({

@@ -10,6 +10,9 @@
     import MatchFiltersModal from '@/Components/MatchFiltersModal.vue';
     import TierBadge from '@/Components/TierBadge.vue';
     import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
+    import DashboardBanner from '@/Components/DashboardBanner.vue';
+    import AdsterraBanner728x90 from '@/Components/AdsterraBanner728x90.vue';
+    import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue';
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
     import Modal from '@/Components/Modal.vue';
     import NotificationBell from '@/Components/NotificationBell.vue';
@@ -751,6 +754,13 @@
                     <span v-else>Found {{ searchResults.length }} user(s) for "{{ searchQuery }}"</span>
                 </div>
             </div>
+
+                <!-- Dashboard Banner Ad (728x90) -->
+                <DashboardBanner />
+
+            <!-- Direct Adsterra Banner Ads -->
+            <AdsterraBanner728x90 />
+            <AdsterraBanner320x50 />
 
             <!-- Dashboard Feed Ad (between search and matches) -->
                                         <AdsterraDisplayAd zone-name="feed" />
