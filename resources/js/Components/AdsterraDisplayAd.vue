@@ -15,6 +15,7 @@
             <div class="flex justify-between items-center mb-2">
                 <div class="text-xs text-gray-500">Advertisement</div>
                 <button 
+                    v-if="showCloseButton"
                     @click="closeAd" 
                     class="text-gray-400 hover:text-gray-600 text-xs px-2 py-1 rounded hover:bg-gray-200 transition-colors"
                     title="Close ad"
@@ -108,6 +109,10 @@ export default {
         debug: {
             type: Boolean,
             default: false
+        },
+        showCloseButton: {
+            type: Boolean,
+            default: true
         }
     },
     setup(props) {

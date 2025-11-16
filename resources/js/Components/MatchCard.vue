@@ -209,10 +209,26 @@
     };
     
     // Handle successful ad watch - redirect to messages
-    const handleAdWatchSuccess = () => {
+    const handleAdWatchSuccess = (data) => {
+        console.log('handleAdWatchSuccess called with data:', data);
+        console.log('selectedMatchForMessage.value:', selectedMatchForMessage.value);
+        
         closeAdUnlockModal();
-        if (selectedMatchForMessage.value) {
-            window.location.href = route('messages.show', selectedMatchForMessage.value.id);
+        // Use the target user from the event data or fallback to selected match
+        const targetUser = data?.targetUser || selectedMatchForMessage.value;
+        
+        console.log('targetUser resolved to:', targetUser);
+        
+        if (targetUser && targetUser.id) {
+            const redirectUrl = route('messages.show', targetUser.id);
+            console.log('Redirecting to:', redirectUrl);
+            window.location.href = redirectUrl;
+        } else if (selectedMatchForMessage.value) {
+            const redirectUrl = route('messages.show', selectedMatchForMessage.value.id);
+            console.log('Fallback redirecting to:', redirectUrl);
+            window.location.href = redirectUrl;
+        } else {
+            console.error('No target user found for redirect');
         }
     };
 

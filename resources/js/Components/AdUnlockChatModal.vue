@@ -93,6 +93,7 @@
                 <div class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4 min-h-[250px] flex items-center justify-center">
                     <AdsterraDisplayAd 
                         zone-name="interstitial" 
+                        :show-close-button="false"
                         class="w-full"
                         @ad-loaded="onAdLoaded"
                         @ad-error="onAdError"
@@ -263,6 +264,11 @@ export default {
         }
 
         const startMessaging = () => {
+            console.log('Start Messaging clicked', {
+                targetUser: props.targetUser,
+                credits: totalCredits.value
+            })
+            
             // Emit success event with target user info for direct redirect
             emit('success', {
                 targetUser: props.targetUser,
