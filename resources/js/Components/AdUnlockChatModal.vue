@@ -91,13 +91,10 @@
 
                 <!-- Ad Container -->
                 <div class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4 min-h-[250px] flex items-center justify-center">
-                    <AdsterraDisplayAd 
-                        zone-name="interstitial" 
-                        :show-close-button="false"
-                        class="w-full"
-                        @ad-loaded="onAdLoaded"
-                        @ad-error="onAdError"
-                    />
+                    <div class="w-full">
+                        <AdsterraBanner728x90 />
+                        <AdsterraBanner320x50 />
+                    </div>
                 </div>
 
                 <!-- Progress Bar -->
@@ -157,14 +154,16 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Modal from '@/Components/Modal.vue'
-import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue'
+import AdsterraBanner728x90 from '@/Components/AdsterraBanner728x90.vue'
+import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue'
 import axios from 'axios'
 
 export default {
     name: 'AdUnlockChatModal',
     components: {
         Modal,
-        AdsterraDisplayAd
+        AdsterraBanner728x90,
+        AdsterraBanner320x50
     },
     props: {
         show: {

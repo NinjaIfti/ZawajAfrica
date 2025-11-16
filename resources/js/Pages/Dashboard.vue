@@ -9,10 +9,10 @@
     import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
     import MatchFiltersModal from '@/Components/MatchFiltersModal.vue';
     import TierBadge from '@/Components/TierBadge.vue';
-    import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
     import DashboardBanner from '@/Components/DashboardBanner.vue';
     import AdsterraBanner728x90 from '@/Components/AdsterraBanner728x90.vue';
     import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue';
+    import AdsterraTest from '@/Components/AdsterraTest.vue';
     import ZohoOptinModal from '@/Components/ZohoOptinModal.vue';
     import Modal from '@/Components/Modal.vue';
     import NotificationBell from '@/Components/NotificationBell.vue';
@@ -761,6 +761,9 @@
             <!-- Direct Adsterra Banner Ads -->
             <AdsterraBanner728x90 />
             <AdsterraBanner320x50 />
+            
+            <!-- Test Adsterra Ad -->
+            <AdsterraTest />
 
             <!-- Match Cards Component -->
             <MatchCard :matches="displayMatches" :userTier="userTier" />

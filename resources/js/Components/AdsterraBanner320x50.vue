@@ -20,31 +20,49 @@ export default {
     },
     methods: {
         loadAd() {
-            // Set the ad options for 320x50 mobile banner
-            window.atOptions = {
-                'key': '32e2ce291e38cfd947a035aeb2c3549c',
-                'format': 'iframe',
-                'height': 50,
-                'width': 320,
-                'params': {}
-            }
+            // Wait for DOM to be ready
+            this.$nextTick(() => {
+                // Set the ad options for 320x50 mobile banner
+                window.atOptions = {
+                    'key': '32e2ce291e38cfd947a035aeb2c3549c',
+                    'format': 'iframe',
+                    'height': 50,
+                    'width': 320,
+                    'params': {}
+                }
 
-            // Create and load the script
-            const script = document.createElement('script')
-            script.type = 'text/javascript'
-            script.src = '//www.highperformanceformat.com/32e2ce291e38cfd947a035aeb2c3549c/invoke.js'
-            script.async = true
-            script.id = 'adsterra-mobile-script'
-            
-            // Remove any existing script to avoid duplicates
-            const existingScript = document.getElementById('adsterra-mobile-script')
-            if (existingScript) {
-                existingScript.remove()
-            }
-            
-            document.head.appendChild(script)
-            
-            console.log('Adsterra 320x50 mobile banner loaded with ID:', this.bannerId)
+                // Create and load the script
+                const script = document.createElement('script')
+                script.type = 'text/javascript'
+                script.src = '//www.highperformanceformat.com/32e2ce291e38cfd947a035aeb2c3549c/invoke.js'
+                script.async = true
+                script.id = `adsterra-mobile-script-${this.bannerId}`
+                
+                // Remove any existing script to avoid duplicates
+                const existingScript = document.getElementById(script.id)
+                if (existingScript) {
+                    existingScript.remove()
+                }
+                
+                // Add onload handler to check if ad loaded
+                script.onload = () => {
+                    console.log('Adsterra 320x50 script loaded successfully')
+                    // Check if ad content appeared after a delay
+                    setTimeout(() => {
+                        const container = document.getElementById(this.bannerId)
+                        if (container && container.innerHTML.trim() === '') {
+                            console.warn('Adsterra 320x50: No ad content loaded, hiding container')
+                            container.style.display = 'none'
+                        } else {
+                            console.log('Adsterra 320x50: Ad content detected')
+                        }
+                    }, 3000)
+                }
+                
+                document.head.appendChild(script)
+                
+                console.log('Adsterra 320x50 mobile banner loaded with ID:', this.bannerId)
+            })
         }
     }
 }
