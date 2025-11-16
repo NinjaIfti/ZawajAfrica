@@ -320,12 +320,6 @@ export default {
                 this.showSuccess()
             }
 
-            // Add the missing referenceSetter function for Zoho form
-            window.referenceSetter = (element) => {
-                // This function is called by Zoho's tracking pixel
-                // It's used for form analytics and tracking
-                console.log('Zoho reference setter called')
-            }
         },
         initializeZohoForm() {
             try {

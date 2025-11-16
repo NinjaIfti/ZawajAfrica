@@ -4,7 +4,7 @@
     import AppHeader from '@/Components/AppHeader.vue';
     import TherapistWidget from '@/Components/TherapistWidget.vue';
     import MessagesWidget from '@/Components/MessagesWidget.vue';
-    import AdsterraDisplayAd from '@/Components/AdsterraDisplayAd.vue';
+    import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue';
 
     const props = defineProps({
         user: Object,
@@ -45,8 +45,10 @@
         <!-- Therapists Widget Component -->
         <TherapistWidget :therapists="therapists" />
 
-        <!-- Sidebar Display Ad -->
-                    <AdsterraDisplayAd zone-name="sidebar" />
+        <!-- Sidebar Banner Ad -->
+        <div class="my-4">
+            <AdsterraBanner320x50 />
+        </div>
 
         <!-- Messages Widget Component -->
         <MessagesWidget :messages="messages" />

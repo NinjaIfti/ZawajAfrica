@@ -2,7 +2,7 @@
     <div class="adsterra-banner-728x90 my-4 flex justify-center">
         <div class="bg-gray-100 border border-gray-200 rounded-lg p-2 text-center">
             <div class="text-xs text-gray-500 mb-2">Advertisement</div>
-            <div id="adsterra-banner-728x90" class="min-h-[90px] w-[728px] max-w-full"></div>
+            <div :id="bannerId" class="min-h-[90px] w-[728px] max-w-full"></div>
         </div>
     </div>
 </template>
@@ -10,6 +10,11 @@
 <script>
 export default {
     name: 'AdsterraBanner728x90',
+    data() {
+        return {
+            bannerId: `adsterra-banner-728x90-${Math.random().toString(36).substr(2, 9)}`
+        }
+    },
     mounted() {
         this.loadAd()
     },
@@ -29,16 +34,17 @@ export default {
             script.type = 'text/javascript'
             script.src = '//www.highperformanceformat.com/d1214f3bf383ccc9a397125fddd1db47/invoke.js'
             script.async = true
+            script.id = 'adsterra-desktop-script'
             
             // Remove any existing script to avoid duplicates
-            const existingScript = document.querySelector('script[src="//www.highperformanceformat.com/d1214f3bf383ccc9a397125fddd1db47/invoke.js"]')
+            const existingScript = document.getElementById('adsterra-desktop-script')
             if (existingScript) {
                 existingScript.remove()
             }
             
             document.head.appendChild(script)
             
-            console.log('Adsterra 728x90 banner loaded')
+            console.log('Adsterra 728x90 banner loaded with ID:', this.bannerId)
         }
     }
 }

@@ -762,14 +762,12 @@
             <AdsterraBanner728x90 />
             <AdsterraBanner320x50 />
 
-            <!-- Dashboard Feed Ad (between search and matches) -->
-                                        <AdsterraDisplayAd zone-name="feed" />
-
             <!-- Match Cards Component -->
             <MatchCard :matches="displayMatches" :userTier="userTier" />
 
-            <!-- Display Ad (after matches) -->
-                                    <AdsterraDisplayAd zone-name="banner" />
+            <!-- Additional Banner After Matches -->
+            <AdsterraBanner728x90 />
+            <AdsterraBanner320x50 />
 
             <!-- Loading indicator -->
             <div v-if="isLoading" class="text-center py-8">

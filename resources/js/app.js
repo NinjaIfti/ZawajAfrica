@@ -22,6 +22,12 @@ const refreshCSRFToken = () => {
 
 // Make utilities globally available
 window.refreshCSRFToken = refreshCSRFToken;
+
+// Add the missing referenceSetter function for Zoho form globally
+window.referenceSetter = (element) => {
+    // This function is called by Zoho's tracking pixel
+    console.log('Zoho reference setter called');
+};
 window.csrfUtils = csrfUtils;
 
 // Initial CSRF token setup
