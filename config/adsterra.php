@@ -87,9 +87,9 @@ return [
     
     // Debug and development
     'debug' => [
-        'enabled' => env('ADSTERRA_DEBUG_MODE', true),
-        'console_logging' => env('ADSTERRA_CONSOLE_LOGGING', true),
-        'detailed_errors' => env('ADSTERRA_DETAILED_ERRORS', true),
+        'enabled' => env('ADSTERRA_DEBUG_MODE', false),
+        'console_logging' => env('ADSTERRA_CONSOLE_LOGGING', false),
+        'detailed_errors' => env('ADSTERRA_DETAILED_ERRORS', false),
         'test_ads' => env('ADSTERRA_TEST_ADS', false),
     ],
     

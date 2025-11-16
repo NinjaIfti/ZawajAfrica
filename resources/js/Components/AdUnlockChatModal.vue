@@ -93,7 +93,6 @@
                 <div class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4 min-h-[250px] flex items-center justify-center">
                     <AdsterraDisplayAd 
                         zone-name="interstitial" 
-                        :debug="true"
                         class="w-full"
                         @ad-loaded="onAdLoaded"
                         @ad-error="onAdError"
@@ -134,7 +133,7 @@
                 </div>
 
                 <button 
-                    @click="closeModal"
+                    @click="startMessaging"
                     class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
                 >
                     Start Messaging
@@ -263,6 +262,17 @@ export default {
             }
         }
 
+        const startMessaging = () => {
+            // Emit success event with target user info for direct redirect
+            emit('success', {
+                targetUser: props.targetUser,
+                credits: totalCredits.value
+            })
+            
+            // Then close the modal
+            closeModal()
+        }
+
         const closeModal = () => {
             // Clean up any running timers
             if (countdownInterval.value) {
@@ -329,6 +339,7 @@ export default {
             totalCredits,
             newExpirationTime,
             startWatching,
+            startMessaging,
             closeModal,
             onAdLoaded,
             onAdError,
