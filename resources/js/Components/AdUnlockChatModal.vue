@@ -90,10 +90,10 @@
                 </div>
 
                 <!-- Ad Container -->
-                <div class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4 min-h-[250px] flex items-center justify-center">
-                    <div class="w-full">
-                        <AdsterraBanner728x90 />
-                        <AdsterraBanner320x50 />
+                <div class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 min-h-[120px] flex items-center justify-center">
+                    <div class="w-full text-center">
+                        <div class="text-xs text-gray-500 mb-2">Advertisement</div>
+                        <div :id="adContainerId" class="min-h-[50px] w-[320px] mx-auto bg-white border rounded"></div>
                     </div>
                 </div>
 
@@ -154,16 +154,12 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Modal from '@/Components/Modal.vue'
-import AdsterraBanner728x90 from '@/Components/AdsterraBanner728x90.vue'
-import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue'
 import axios from 'axios'
 
 export default {
     name: 'AdUnlockChatModal',
     components: {
         Modal,
-        AdsterraBanner728x90,
-        AdsterraBanner320x50
     },
     props: {
         show: {
@@ -191,6 +187,7 @@ export default {
         const error = ref(null)
         const countdown = ref(10)
         const requiredDuration = 10
+        const adContainerId = `ad-unlock-${Math.random().toString(36).substr(2, 9)}`
         const watchStartTime = ref(null)
         const countdownInterval = ref(null)
         const creditsGranted = ref(0)
@@ -213,6 +210,9 @@ export default {
             countdown.value = requiredDuration
             watchStartTime.value = Date.now()
 
+            // Load the Adsterra ad
+            loadAdsterraAd()
+
             // Start countdown
             countdownInterval.value = setInterval(() => {
                 countdown.value--
@@ -221,6 +221,42 @@ export default {
                     completeAdWatch()
                 }
             }, 1000)
+        }
+
+        const loadAdsterraAd = () => {
+            // Set the ad options for 320x50 mobile banner
+            window.atOptions = {
+                'key': '32e2ce291e38cfd947a035aeb2c3549c',
+                'format': 'iframe',
+                'height': 50,
+                'width': 320,
+                'params': {}
+            }
+
+            // Create and load the script
+            const script = document.createElement('script')
+            script.type = 'text/javascript'
+            script.src = '//www.highperformanceformat.com/32e2ce291e38cfd947a035aeb2c3549c/invoke.js'
+            script.async = true
+            script.id = `ad-unlock-script-${adContainerId}`
+            
+            // Remove any existing script to avoid duplicates
+            const existingScript = document.getElementById(script.id)
+            if (existingScript) {
+                existingScript.remove()
+            }
+            
+            script.onload = () => {
+                console.log('Ad unlock: Adsterra 320x50 script loaded successfully')
+            }
+            
+            script.onerror = () => {
+                console.error('Ad unlock: Failed to load Adsterra script')
+            }
+            
+            document.head.appendChild(script)
+            
+            console.log('Ad unlock: Loading Adsterra 320x50 banner for message unlock')
         }
 
         const completeAdWatch = async () => {
@@ -343,7 +379,9 @@ export default {
             creditsGranted,
             totalCredits,
             newExpirationTime,
+            adContainerId,
             startWatching,
+            loadAdsterraAd,
             startMessaging,
             closeModal,
             onAdLoaded,
