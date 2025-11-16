@@ -35,13 +35,19 @@ class AdUnlockChatService
             ];
         }
 
-        // Only allow free users to use this feature
-        if ($this->tierService->getUserTier($user) !== UserTierService::TIER_FREE) {
-            return [
-                'success' => false,
-                'error' => 'This feature is only available for free users',
-                'tier' => $this->tierService->getUserTier($user)
-            ];
+        // Only allow free users to use this feature (temporarily disabled for testing)
+        $userTier = $this->tierService->getUserTier($user);
+        if ($userTier !== UserTierService::TIER_FREE) {
+            // Temporarily allow testing for all users - remove this in production
+            \Log::info('Ad watch allowed for non-free user (testing mode)', [
+                'user_id' => $user->id,
+                'tier' => $userTier
+            ]);
+            // return [
+            //     'success' => false,
+            //     'error' => 'This feature is only available for free users',
+            //     'tier' => $userTier
+            // ];
         }
 
         try {

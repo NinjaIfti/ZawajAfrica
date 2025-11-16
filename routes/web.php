@@ -359,33 +359,28 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
             ]);
             
             $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+            $tierService = app(\App\Services\UserTierService::class);
+            
+            // Debug logging
+            \Log::info('Ad watch attempt', [
+                'user_id' => $user->id,
+                'user_tier' => $tierService->getUserTier($user),
+                'watch_duration' => $request->input('watch_duration')
+            ]);
+            
             $result = $adUnlockService->recordAdWatchForChat($user, $request->input('watch_duration'));
             
             if ($result['success']) {
                 return response()->json($result);
             } else {
+                \Log::warning('Ad watch failed', [
+                    'user_id' => $user->id,
+                    'result' => $result
+                ]);
                 return response()->json($result, 400);
             }
         })->name('watch-for-chat');
         
-        Route::get('/user/messaging-status', function (Request $request) {
-            $user = Auth::user();
-            
-            if (!$user) {
-                return response()->json(['error' => 'Authentication required'], 401);
-            }
-            
-            $adUnlockService = app(\App\Services\AdUnlockChatService::class);
-            $status = $adUnlockService->getChatUnlockStatus($user);
-            
-            return response()->json([
-                'success' => true,
-                'has_credits' => $status['has_credits'] ?? false,
-                'remaining_credits' => $status['remaining_credits'] ?? 0,
-                'can_watch_ads' => $status['available'] ?? false,
-                'expires_at' => $status['credits_expire_at'] ?? null
-            ]);
-        })->name('user.messaging-status');
         
         Route::post('/track', function (Request $request) {
             $adsterraService = app(\App\Services\AdsterraService::class);
@@ -648,6 +643,26 @@ Route::get('/mobile-login', function () {
         'status' => session('status'),
     ]);
 });
+
+// User messaging status API route (outside of adsterra prefix)
+Route::middleware('auth')->get('/api/user/messaging-status', function (Request $request) {
+    $user = Auth::user();
+    
+    if (!$user) {
+        return response()->json(['error' => 'Authentication required'], 401);
+    }
+    
+    $adUnlockService = app(\App\Services\AdUnlockChatService::class);
+    $status = $adUnlockService->getChatUnlockStatus($user);
+    
+    return response()->json([
+        'success' => true,
+        'has_credits' => $status['has_credits'] ?? false,
+        'remaining_credits' => $status['remaining_credits'] ?? 0,
+        'can_watch_ads' => $status['available'] ?? false,
+        'expires_at' => $status['credits_expire_at'] ?? null
+    ]);
+})->name('api.user.messaging-status');
 
 // Email Template Routes for Zoho Campaigns
 
