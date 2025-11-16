@@ -166,6 +166,10 @@ export default {
             type: Boolean,
             default: false
         },
+        targetUser: {
+            type: Object,
+            default: null
+        },
         currentCredits: {
             type: Number,
             default: 0
@@ -179,7 +183,7 @@ export default {
             default: 10
         }
     },
-    emits: ['close', 'credits-updated'],
+    emits: ['close', 'credits-updated', 'success'],
     setup(props, { emit }) {
         const isWatching = ref(false)
         const isCompleted = ref(false)
@@ -303,6 +307,11 @@ export default {
                 targetUser: props.targetUser,
                 credits: totalCredits.value
             })
+            
+            // Debug the target user
+            console.log('props.targetUser:', props.targetUser)
+            console.log('props.targetUser type:', typeof props.targetUser)
+            console.log('props.targetUser id:', props.targetUser?.id)
             
             // Emit success event with target user info for direct redirect
             emit('success', {

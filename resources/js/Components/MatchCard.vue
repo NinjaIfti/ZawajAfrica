@@ -213,22 +213,35 @@
         console.log('handleAdWatchSuccess called with data:', data);
         console.log('selectedMatchForMessage.value:', selectedMatchForMessage.value);
         
-        closeAdUnlockModal();
-        // Use the target user from the event data or fallback to selected match
-        const targetUser = data?.targetUser || selectedMatchForMessage.value;
+        // Store the selected match before closing modal (which clears it)
+        const storedMatch = selectedMatchForMessage.value;
         
-        console.log('targetUser resolved to:', targetUser);
+        // Try multiple fallbacks to get the target user
+        let targetUser = null;
+        
+        // First try: data from modal
+        if (data?.targetUser && data.targetUser.id) {
+            targetUser = data.targetUser;
+            console.log('Using targetUser from data:', targetUser);
+        }
+        // Second try: stored selected match
+        else if (storedMatch && storedMatch.id) {
+            targetUser = storedMatch;
+            console.log('Using storedMatch:', targetUser);
+        }
+        
+        // Close modal after getting the target user
+        closeAdUnlockModal();
         
         if (targetUser && targetUser.id) {
             const redirectUrl = route('messages.show', targetUser.id);
             console.log('Redirecting to:', redirectUrl);
             window.location.href = redirectUrl;
-        } else if (selectedMatchForMessage.value) {
-            const redirectUrl = route('messages.show', selectedMatchForMessage.value.id);
-            console.log('Fallback redirecting to:', redirectUrl);
-            window.location.href = redirectUrl;
         } else {
             console.error('No target user found for redirect');
+            console.error('Available data:', { data, storedMatch });
+            // Fallback to general messages page
+            window.location.href = route('messages');
         }
     };
 
