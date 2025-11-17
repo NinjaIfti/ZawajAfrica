@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Exception;
 
 class MailerSendService
@@ -50,10 +51,21 @@ class MailerSendService
 
     /**
      * Check if MailerSend is properly configured
+     * For broadcasts, checks SMTP configuration
+     * For API calls, checks API key configuration
      */
     public function isConfigured(): bool
     {
-        return $this->enabled && !empty($this->apiKey) && !empty($this->fromEmail);
+        // For broadcasts, check SMTP configuration
+        $smtpConfigured = !empty(config('mail.mailers.smtp.host')) && 
+                          !empty(config('mail.mailers.smtp.username')) && 
+                          !empty(config('mail.mailers.smtp.password'));
+        
+        // For API calls, check API key
+        $apiConfigured = $this->enabled && !empty($this->apiKey) && !empty($this->fromEmail);
+        
+        // Return true if either SMTP or API is configured
+        return $smtpConfigured || $apiConfigured;
     }
 
     /**
@@ -439,14 +451,24 @@ class MailerSendService
     }
 
     /**
-     * Send broadcast email to multiple recipients
+     * Send broadcast email to multiple recipients using SMTP
      */
     public function sendBroadcast(string $subject, string $body, array $recipients): array
     {
-        if (!$this->isConfigured()) {
+        // Check if SMTP is configured
+        $smtpConfigured = !empty(config('mail.mailers.smtp.host')) && 
+                          !empty(config('mail.mailers.smtp.username')) && 
+                          !empty(config('mail.mailers.smtp.password'));
+
+        if (!$smtpConfigured) {
+            Log::error('MailerSend SMTP not configured for broadcast', [
+                'host' => config('mail.mailers.smtp.host'),
+                'username_set' => !empty(config('mail.mailers.smtp.username'))
+            ]);
+            
             return [
                 'success' => false,
-                'error' => 'MailerSend not properly configured',
+                'error' => 'MailerSend SMTP not properly configured',
                 'total_users' => count($recipients),
                 'sent_count' => 0,
                 'failed_count' => count($recipients)
@@ -460,45 +482,63 @@ class MailerSendService
             'details' => []
         ];
 
-        Log::info('Starting MailerSend broadcast', [
+        Log::info('Starting MailerSend SMTP broadcast', [
             'total_recipients' => count($recipients),
-            'subject' => $subject
+            'subject' => $subject,
+            'smtp_host' => config('mail.mailers.smtp.host'),
+            'smtp_port' => config('mail.mailers.smtp.port')
         ]);
 
         foreach ($recipients as $recipient) {
             $email = is_array($recipient) ? $recipient['email'] : $recipient;
             $name = is_array($recipient) ? ($recipient['name'] ?? '') : '';
 
-            // Convert body to both HTML and text
-            $htmlContent = $this->formatBroadcastContent($body, $name);
-            $textContent = strip_tags($body);
+            try {
+                // Format body with HTML
+                $htmlContent = $this->formatBroadcastContent($body, $name);
+                $textContent = strip_tags($body);
 
-            $result = $this->sendEmail($email, $name, $subject, $htmlContent, $textContent);
-            
-            if ($result['success']) {
+                // Send via Laravel Mail using SMTP
+                Mail::send([], [], function ($message) use ($email, $name, $subject, $htmlContent, $textContent) {
+                    $message->to($email, $name)
+                            ->subject($subject)
+                            ->html($htmlContent)
+                            ->text($textContent)
+                            ->from(config('mail.from.address'), config('mail.from.name'));
+                });
+
                 $results['sent_count']++;
-                Log::debug('Broadcast email sent successfully', ['email' => $email]);
-            } else {
-                $results['failed_count']++;
-                Log::warning('Broadcast email failed', [
+                $results['details'][] = [
                     'email' => $email,
-                    'error' => $result['error']
+                    'name' => $name,
+                    'success' => true,
+                    'error' => null,
+                    'message_id' => null
+                ];
+
+                Log::debug('Broadcast email sent successfully via SMTP', ['email' => $email]);
+
+                // Rate limiting to prevent SMTP throttling
+                usleep(50000); // 0.05 seconds between emails
+
+            } catch (Exception $e) {
+                $results['failed_count']++;
+                $results['details'][] = [
+                    'email' => $email,
+                    'name' => $name,
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'message_id' => null
+                ];
+
+                Log::warning('Broadcast email failed via SMTP', [
+                    'email' => $email,
+                    'error' => $e->getMessage()
                 ]);
             }
-
-            $results['details'][] = [
-                'email' => $email,
-                'name' => $name,
-                'success' => $result['success'],
-                'error' => $result['error'] ?? null,
-                'message_id' => $result['message_id'] ?? null
-            ];
-
-            // Rate limiting to prevent API throttling
-            usleep(100000); // 0.1 seconds between emails
         }
 
-        Log::info('MailerSend broadcast completed', [
+        Log::info('MailerSend SMTP broadcast completed', [
             'total' => $results['total_users'],
             'sent' => $results['sent_count'],
             'failed' => $results['failed_count']
