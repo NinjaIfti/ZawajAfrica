@@ -1,11 +1,10 @@
 // ZawajAfrica Service Worker
-const CACHE_NAME = 'zawajafrica-v1';
+const CACHE_NAME = 'zawajafrica-v2'; // Updated version to force cache refresh
 const urlsToCache = [
   '/',
-  '/dashboard',
-  '/messages',
   '/images/fav.png',
   '/manifest.json'
+  // Removed /dashboard and /messages from initial cache - they should be fetched fresh
 ];
 
 // Install event
@@ -17,84 +16,85 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  // Take control of all pages immediately
+  return self.clients.claim();
 });
 
 // Fetch event
 self.addEventListener('fetch', event => {
-  // Only handle GET requests from our own origin – allow others (like Adsterra) to bypass the service worker
+  // Skip non-GET requests
   if (event.request.method !== 'GET') {
-    return; // Let non-GET requests pass through without interception
-  }
-
-  const requestUrl = new URL(event.request.url);
-
-  // Completely bypass service worker for third-party requests
-  if (requestUrl.origin !== self.location.origin) {
-    return; // Don't interfere with third-party scripts/assets (Adsterra, etc.)
-  }
-
-  // Don't intercept requests that might be problematic
-  // Skip service worker for API calls, external resources, etc.
-  if (requestUrl.pathname.startsWith('/api/') || 
-      requestUrl.pathname.includes('adsterra') ||
-      requestUrl.pathname.includes('highperformanceformat') ||
-      requestUrl.pathname.includes('highcpmrevenuegate')) {
-    return; // Let these pass through directly
-  }
-
-  // Handle navigation requests with network-first strategy to avoid redirect issues
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request, {
-        redirect: 'follow',
-        credentials: 'same-origin',
-        cache: 'no-store' // Don't use browser cache for navigation requests
-      }).then(response => {
-        // Only cache successful non-redirect responses (status 200-299)
-        // Don't cache redirect responses (type === 'opaqueredirect')
-        if (response.ok && response.status >= 200 && response.status < 300 && 
-            response.type !== 'opaqueredirect' && response.type !== 'opaque') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return response;
-      }).catch(error => {
-        // Fallback to cache if network fails
-        return caches.match(event.request).then(cachedResponse => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Final fallback
-          return caches.match('/dashboard') || caches.match('/');
-        });
-      })
-    );
     return;
   }
 
-  // For non-navigation requests, use cache-first strategy
-  event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  const url = new URL(event.request.url);
 
-      return fetch(event.request, {
-        redirect: 'follow',
-        credentials: 'same-origin'
-      }).then(response => {
-        // Cache successful responses (status 200-299)
-        // Don't cache redirect responses
-        if (response.ok && response.status >= 200 && response.status < 300 && 
-            response.type !== 'opaqueredirect' && response.type !== 'opaque') {
-          const responseToCache = response.clone();
+  // Completely bypass service worker for third-party requests
+  if (url.origin !== self.location.origin) {
+    return; // Don't interfere with third-party scripts/assets (Adsterra, etc.)
+  }
+
+  // Don't cache these routes - let browser handle them directly
+  // This prevents redirect issues with authentication
+  const excludedPaths = [
+    '/dashboard',
+    '/login',
+    '/logout',
+    '/api',
+    '/mobile-login',
+    '/register',
+    '/password',
+    '/email/verify',
+    '/admin'
+  ];
+  
+  const shouldExclude = excludedPaths.some(path => url.pathname.startsWith(path));
+
+  // Also exclude external/ad scripts
+  if (url.pathname.includes('adsterra') ||
+      url.pathname.includes('highperformanceformat') ||
+      url.pathname.includes('highcpmrevenuegate') ||
+      url.pathname.includes('effectivegatecpm')) {
+    return; // Let these pass through directly
+  }
+
+  // If route should be excluded, let browser handle it normally
+  if (shouldExclude) {
+    return; // Let browser handle these routes directly without service worker interference
+  }
+
+  // For other routes, use cache-first strategy
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request, {
+        redirect: 'follow' // Explicitly handle redirects
+      }).then(fetchResponse => {
+        // Only cache successful responses for static assets
+        if (fetchResponse.ok && fetchResponse.status >= 200 && fetchResponse.status < 300) {
+          const responseToCache = fetchResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseToCache);
           });
         }
-        return response;
+        return fetchResponse;
       }).catch(error => {
         // Silently handle fetch errors
         return new Response('', { status: 503, statusText: 'Service Unavailable' });

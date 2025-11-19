@@ -36,6 +36,15 @@ class OpenAIService
     public function chat(array $messages, ?int $userId = null, array $userPreferences = []): array
     {
         try {
+            if (empty($this->apiKey)) {
+                Log::error('OpenAI API key not configured');
+                return [
+                    'success' => false,
+                    'error' => 'AI service is not properly configured',
+                    'code' => 'configuration_error',
+                ];
+            }
+            
             // Build conversation with system prompt and user persona
             $conversation = $this->buildConversation($messages, $userId, $userPreferences);
             
@@ -51,6 +60,19 @@ class OpenAIService
 
             if ($response->successful()) {
                 $data = $response->json();
+                
+                if (!isset($data['choices']) || empty($data['choices'])) {
+                    Log::error('OpenAI API response missing choices', [
+                        'user_id' => $userId,
+                        'response' => $data,
+                    ]);
+                    
+                    return [
+                        'success' => false,
+                        'error' => 'Invalid response format from AI service',
+                        'code' => 'invalid_response',
+                    ];
+                }
                 
                 // Log successful API call
                 Log::info('OpenAI API call successful', [
@@ -128,7 +150,7 @@ class OpenAIService
      */
     private function buildSystemPrompt(?int $userId = null, array $userPreferences = [], bool $isNewConversation = true): string
     {
-        $basePrompt = $this->systemPrompt;
+        $basePrompt = $this->systemPrompt ?? '';
         
         // Add current time context for persona switching (Fatima vs Firdaus)
         $currentHour = now()->format('H');

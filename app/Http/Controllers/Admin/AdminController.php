@@ -1009,12 +1009,15 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('AI broadcast generation failed', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'request' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to generate broadcast message'
+                'error' => config('app.debug') ? $e->getMessage() : 'Failed to generate broadcast message'
             ], 500);
         }
     }

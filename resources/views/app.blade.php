@@ -68,10 +68,37 @@
                     navigator.serviceWorker.register('/sw.js')
                         .then(function(registration) {
                             console.log('ServiceWorker registration successful');
+                            
+                            // Force update check on every page load
+                            registration.update();
+                            
+                            // Check for updates periodically
+                            setInterval(function() {
+                                registration.update();
+                            }, 60000); // Check every minute
+                            
+                            // Listen for updates
+                            registration.addEventListener('updatefound', function() {
+                                const newWorker = registration.installing;
+                                newWorker.addEventListener('statechange', function() {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        // New service worker available, reload to activate
+                                        console.log('New service worker available, reloading...');
+                                        window.location.reload();
+                                    }
+                                });
+                            });
                         })
                         .catch(function(err) {
                             console.log('ServiceWorker registration failed: ', err);
                         });
+                    
+                    // Force all existing service workers to update
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        registrations.forEach(function(registration) {
+                            registration.update();
+                        });
+                    });
                 });
             }
         </script>
