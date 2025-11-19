@@ -21,13 +21,50 @@ self.addEventListener('install', event => {
 
 // Fetch event
 self.addEventListener('fetch', event => {
+  // Only handle GET requests from our own origin – allow others (like Adsterra) to bypass the service worker
+  if (event.request.method !== 'GET') {
+    return; // Let non-GET requests pass through without interception
+  }
+
+  const requestUrl = new URL(event.request.url);
+
+  // Completely bypass service worker for third-party requests
+  if (requestUrl.origin !== self.location.origin) {
+    return; // Don't interfere with third-party scripts/assets (Adsterra, etc.)
+  }
+
+  // Don't intercept requests that might be problematic
+  // Skip service worker for API calls, external resources, etc.
+  if (requestUrl.pathname.startsWith('/api/') || 
+      requestUrl.pathname.includes('adsterra') ||
+      requestUrl.pathname.includes('highperformanceformat') ||
+      requestUrl.pathname.includes('highcpmrevenuegate')) {
+    return; // Let these pass through directly
+  }
+
+  // Only intercept navigation and static assets from our origin
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) {
+        return cachedResponse;
       }
-    )
+
+      return fetch(event.request).catch(error => {
+        // Silently handle fetch errors - don't log to avoid console spam
+        // Only provide fallback for navigation requests
+        if (event.request.mode === 'navigate') {
+          return caches.match('/dashboard') || caches.match('/');
+        }
+        // For other requests, return a minimal error response
+        return new Response('', { status: 503, statusText: 'Service Unavailable' });
+      });
+    }).catch(error => {
+      // Final error handler - only log in development
+      if (event.request.mode === 'navigate') {
+        return caches.match('/dashboard') || caches.match('/');
+      }
+      return new Response('', { status: 503, statusText: 'Service Unavailable' });
+    })
   );
 });
 

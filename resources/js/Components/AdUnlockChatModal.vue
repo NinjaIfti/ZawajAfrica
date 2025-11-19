@@ -250,17 +250,25 @@ export default {
                 existingScript.remove()
             }
             
+            const debugMode = page.props.adsterra?.config?.debug || false
+            
             script.onload = () => {
-                console.log('Ad unlock: Adsterra 320x50 script loaded successfully')
+                if (debugMode) {
+                    console.log('Ad unlock: Adsterra 320x50 script loaded successfully')
+                }
             }
             
             script.onerror = () => {
-                console.error('Ad unlock: Failed to load Adsterra script')
+                if (debugMode) {
+                    console.warn('Ad unlock: Failed to load Adsterra script (may be blocked by ad blocker)')
+                }
             }
             
             document.head.appendChild(script)
             
-            console.log('Ad unlock: Loading Adsterra 320x50 banner for message unlock')
+            if (debugMode) {
+                console.log('Ad unlock: Loading Adsterra 320x50 banner for message unlock')
+            }
         }
 
         const completeAdWatch = async () => {

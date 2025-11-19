@@ -1,30 +1,14 @@
 <template>
-    <div v-if="shouldShowBanner && (isLoading || (!error && !isLoading))" class="dashboard-banner-ad my-4">
+    <div v-if="shouldShowBanner && adLoaded" class="dashboard-banner-ad my-4">
         <!-- Banner Ad Container -->
         <div class="bg-gray-100 border border-gray-200 rounded-lg p-4 text-center relative">
             <div class="flex justify-between items-center mb-2">
                 <div class="text-xs text-gray-500">Advertisement</div>
             </div>
             
-            <!-- Loading overlay -->
-            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-90 rounded-lg">
-                <div class="flex items-center">
-                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                    <span class="ml-2 text-sm text-gray-600">Loading ad...</span>
-                </div>
-            </div>
-            
             <!-- Ad Container -->
             <div ref="bannerContainer" :id="bannerId" class="banner-ad-container min-h-[90px]">
                 <!-- This will be populated by the ad script -->
-            </div>
-            
-            <!-- Error state (if needed) -->
-            <div v-if="error && !isLoading" class="py-4 text-center">
-                <div class="text-red-500 text-sm">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    {{ error }}
-                </div>
             </div>
         </div>
     </div>
@@ -51,7 +35,9 @@ export default {
         const bannerContainer = ref(null)
         const isLoading = ref(false)
         const error = ref(null)
+        const adLoaded = ref(false)
         const bannerId = ref(`dashboard-banner-${Math.random().toString(36).substr(2, 9)}`)
+        let loadTimeout = null
         
         // Check if banner should show
         const shouldShowBanner = computed(() => {
@@ -102,9 +88,13 @@ export default {
                 script.async = true
                 script.id = `banner-script-${bannerId.value}`
                 
+                const debugMode = page.props.adsterra?.config?.debug || false
+                
                 // Handle script load events
                 script.onload = () => {
-                    console.log('Banner script loaded successfully')
+                    if (debugMode) {
+                        console.log('Banner script loaded successfully')
+                    }
                     // Check for ad content after script loads
                     setTimeout(() => {
                         checkAdLoaded()
@@ -112,33 +102,53 @@ export default {
                 }
                 
                 script.onerror = () => {
-                    console.error('Banner script failed to load')
+                    if (loadTimeout) {
+                        clearTimeout(loadTimeout)
+                    }
+                    if (debugMode) {
+                        console.warn('Banner script failed to load (may be blocked by ad blocker)')
+                    }
                     isLoading.value = false
-                    error.value = 'Failed to load ad script'
+                    adLoaded.value = false
+                    // Fail silently - no error shown to user
                 }
                 
                 // Append script to head instead of container
                 document.head.appendChild(script)
                 
-                // Set timeout to stop loading state
-                setTimeout(() => {
+                // Set timeout to check if ad loaded (8 seconds)
+                loadTimeout = setTimeout(() => {
                     if (isLoading.value) {
                         checkAdLoaded()
                     }
-                }, 8000) // 8 second timeout
+                }, 8000)
                 
             } catch (err) {
-                console.error('Banner ad loading error:', err)
-                error.value = 'Failed to load advertisement'
+                if (loadTimeout) {
+                    clearTimeout(loadTimeout)
+                }
+                const debugMode = page.props.adsterra?.config?.debug || false
+                if (debugMode) {
+                    console.error('Banner ad loading error:', err)
+                }
                 isLoading.value = false
+                adLoaded.value = false
+                // Fail silently - no error shown to user
             }
         }
         
         const checkAdLoaded = () => {
+            if (loadTimeout) {
+                clearTimeout(loadTimeout)
+            }
+            
             if (!bannerContainer.value) {
                 isLoading.value = false
+                adLoaded.value = false
                 return
             }
+            
+            const debugMode = page.props.adsterra?.config?.debug || false
             
             // Check for iframe or other ad content
             const hasIframe = bannerContainer.value.querySelector('iframe')
@@ -151,24 +161,30 @@ export default {
             const bodyHasAdContent = document.body.querySelector('iframe[src*="highperformanceformat"]') ||
                                    document.body.querySelector('div[id*="d1214f3bf383ccc9a397125fddd1db47"]')
             
-            console.log('DashboardBanner: Checking ad loaded:', {
-                hasIframe: !!hasIframe,
-                hasScript: !!hasScript,
-                hasAdContent: !!hasAdContent,
-                bodyHasAdContent: !!bodyHasAdContent,
-                childrenCount: bannerContainer.value.children.length,
-                innerHTML: bannerContainer.value.innerHTML.substring(0, 200)
-            })
+            if (debugMode) {
+                console.log('DashboardBanner: Checking ad loaded:', {
+                    hasIframe: !!hasIframe,
+                    hasScript: !!hasScript,
+                    hasAdContent: !!hasAdContent,
+                    bodyHasAdContent: !!bodyHasAdContent,
+                    childrenCount: bannerContainer.value.children.length
+                })
+            }
             
             if (hasIframe || hasScript || hasAdContent || bodyHasAdContent) {
                 isLoading.value = false
+                adLoaded.value = true
                 error.value = null
-                console.log('DashboardBanner: Ad content detected - showing banner')
+                if (debugMode) {
+                    console.log('DashboardBanner: Ad content detected - showing banner')
+                }
             } else {
                 isLoading.value = false
-                console.log('DashboardBanner: No ad content detected - hiding banner')
-                // Don't show error, just hide the component
-                // error.value = 'Ad content not available'
+                adLoaded.value = false
+                if (debugMode) {
+                    console.log('DashboardBanner: No ad content detected - hiding banner')
+                }
+                // Fail silently - component will be hidden
             }
         }
 
@@ -190,6 +206,7 @@ export default {
             bannerContainer,
             isLoading,
             error,
+            adLoaded,
             bannerId,
             shouldShowBanner,
             checkAdLoaded

@@ -512,6 +512,7 @@ class AdsterraService
         $retryAttempts = $this->config['performance']['retry_attempts'];
         $retryDelay = $this->config['performance']['retry_delay'];
         $scriptUrl = $this->config['script_url'];
+        $debugMode = $this->config['debug']['enabled'] ? 'true' : 'false';
 
         return "
         <script type='text/javascript'>
@@ -519,10 +520,14 @@ class AdsterraService
                 let retryCount = 0;
                 const maxRetries = {$retryAttempts};
                 const retryDelay = {$retryDelay};
+                const debugMode = {$debugMode};
+                let hasFailedPermanently = false;
                 
                 function loadAdsterraScript() {
-                    if (retryCount >= maxRetries) {
-                        console.warn('Adsterra: Maximum retry attempts reached');
+                    if (hasFailedPermanently || retryCount >= maxRetries) {
+                        if (debugMode) {
+                            console.warn('Adsterra: Maximum retry attempts reached. Ads may be blocked by an ad blocker.');
+                        }
                         return;
                     }
                     
@@ -531,15 +536,48 @@ class AdsterraService
                     script.src = '{$scriptUrl}';
                     script.async = true;
                     script.defer = true;
+                    script.crossOrigin = 'anonymous';
+                    
+                    // Set a timeout to detect if script is blocked
+                    const timeoutId = setTimeout(function() {
+                        if (script.parentNode) {
+                            script.parentNode.removeChild(script);
+                        }
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            if (debugMode) {
+                                console.warn('Adsterra: Script load timeout, retrying...', retryCount);
+                            }
+                            setTimeout(loadAdsterraScript, retryDelay);
+                        } else {
+                            hasFailedPermanently = true;
+                            if (debugMode) {
+                                console.warn('Adsterra: Maximum retry attempts reached. Ads may be blocked.');
+                            }
+                        }
+                    }, 5000);
                     
                     script.onerror = function() {
+                        clearTimeout(timeoutId);
                         retryCount++;
-                        console.warn('Adsterra: Script load failed, retrying...', retryCount);
-                        setTimeout(loadAdsterraScript, retryDelay);
+                        if (retryCount < maxRetries) {
+                            if (debugMode) {
+                                console.warn('Adsterra: Script load failed, retrying...', retryCount);
+                            }
+                            setTimeout(loadAdsterraScript, retryDelay);
+                        } else {
+                            hasFailedPermanently = true;
+                            if (debugMode) {
+                                console.warn('Adsterra: Maximum retry attempts reached. Ads may be blocked by an ad blocker.');
+                            }
+                        }
                     };
                     
                     script.onload = function() {
-                        console.log('Adsterra: Script loaded successfully');
+                        clearTimeout(timeoutId);
+                        if (debugMode) {
+                            console.log('Adsterra: Script loaded successfully');
+                        }
                     };
                     
                     document.head.appendChild(script);
