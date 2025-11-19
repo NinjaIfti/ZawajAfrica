@@ -42,28 +42,63 @@ self.addEventListener('fetch', event => {
     return; // Let these pass through directly
   }
 
-  // Only intercept navigation and static assets from our origin
+  // Handle navigation requests with network-first strategy to avoid redirect issues
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request, {
+        redirect: 'follow',
+        credentials: 'same-origin',
+        cache: 'no-store' // Don't use browser cache for navigation requests
+      }).then(response => {
+        // Only cache successful non-redirect responses (status 200-299)
+        // Don't cache redirect responses (type === 'opaqueredirect')
+        if (response.ok && response.status >= 200 && response.status < 300 && 
+            response.type !== 'opaqueredirect' && response.type !== 'opaque') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      }).catch(error => {
+        // Fallback to cache if network fails
+        return caches.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Final fallback
+          return caches.match('/dashboard') || caches.match('/');
+        });
+      })
+    );
+    return;
+  }
+
+  // For non-navigation requests, use cache-first strategy
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      return fetch(event.request).catch(error => {
-        // Silently handle fetch errors - don't log to avoid console spam
-        // Only provide fallback for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/dashboard') || caches.match('/');
+      return fetch(event.request, {
+        redirect: 'follow',
+        credentials: 'same-origin'
+      }).then(response => {
+        // Cache successful responses (status 200-299)
+        // Don't cache redirect responses
+        if (response.ok && response.status >= 200 && response.status < 300 && 
+            response.type !== 'opaqueredirect' && response.type !== 'opaque') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        // For other requests, return a minimal error response
+        return response;
+      }).catch(error => {
+        // Silently handle fetch errors
         return new Response('', { status: 503, statusText: 'Service Unavailable' });
       });
-    }).catch(error => {
-      // Final error handler - only log in development
-      if (event.request.mode === 'navigate') {
-        return caches.match('/dashboard') || caches.match('/');
-      }
-      return new Response('', { status: 503, statusText: 'Service Unavailable' });
     })
   );
 });
