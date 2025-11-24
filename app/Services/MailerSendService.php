@@ -439,7 +439,7 @@ class MailerSendService
     }
 
     /**
-     * Send broadcast email to multiple recipients
+     * Send broadcast email to multiple recipients with batching and retry logic
      */
     public function sendBroadcast(string $subject, string $body, array $recipients): array
     {
@@ -453,61 +453,167 @@ class MailerSendService
             ];
         }
 
+        $totalRecipients = count($recipients);
+        $batchSize = 50; // Process 50 emails per batch
         $results = [
-            'total_users' => count($recipients),
+            'total_users' => $totalRecipients,
             'sent_count' => 0,
             'failed_count' => 0,
             'details' => []
         ];
 
-        Log::info('Starting MailerSend broadcast', [
-            'total_recipients' => count($recipients),
+        Log::info('Starting MailerSend broadcast with batching', [
+            'total_recipients' => $totalRecipients,
+            'batch_size' => $batchSize,
             'subject' => $subject
         ]);
 
-        foreach ($recipients as $recipient) {
-            $email = is_array($recipient) ? $recipient['email'] : $recipient;
-            $name = is_array($recipient) ? ($recipient['name'] ?? '') : '';
+        // Process recipients in batches
+        $batches = array_chunk($recipients, $batchSize);
+        $batchNumber = 0;
 
-            // Convert body to both HTML and text
-            $htmlContent = $this->formatBroadcastContent($body, $name);
-            $textContent = strip_tags($body);
+        foreach ($batches as $batch) {
+            $batchNumber++;
+            Log::info("Processing batch {$batchNumber}/{" . count($batches) . "}", [
+                'batch_size' => count($batch)
+            ]);
 
-            $result = $this->sendEmail($email, $name, $subject, $htmlContent, $textContent);
-            
-            if ($result['success']) {
-                $results['sent_count']++;
-                Log::debug('Broadcast email sent successfully', ['email' => $email]);
-            } else {
-                $results['failed_count']++;
-                Log::warning('Broadcast email failed', [
+            foreach ($batch as $recipient) {
+                $email = is_array($recipient) ? $recipient['email'] : $recipient;
+                $name = is_array($recipient) ? ($recipient['name'] ?? '') : '';
+
+                // Convert body to both HTML and text
+                $htmlContent = $this->formatBroadcastContent($body, $name);
+                $textContent = strip_tags($body);
+
+                // Send with retry logic
+                $result = $this->sendEmailWithRetry($email, $name, $subject, $htmlContent, $textContent);
+
+                if ($result['success']) {
+                    $results['sent_count']++;
+                    Log::debug('Broadcast email sent successfully', [
+                        'email' => $email,
+                        'batch' => $batchNumber
+                    ]);
+                } else {
+                    $results['failed_count']++;
+                    Log::warning('Broadcast email failed after retries', [
+                        'email' => $email,
+                        'batch' => $batchNumber,
+                        'error' => $result['error']
+                    ]);
+                }
+
+                $results['details'][] = [
                     'email' => $email,
-                    'error' => $result['error']
-                ]);
+                    'name' => $name,
+                    'success' => $result['success'],
+                    'error' => $result['error'] ?? null,
+                    'message_id' => $result['message_id'] ?? null,
+                    'batch' => $batchNumber
+                ];
+
+                // Rate limiting: MailerSend allows ~120 emails/minute
+                // Sleep 0.5 seconds between emails (120 emails per minute)
+                usleep(500000); // 0.5 seconds
             }
 
-            $results['details'][] = [
-                'email' => $email,
-                'name' => $name,
-                'success' => $result['success'],
-                'error' => $result['error'] ?? null,
-                'message_id' => $result['message_id'] ?? null
-            ];
+            // Pause between batches to avoid overwhelming the API
+            if ($batchNumber < count($batches)) {
+                Log::debug("Pausing between batches", ['next_batch' => $batchNumber + 1]);
+                sleep(2); // 2 seconds between batches
+            }
 
-            // Rate limiting to prevent API throttling
-            usleep(100000); // 0.1 seconds between emails
+            // Log progress
+            $progressPercent = round(($results['sent_count'] + $results['failed_count']) / $totalRecipients * 100, 2);
+            Log::info("Broadcast progress: {$progressPercent}%", [
+                'sent' => $results['sent_count'],
+                'failed' => $results['failed_count'],
+                'remaining' => $totalRecipients - ($results['sent_count'] + $results['failed_count'])
+            ]);
         }
 
         Log::info('MailerSend broadcast completed', [
             'total' => $results['total_users'],
             'sent' => $results['sent_count'],
-            'failed' => $results['failed_count']
+            'failed' => $results['failed_count'],
+            'success_rate' => round(($results['sent_count'] / $totalRecipients) * 100, 2) . '%'
         ]);
 
         return [
             'success' => $results['sent_count'] > 0,
             'message' => "Broadcast completed: {$results['sent_count']} sent, {$results['failed_count']} failed",
             'stats' => $results
+        ];
+    }
+
+    /**
+     * Send email with retry logic and exponential backoff
+     */
+    private function sendEmailWithRetry(
+        string $to,
+        string $toName,
+        string $subject,
+        string $htmlContent,
+        string $textContent,
+        int $maxRetries = 3
+    ): array {
+        $attempt = 0;
+        $lastError = null;
+
+        while ($attempt < $maxRetries) {
+            $attempt++;
+
+            try {
+                $result = $this->sendEmail($to, $toName, $subject, $htmlContent, $textContent);
+
+                if ($result['success']) {
+                    // Success on first try or retry
+                    if ($attempt > 1) {
+                        Log::info("Email sent successfully after {$attempt} attempts", ['email' => $to]);
+                    }
+                    return $result;
+                }
+
+                // Check if it's a rate limit error
+                $statusCode = $result['status_code'] ?? 0;
+                if ($statusCode === 429) {
+                    // Rate limit hit - wait longer
+                    $lastError = 'Rate limit reached';
+                    $waitTime = pow(2, $attempt) * 1000000; // Exponential backoff in microseconds
+                    Log::warning("Rate limit hit, waiting before retry", [
+                        'email' => $to,
+                        'attempt' => $attempt,
+                        'wait_ms' => $waitTime / 1000
+                    ]);
+                    usleep($waitTime); // Wait before retry
+                    continue;
+                }
+
+                // Other errors - try again with shorter backoff
+                $lastError = $result['error'] ?? 'Unknown error';
+                if ($attempt < $maxRetries) {
+                    $waitTime = $attempt * 500000; // Linear backoff for other errors
+                    usleep($waitTime);
+                }
+
+            } catch (Exception $e) {
+                $lastError = $e->getMessage();
+                Log::error("Email send exception on attempt {$attempt}", [
+                    'email' => $to,
+                    'error' => $lastError
+                ]);
+
+                if ($attempt < $maxRetries) {
+                    usleep($attempt * 500000); // Wait before retry
+                }
+            }
+        }
+
+        // All retries failed
+        return [
+            'success' => false,
+            'error' => "Failed after {$maxRetries} attempts: {$lastError}"
         ];
     }
 

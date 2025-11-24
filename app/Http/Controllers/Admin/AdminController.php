@@ -1082,7 +1082,7 @@ class AdminController extends Controller
         ]);
 
         // Prevent multiple simultaneous broadcasts
-        $lock = \Cache::lock('broadcast_email_lock', 1800); // 30 minutes
+        $lock = \Cache::lock('broadcast_email_lock', 3600); // 60 minutes
         if (!$lock->get()) {
             return response()->json([
                 'success' => false,
@@ -1091,30 +1091,42 @@ class AdminController extends Controller
         }
 
         try {
-            // Set execution time limit for this operation
-            set_time_limit(300); // 5 minutes
-            
-            // Get users based on target audience
-            $users = $this->getUsersByAudience($request->target_audience);
-            
-            if ($users->isEmpty()) {
+            // Set execution time and memory limit for large broadcasts
+            set_time_limit(1800); // 30 minutes for very large user bases
+            ini_set('memory_limit', '512M'); // Increase memory limit
+
+            // Get user count first for validation
+            $userCount = $this->getUserCountByAudience($request->target_audience);
+
+            if ($userCount === 0) {
+                $lock->release();
                 return response()->json([
                     'success' => false,
                     'error' => 'No users found for the selected audience'
                 ], 400);
             }
 
+            Log::info('Starting broadcast email campaign', [
+                'admin_id' => auth()->id(),
+                'subject' => $request->subject,
+                'target_audience' => $request->target_audience,
+                'recipient_count' => $userCount,
+                'is_edited' => $request->is_edited
+            ]);
+
             // Use MailerSend for broadcast emails
             $mailerSendService = app(\App\Services\MailerSendService::class);
-            
+
             if (!$mailerSendService->isConfigured()) {
+                $lock->release();
                 return response()->json([
                     'success' => false,
                     'error' => 'Email service not configured. Please check MailerSend configuration.'
                 ], 503);
             }
 
-            // Convert users to array format expected by MailerSend
+            // Get users and convert to array format expected by MailerSend
+            $users = $this->getUsersByAudience($request->target_audience);
             $recipients = $users->map(function ($user) {
                 return [
                     'email' => $user->email,
@@ -1122,13 +1134,16 @@ class AdminController extends Controller
                 ];
             })->toArray();
 
-            Log::info('Starting broadcast email campaign', [
-                'admin_id' => auth()->id(),
-                'subject' => $request->subject,
-                'target_audience' => $request->target_audience,
-                'recipient_count' => count($recipients),
-                'is_edited' => $request->is_edited
-            ]);
+            // Free up memory
+            unset($users);
+
+            if (empty($recipients)) {
+                $lock->release();
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No valid recipients found'
+                ], 400);
+            }
 
             // Send broadcast via MailerSend
             $result = $mailerSendService->sendBroadcast(
@@ -1176,6 +1191,7 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Broadcast email campaign failed', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
             ]);
 
@@ -1185,6 +1201,38 @@ class AdminController extends Controller
             ], 500);
         } finally {
             $lock->release();
+        }
+    }
+
+    /**
+     * Get count of users by audience (for validation before broadcasting)
+     */
+    private function getUserCountByAudience(string $audience): int
+    {
+        $query = User::whereNotNull('email')->where('email', '!=', '');
+
+        switch ($audience) {
+            case 'premium':
+                return $query->whereNotNull('subscription_plan')
+                            ->where('subscription_status', 'active')
+                            ->whereIn('subscription_plan', ['premium_monthly', 'premium_yearly'])
+                            ->count();
+
+            case 'basic':
+                return $query->whereNotNull('subscription_plan')
+                            ->where('subscription_status', 'active')
+                            ->whereIn('subscription_plan', ['basic_monthly', 'basic_yearly'])
+                            ->count();
+
+            case 'free':
+                return $query->where(function($q) {
+                    $q->whereNull('subscription_plan')
+                      ->orWhere('subscription_status', '!=', 'active');
+                })->count();
+
+            case 'all':
+            default:
+                return $query->count();
         }
     }
 
