@@ -1153,9 +1153,23 @@ class AdminController extends Controller
                     ]
                 ]);
             } else {
+                // Get more details about the failure
+                $errorDetails = '';
+                if (isset($result['stats']['details']) && !empty($result['stats']['details'])) {
+                    $firstError = $result['stats']['details'][0]['error'] ?? '';
+                    if ($firstError) {
+                        $errorDetails = ' Error: ' . $firstError;
+                    }
+                }
+
                 return response()->json([
                     'success' => false,
-                    'error' => $result['error'] ?? 'Failed to send broadcast emails'
+                    'error' => ($result['error'] ?? $result['message'] ?? 'Failed to send broadcast emails') . $errorDetails,
+                    'stats' => [
+                        'total_users' => $result['stats']['total_users'] ?? 0,
+                        'sent_count' => $result['stats']['sent_count'] ?? 0,
+                        'failed_count' => $result['stats']['failed_count'] ?? 0
+                    ]
                 ], 500);
             }
 

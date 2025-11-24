@@ -29,6 +29,22 @@
         },
     });
 
+    const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const buildHeaders = (includeContentType = true) => {
+        const headers = {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+        };
+
+        if (includeContentType) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        return headers;
+    };
+
     // Broadcast Modal State
     const showBroadcastModal = ref(false);
     const broadcastForm = reactive({
@@ -73,6 +89,16 @@
         return number ? number.toLocaleString() : '0';
     };
 
+    const parseJsonResponse = async (response) => {
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            console.error('Failed to parse JSON response:', text);
+            throw new Error('Unexpected server response. Please try again or check the server logs.');
+        }
+    };
+
     // Generate AI Broadcast
     const generateBroadcast = async () => {
         // Validate form before generating
@@ -96,14 +122,14 @@
 
             const response = await fetch(route('admin.ai.generate-broadcast'), {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
+                    ...buildHeaders(),
+                    'X-CSRF-TOKEN': csrfToken || getCsrfToken(),
                 },
                 body: JSON.stringify(requestData),
             });
-
-            const data = await response.json();
+            const data = await parseJsonResponse(response);
 
             if (data.success) {
                 generatedBroadcast.value = {
@@ -131,13 +157,11 @@
         try {
             const response = await fetch(route('admin.ai.insights.generate'), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
+                credentials: 'same-origin',
+                headers: buildHeaders(),
             });
 
-            const data = await response.json();
+            const data = await parseJsonResponse(response);
 
             if (data.success) {
                 generatedInsights.value = data.insights;
@@ -208,10 +232,8 @@
         try {
             const response = await fetch(route('admin.ai.save-broadcast-draft'), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
+                credentials: 'same-origin',
+                headers: buildHeaders(),
                 body: JSON.stringify({
                     subject: editableContent.subject,
                     body: editableContent.body,
@@ -222,7 +244,7 @@
                 }),
             });
 
-            const data = await response.json();
+            const data = await parseJsonResponse(response);
 
             if (data.success) {
                 lastDraftSaved.value = data.saved_at;
@@ -244,13 +266,11 @@
         try {
             const response = await fetch(route('admin.ai.load-broadcast-draft'), {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
+                credentials: 'same-origin',
+                headers: buildHeaders(),
             });
 
-            const data = await response.json();
+            const data = await parseJsonResponse(response);
 
             if (data.success && data.draft) {
                 const draft = data.draft;
@@ -316,34 +336,64 @@
 
             const response = await fetch(route('admin.ai.send-broadcast'), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
+                credentials: 'same-origin',
+                headers: buildHeaders(),
                 body: JSON.stringify({
                     subject: emailToSend.subject,
                     body: emailToSend.body,
+                    target_audience: broadcastForm.target_audience,
+                    message_type: broadcastForm.message_type,
+                    tone: broadcastForm.tone,
+                    topic: broadcastForm.topic,
                     is_edited: isEditing.value
                 }),
             });
 
-            const data = await response.json();
+            // Check if response is ok before parsing
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('Server returned error:', response.status, text);
+
+                // Try to parse as JSON first
+                try {
+                    const errorData = JSON.parse(text);
+                    error.value = errorData.error || errorData.message || 'Server error occurred';
+                } catch {
+                    // If not JSON, it's likely an HTML error page
+                    if (response.status === 401) {
+                        error.value = 'Session expired. Please refresh the page and try again.';
+                    } else if (response.status === 403) {
+                        error.value = 'You do not have permission to perform this action.';
+                    } else if (response.status === 419) {
+                        error.value = 'Your session has expired. Please refresh the page and try again.';
+                    } else if (response.status === 500) {
+                        error.value = 'Server error occurred. Please check the logs for details.';
+                    } else {
+                        error.value = `Server error (${response.status}). Please try again.`;
+                    }
+                }
+                alert(error.value);
+                return;
+            }
+
+            const data = await parseJsonResponse(response);
 
             if (data.success) {
-                showPreview.value = false;
+                showBroadcastModal.value = false;
                 isEditing.value = false;
                 generatedBroadcast.value = null;
                 editableContent.subject = '';
                 editableContent.body = '';
-                lastSent.value = new Date().toISOString();
-                
+
                 alert(`✅ ${data.message}\n\nStats:\n• Total Users: ${data.stats.total_users}\n• Successfully Sent: ${data.stats.sent_count}\n• Failed: ${data.stats.failed_count}`);
             } else {
                 error.value = data.error || 'Failed to send email';
+                alert(error.value);
             }
         } catch (err) {
             console.error('Error sending broadcast:', err);
             error.value = 'Network error occurred. Please try again.';
+            alert(error.value);
         } finally {
             isSending.value = false;
         }
@@ -355,12 +405,11 @@
         try {
             const response = await fetch(route('admin.ai.delete-broadcast-draft'), {
                 method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
+                credentials: 'same-origin',
+                headers: buildHeaders(false),
             });
 
-            const data = await response.json();
+            const data = await parseJsonResponse(response);
 
             if (data.success) {
                 lastDraftSaved.value = null;

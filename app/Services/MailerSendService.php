@@ -516,10 +516,9 @@ class MailerSendService
      */
     private function formatBroadcastContent(string $body, string $recipientName = ''): string
     {
-        $greeting = $recipientName ? "Salam Alaikum {$recipientName}!" : "Salam Alaikum!";
-        
-        // Convert line breaks to HTML
-        $formattedBody = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
+        $greeting = $recipientName ? "Salam alaikum {$recipientName}," : "Salam alaikum,";
+        $formattedBody = nl2br(e($body));
+        $year = date('Y');
         
         return "
         <!DOCTYPE html>
@@ -527,32 +526,15 @@ class MailerSendService
         <head>
             <meta charset='UTF-8'>
             <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-            <title>ZawajAfrica Newsletter</title>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: linear-gradient(135deg, #654396, #8B5A9C); padding: 30px; text-align: center; color: white; border-radius: 10px 10px 0 0; }
-                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
-                .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-            </style>
+            <title>ZawajAfrica Broadcast</title>
         </head>
-        <body>
-            <div class='container'>
-                <div class='header'>
-                    <div class='logo'>💜 ZawajAfrica</div>
-                    <p>Connecting African Muslims Worldwide</p>
-                </div>
-                <div class='content'>
-                    <h2>{$greeting}</h2>
-                    <div style='margin: 20px 0;'>
-                        {$formattedBody}
-                    </div>
-                </div>
-                <div class='footer'>
-                    <p>© " . date('Y') . " ZawajAfrica. Connecting African Muslims worldwide.</p>
-                    <p>If you no longer wish to receive these emails, please contact <a href='mailto:support@zawajafrica.com.ng'>support@zawajafrica.com.ng</a></p>
-                </div>
+        <body style='margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;background:#ffffff;color:#1f1f1f;line-height:1.6;'>
+            <div style='max-width:640px;margin:0 auto;'>
+                <p style='margin:0 0 16px 0;'>{$greeting}</p>
+                <div style='white-space:pre-wrap;margin-bottom:24px;'>{$formattedBody}</div>
+                <p style='margin:24px 0 0 0;'>Warm regards,<br>ZawajAfrica Team</p>
+                <hr style='border:none;border-top:1px solid #e5e7eb;margin:32px 0;' />
+                <p style='font-size:12px;color:#6b7280;margin:0;'>© {$year} ZawajAfrica. You received this message because you are part of our community.</p>
             </div>
         </body>
         </html>";

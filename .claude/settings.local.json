@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(if grep -q \"MAILERSEND_API_KEY=$\" .env)",
+      "Bash(then echo \"EMPTY\")",
+      "Bash(else echo \"SET\")",
+      "Bash(fi)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
