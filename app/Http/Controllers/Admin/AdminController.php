@@ -961,7 +961,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'message_type' => 'required|string|in:announcement,promotion,update,newsletter',
-            'target_audience' => 'required|string|in:all,premium,basic,free',
+            'target_audience' => 'required|string|in:all,premium,basic,free,custom',
             'topic' => 'required|string|max:200',
             'tone' => 'required|string|in:formal,friendly,exciting,professional'
         ]);
@@ -1077,8 +1077,10 @@ class AdminController extends Controller
         $request->validate([
             'subject' => 'required|string|max:200',
             'body' => 'required|string|max:5000',
-            'target_audience' => 'required|string|in:all,premium,basic,free',
-            'is_edited' => 'boolean'
+            'target_audience' => 'required|string|in:all,premium,basic,free,custom',
+            'is_edited' => 'boolean',
+            'custom_recipients' => 'required_if:target_audience,custom|array|min:1',
+            'custom_recipients.*' => 'integer|exists:users,id'
         ]);
 
         // Prevent multiple simultaneous broadcasts
@@ -1126,7 +1128,11 @@ class AdminController extends Controller
             }
 
             // Get users and convert to array format expected by MailerSend
-            $users = $this->getUsersByAudience($request->target_audience);
+            $customRecipientIds = $request->target_audience === 'custom'
+                ? $request->custom_recipients
+                : null;
+
+            $users = $this->getUsersByAudience($request->target_audience, $customRecipientIds);
             $recipients = $users->map(function ($user) {
                 return [
                     'email' => $user->email,
@@ -1244,10 +1250,12 @@ class AdminController extends Controller
         $request->validate([
             'subject' => 'required|string|max:200',
             'body' => 'required|string|max:5000',
-            'target_audience' => 'required|string|in:all,premium,basic,free',
+            'target_audience' => 'required|string|in:all,premium,basic,free,custom',
             'message_type' => 'required|string|in:announcement,promotion,update,newsletter',
             'tone' => 'required|string|in:formal,friendly,exciting,professional',
-            'topic' => 'required|string|max:200'
+            'topic' => 'required|string|max:200',
+            'custom_recipients' => 'required_if:target_audience,custom|array|min:1',
+            'custom_recipients.*' => 'integer|exists:users,id'
         ]);
 
         try {
@@ -1263,6 +1271,17 @@ class AdminController extends Controller
                 'saved_at' => now()->toISOString(),
                 'admin_id' => auth()->id()
             ];
+
+            if ($request->target_audience === 'custom') {
+                $recipientIds = $request->custom_recipients;
+                $draftData['custom_recipients'] = $recipientIds;
+                $draftData['custom_recipient_details'] = User::whereIn('id', $recipientIds)
+                    ->get(['id', 'name', 'email'])
+                    ->toArray();
+            } else {
+                $draftData['custom_recipients'] = [];
+                $draftData['custom_recipient_details'] = [];
+            }
 
             \Cache::put($draftKey, $draftData, 7 * 24 * 60); // Save for 7 days
 
@@ -1305,6 +1324,15 @@ class AdminController extends Controller
                     'success' => false,
                     'message' => 'No draft found'
                 ]);
+            }
+
+            if (($draftData['target_audience'] ?? '') === 'custom') {
+                $recipientIds = $draftData['custom_recipients'] ?? [];
+                if (!empty($recipientIds) && empty($draftData['custom_recipient_details'] ?? [])) {
+                    $draftData['custom_recipient_details'] = User::whereIn('id', $recipientIds)
+                        ->get(['id', 'name', 'email'])
+                        ->toArray();
+                }
             }
 
             return response()->json([
@@ -1355,11 +1383,60 @@ class AdminController extends Controller
     /**
      * Get users based on target audience
      */
-    private function getUsersByAudience(string $audience)
+    public function searchBroadcastUsers(Request $request)
+    {
+        $request->validate([
+            'q' => 'nullable|string|max:100'
+        ]);
+
+        try {
+            $query = trim((string) $request->input('q'));
+
+            $users = User::whereNotNull('email')
+                ->where('email', '!=', '')
+                ->when($query !== '', function ($builder) use ($query) {
+                    $builder->where(function ($inner) use ($query) {
+                        $inner->where('name', 'like', '%' . $query . '%')
+                            ->orWhere('email', 'like', '%' . $query . '%');
+                    });
+                })
+                ->orderBy('name')
+                ->limit(50)
+                ->get(['id', 'name', 'email']);
+
+            return response()->json([
+                'success' => true,
+                'users' => $users
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Broadcast user search failed', [
+                'admin_id' => auth()->id(),
+                'query' => $request->input('q'),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to search users'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get users based on target audience
+     */
+    private function getUsersByAudience(string $audience, ?array $customRecipientIds = null)
     {
         $query = User::whereNotNull('email')->where('email', '!=', '');
 
         switch ($audience) {
+            case 'custom':
+                if (empty($customRecipientIds)) {
+                    return collect();
+                }
+                return $query->whereIn('id', $customRecipientIds)
+                    ->get(['id', 'name', 'email']);
+
             case 'premium':
                 return $query->whereNotNull('subscription_plan')
                             ->where('subscription_status', 'active')

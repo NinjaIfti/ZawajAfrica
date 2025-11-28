@@ -1,6 +1,6 @@
 <script setup>
     import { Link, router } from '@inertiajs/vue3';
-    import { ref, computed } from 'vue';
+    import { ref, computed, onMounted, onUnmounted } from 'vue';
     import TierBadge from '@/Components/TierBadge.vue';
 
     const props = defineProps({
@@ -8,6 +8,8 @@
     });
 
     const showTherapistDropdown = ref(false);
+    const translateElementId = `google_translate_element_${Math.random().toString(36).slice(2, 10)}`;
+    const translatorInitialized = ref(false);
 
     // Compute user tier
     const userTier = computed(() => {
@@ -45,6 +47,55 @@
     const toggleTherapistDropdown = () => {
         showTherapistDropdown.value = !showTherapistDropdown.value;
     };
+
+    const instantiateTranslator = () => {
+        if (translatorInitialized.value) return;
+
+        if (window.google?.translate?.TranslateElement) {
+            const target = document.getElementById(translateElementId);
+            if (!target) return;
+
+            translatorInitialized.value = true;
+            new window.google.translate.TranslateElement(
+                {
+                    pageLanguage: 'en',
+                    includedLanguages: 'fr,ar,ha,yo,ig,sw,pt,es,tr,zh-CN,ru,hi',
+                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+                },
+                translateElementId
+            );
+        }
+    };
+
+    const loadTranslateScript = () => {
+        if (window.google?.translate?.TranslateElement) {
+            instantiateTranslator();
+            return;
+        }
+
+        if (!document.querySelector('script[data-google-translate]')) {
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+            script.setAttribute('data-google-translate', 'true');
+            document.head.appendChild(script);
+        }
+    };
+
+    const translateReadyHandler = () => {
+        instantiateTranslator();
+    };
+
+    onMounted(() => {
+        window.addEventListener('google-translate-ready', translateReadyHandler);
+        loadTranslateScript();
+        // Fallback in case script loads before event listener is attached
+        setTimeout(instantiateTranslator, 500);
+    });
+
+    onUnmounted(() => {
+        window.removeEventListener('google-translate-ready', translateReadyHandler);
+    });
 </script>
 
 <template>
@@ -384,6 +435,24 @@
             </a>
         </div>
 
+        <!-- Translation Widget -->
+        <div class="px-4 pb-4 border-b border-gray-100">
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm px-4 py-3">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-500">Translate</p>
+                        <p class="text-xs text-gray-500">Select your preferred language</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m3.5 6h3.75M13 21h8m-4-4v4m-3-11a4 4 0 100-8 4 4 0 000 8zm-3.4-2.2a6 6 0 11-10.2 0" />
+                        </svg>
+                    </div>
+                </div>
+                <div :id="translateElementId" class="text-sm text-gray-600 translate-google-select"></div>
+            </div>
+        </div>
+
         <!-- Upgrade Membership - Only show if user doesn't have active subscription -->
         <div v-if="!user.subscription_status || user.subscription_status !== 'active'" class="p-4 w-full">
             <Link :href="route('subscription.index')" class="block">
@@ -437,6 +506,28 @@
 </template>
 
 <style scoped>
+    .translate-google-select :deep(.goog-te-combo) {
+        width: 100% !important;
+        border-radius: 9999px !important;
+        border: 1px solid #d1d5db !important;
+        background: #f9fafb !important;
+        padding: 6px 14px !important;
+        font-size: 0.9rem !important;
+        color: #111827 !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .translate-google-select :deep(.goog-te-combo:focus) {
+        outline: none !important;
+        border-color: #7c3aed !important;
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15) !important;
+    }
+
+    .translate-google-select :deep(.goog-te-menu-value span) {
+        color: #111827 !important;
+    }
+
     /* Add some transitions for smooth opening/closing */
     .translate-x-0 {
         transform: translateX(0);

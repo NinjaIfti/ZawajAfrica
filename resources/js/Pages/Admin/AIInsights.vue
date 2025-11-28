@@ -5,7 +5,7 @@
     import PrimaryButton from '@/Components/PrimaryButton.vue';
     import SecondaryButton from '@/Components/SecondaryButton.vue';
     import ZohoCampaignManager from '@/Components/Admin/ZohoCampaignManager.vue';
-    import { ref, reactive } from 'vue';
+    import { ref, reactive, watch, computed } from 'vue';
 
     const props = defineProps({
         chatbot_stats: {
@@ -65,6 +65,12 @@
     const isLoadingDraft = ref(false);
     const lastDraftSaved = ref(null);
     const error = ref('');
+    const customRecipients = ref([]);
+    const customUserQuery = ref('');
+    const customUserResults = ref([]);
+    const isSearchingUsers = ref(false);
+    const customSearchError = ref('');
+    const selectedCustomUserId = ref('');
 
     // Insights Modal State
     const showInsightsModal = ref(false);
@@ -186,6 +192,11 @@
         editableContent.subject = '';
         editableContent.body = '';
         lastDraftSaved.value = null;
+        customRecipients.value = [];
+        customUserResults.value = [];
+        customUserQuery.value = '';
+        customSearchError.value = '';
+        selectedCustomUserId.value = '';
     };
 
     // Enable editing mode
@@ -228,6 +239,11 @@
             return;
         }
 
+        if (broadcastForm.target_audience === 'custom' && customRecipients.value.length === 0) {
+            alert('Please select at least one recipient for a custom audience draft');
+            return;
+        }
+
         isSavingDraft.value = true;
         try {
             const response = await fetch(route('admin.ai.save-broadcast-draft'), {
@@ -240,7 +256,8 @@
                     target_audience: broadcastForm.target_audience,
                     message_type: broadcastForm.message_type,
                     tone: broadcastForm.tone,
-                    topic: broadcastForm.topic
+                topic: broadcastForm.topic,
+                custom_recipients: customRecipients.value.map(user => user.id)
                 }),
             });
 
@@ -280,6 +297,12 @@
                 broadcastForm.target_audience = draft.target_audience;
                 broadcastForm.topic = draft.topic;
                 broadcastForm.tone = draft.tone;
+
+                if (draft.target_audience === 'custom') {
+                    customRecipients.value = draft.custom_recipient_details || [];
+                } else {
+                    customRecipients.value = [];
+                }
                 
                 // Load editable content
                 editableContent.subject = draft.subject;
@@ -307,6 +330,94 @@
         }
     };
 
+    watch(() => broadcastForm.target_audience, (newValue) => {
+        if (newValue !== 'custom') {
+            customRecipients.value = [];
+            customUserResults.value = [];
+            customUserQuery.value = '';
+            customSearchError.value = '';
+            selectedCustomUserId.value = '';
+        } else {
+            fetchCustomUsers();
+        }
+    });
+
+    const fetchCustomUsers = async (query = '') => {
+        customSearchError.value = '';
+
+        isSearchingUsers.value = true;
+        try {
+            const queryParam = query ? `?q=${encodeURIComponent(query)}` : '';
+            const url = `${route('admin.ai.search-broadcast-users')}${queryParam}`;
+            const response = await fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: buildHeaders(false),
+            });
+
+            const data = await parseJsonResponse(response);
+            if (data.success) {
+                customUserResults.value = data.users || [];
+                if (!customUserResults.value.length) {
+                    customSearchError.value = query ? 'No users found for that search' : 'No users available';
+                }
+            } else {
+                customSearchError.value = data.error || 'Failed to load users';
+            }
+        } catch (error) {
+            console.error('Error searching users:', error);
+            customSearchError.value = 'Unable to search users right now';
+        } finally {
+            isSearchingUsers.value = false;
+        }
+    };
+
+    const searchCustomUsers = () => {
+        const query = customUserQuery.value.trim();
+        fetchCustomUsers(query);
+    };
+
+    const addCustomRecipient = (user) => {
+        if (!user || !user.id) return;
+        if (!customRecipients.value.find(recipient => recipient.id === user.id)) {
+            customRecipients.value = [...customRecipients.value, user];
+        }
+    };
+
+    const removeCustomRecipient = (userId) => {
+        customRecipients.value = customRecipients.value.filter(user => user.id !== userId);
+    };
+
+    const handleCustomSelect = () => {
+        const user = customUserResults.value.find(u => u.id === parseInt(selectedCustomUserId.value, 10));
+        if (user) {
+            addCustomRecipient(user);
+            selectedCustomUserId.value = '';
+        }
+    };
+
+    const sendButtonLabel = computed(() => {
+        if (broadcastForm.target_audience === 'all') {
+            return 'Send to All Users';
+        }
+
+        if (broadcastForm.target_audience === 'custom') {
+            const count = customRecipients.value.length;
+            if (!count) {
+                return 'Select Users First';
+            }
+            return `Send to ${count} Selected ${count === 1 ? 'User' : 'Users'}`;
+        }
+
+        const labelMap = {
+            premium: 'Premium Users',
+            basic: 'Basic Users',
+            free: 'Free Users'
+        };
+
+        return `Send to ${labelMap[broadcastForm.target_audience] || 'Selected Audience'}`;
+    });
+
     const openBroadcastModal = () => {
         resetBroadcastForm();
         showBroadcastModal.value = true;
@@ -324,7 +435,23 @@
             return;
         }
 
-        if (!confirm(`Are you sure you want to send this email to ${broadcastForm.target_audience === 'all' ? 'all users' : `${broadcastForm.target_audience} users`}? This action cannot be undone.`)) {
+        if (broadcastForm.target_audience === 'custom' && customRecipients.value.length === 0) {
+            alert('Select at least one user to send this broadcast to.');
+            return;
+        }
+
+        const audienceLabel = (() => {
+            if (broadcastForm.target_audience === 'all') {
+                return 'all users';
+            }
+            if (broadcastForm.target_audience === 'custom') {
+                const count = customRecipients.value.length;
+                return `${count} selected ${count === 1 ? 'user' : 'users'}`;
+            }
+            return `${broadcastForm.target_audience} users`;
+        })();
+
+        if (!confirm(`Are you sure you want to send this email to ${audienceLabel}? This action cannot be undone.`)) {
             return;
         }
 
@@ -345,7 +472,8 @@
                     message_type: broadcastForm.message_type,
                     tone: broadcastForm.tone,
                     topic: broadcastForm.topic,
-                    is_edited: isEditing.value
+                    is_edited: isEditing.value,
+                    custom_recipients: customRecipients.value.map(user => user.id)
                 }),
             });
 
@@ -384,6 +512,10 @@
                 generatedBroadcast.value = null;
                 editableContent.subject = '';
                 editableContent.body = '';
+                customRecipients.value = [];
+                customUserResults.value = [];
+                customUserQuery.value = '';
+                customSearchError.value = '';
 
                 alert(`✅ ${data.message}\n\nStats:\n• Total Users: ${data.stats.total_users}\n• Successfully Sent: ${data.stats.sent_count}\n• Failed: ${data.stats.failed_count}`);
             } else {
@@ -699,7 +831,7 @@
                     </div>
 
                     <!-- Form Fields -->
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Message Type</label>
                             <select v-model="broadcastForm.message_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
@@ -717,6 +849,7 @@
                                 <option value="premium">Premium Users Only</option>
                                 <option value="basic">Basic Users Only</option>
                                 <option value="free">Free Users Only</option>
+                                <option value="custom">Specific Users</option>
                             </select>
                         </div>
 
@@ -728,6 +861,88 @@
                                 <option value="exciting">Exciting</option>
                                 <option value="professional">Professional</option>
                             </select>
+                        </div>
+
+                        <div v-if="broadcastForm.target_audience === 'custom'" class="md:col-span-2 border border-dashed border-purple-300 rounded-lg p-4 bg-purple-50/60">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Individual Recipients</label>
+                            <div class="flex flex-col md:flex-row gap-3">
+                                <input 
+                                    v-model="customUserQuery"
+                                    type="text"
+                                    placeholder="Search by name or email"
+                                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    @keyup.enter.prevent="searchCustomUsers"
+                                >
+                                <button 
+                                    type="button"
+                                    @click="searchCustomUsers"
+                                    :disabled="isSearchingUsers"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-60"
+                                >
+                                    <svg v-if="isSearchingUsers" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    {{ isSearchingUsers ? 'Searching...' : 'Search' }}
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Leave blank to load recent users or type to narrow results, then click search.</p>
+                            <p v-if="customSearchError" class="text-xs text-red-500 mt-1">{{ customSearchError }}</p>
+
+                            <div v-if="customUserResults.length" class="mt-3">
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Available Users</label>
+                                <select 
+                                    v-model="selectedCustomUserId"
+                                    @change="handleCustomSelect"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                                    <option value="" disabled>Select a user to add</option>
+                                    <option 
+                                        v-for="user in customUserResults" 
+                                        :key="'option-' + user.id" 
+                                        :value="user.id"
+                                    >
+                                        {{ user.name || 'Unnamed User' }} — {{ user.email }}
+                                    </option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Select a user to add them to the recipient list.</p>
+                            </div>
+
+                            <div v-if="customUserResults.length" class="mt-3 max-h-48 overflow-y-auto space-y-2">
+                                <div v-for="user in customUserResults" :key="'result-' + user.id" class="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">{{ user.name || 'Unnamed User' }}</p>
+                                        <p class="text-xs text-gray-600">{{ user.email }}</p>
+                                    </div>
+                                    <button 
+                                        type="button"
+                                        @click="addCustomRecipient(user)"
+                                        class="text-sm font-semibold text-green-600 hover:text-green-700"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="customRecipients.length" class="mt-4">
+                                <p class="text-xs font-semibold text-gray-600 mb-2">Selected Recipients ({{ customRecipients.length }})</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span 
+                                        v-for="user in customRecipients" 
+                                        :key="'selected-' + user.id" 
+                                        class="inline-flex items-center bg-white border border-gray-200 rounded-full px-3 py-1 text-xs text-gray-700"
+                                    >
+                                        {{ user.name || user.email }}
+                                        <button 
+                                            type="button"
+                                            @click="removeCustomRecipient(user.id)"
+                                            class="ml-2 text-red-500 hover:text-red-600 font-bold"
+                                        >
+                                            &times;
+                                        </button>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -784,7 +999,7 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                {{ isSending ? 'Sending...' : `Send to ${broadcastForm.target_audience === 'all' ? 'All Users' : broadcastForm.target_audience + ' Users'}` }}
+                                {{ isSending ? 'Sending...' : sendButtonLabel }}
                             </PrimaryButton>
                         </div>
                     </div>

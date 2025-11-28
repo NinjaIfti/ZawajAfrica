@@ -48,6 +48,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/ai-insights', [AdminController::class, 'aiInsights'])->name('ai.insights');
     Route::post('/ai-broadcast/generate', [AdminController::class, 'generateBroadcast'])->name('ai.generate-broadcast');
     Route::post('/ai-broadcast/send', [AdminController::class, 'sendBroadcast'])->name('ai.send-broadcast');
+    Route::get('/ai-broadcast/search-users', [AdminController::class, 'searchBroadcastUsers'])->name('ai.search-broadcast-users');
     Route::post('/ai-broadcast/save-draft', [AdminController::class, 'saveBroadcastDraft'])->name('ai.save-broadcast-draft');
     Route::get('/ai-broadcast/load-draft', [AdminController::class, 'loadBroadcastDraft'])->name('ai.load-broadcast-draft');
     Route::delete('/ai-broadcast/delete-draft', [AdminController::class, 'deleteBroadcastDraft'])->name('ai.delete-broadcast-draft');
