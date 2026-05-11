@@ -7,7 +7,7 @@ use MailerSend\Helpers\Builder\Recipient;
 use MailerSend\Helpers\Builder\EmailParams;
 
 // Your credentials
-$apiKey = 'mlsn.a9cc4ac9845d35911b2f3e37f88f630e5101c5f373a5b8a42d8d51c5535317b9';
+$apiKey = '';
 $fromEmail = 'admin@zawajafrica.online';
 $fromName = 'ZawajAfrica';
 $toEmail = 'ifti3061@gmail.com';
