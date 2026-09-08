@@ -26,8 +26,10 @@ return new class extends Migration
             $table->index('user_id', 'user_id_index');
         });
         
-        // Add table comment for documentation
-        DB::statement("ALTER TABLE user_daily_activities COMMENT 'Tracks daily user activities for tier-based limit enforcement'");
+        // MySQL supports table comments; SQLite does not.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE user_daily_activities COMMENT = 'Tracks daily user activities for tier-based limit enforcement'");
+        }
     }
 
     /**

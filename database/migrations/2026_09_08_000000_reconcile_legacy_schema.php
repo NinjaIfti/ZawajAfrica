@@ -7,13 +7,60 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * This historical repair migration predates several tables in the legacy
-     * repository. Keep it upgrade-compatible by applying only indexes whose
-     * tables and columns already exist. A later reconciliation migration covers
-     * fresh installations after all legacy tables have been created.
-     */
     public function up(): void
+    {
+        $this->ensureProfileFields();
+        $this->ensureLegacyAmounts();
+        $this->ensureIndexes();
+    }
+
+    /**
+     * This migration intentionally uses roll-forward recovery. Its fields and
+     * indexes may already contain production data and are not deleted on rollback.
+     */
+    public function down(): void
+    {
+        // No destructive rollback.
+    }
+
+    private function ensureProfileFields(): void
+    {
+        if (Schema::hasTable('user_backgrounds')) {
+            Schema::table('user_backgrounds', function (Blueprint $table) {
+                if (!Schema::hasColumn('user_backgrounds', 'ethnic_group')) {
+                    $table->string('ethnic_group')->nullable()->after('nationality');
+                }
+                if (!Schema::hasColumn('user_backgrounds', 'islamic_affiliation')) {
+                    $table->string('islamic_affiliation')->nullable()->after('ethnic_group');
+                }
+            });
+        }
+
+        if (Schema::hasTable('user_lifestyles') && !Schema::hasColumn('user_lifestyles', 'want_children')) {
+            Schema::table('user_lifestyles', function (Blueprint $table) {
+                $table->string('want_children')->nullable()->after('number_of_children');
+            });
+        }
+    }
+
+    private function ensureLegacyAmounts(): void
+    {
+        if (Schema::hasTable('therapist_bookings') && Schema::hasColumn('therapist_bookings', 'amount')) {
+            DB::table('therapist_bookings')->whereNull('amount')->update(['amount' => 0]);
+            Schema::table('therapist_bookings', function (Blueprint $table) {
+                $table->decimal('amount', 10, 2)->default(0)->change();
+            });
+        }
+
+        if (Schema::hasTable('therapists') && Schema::hasColumn('therapists', 'hourly_rate')) {
+            DB::table('therapists')->whereNull('hourly_rate')->update(['hourly_rate' => 0]);
+            Schema::table('therapists', function (Blueprint $table) {
+                $table->decimal('hourly_rate', 8, 2)->default(0)->change();
+            });
+        }
+    }
+
+    private function ensureIndexes(): void
     {
         $this->addIndexes('therapist_bookings', [
             'idx_user_status' => ['user_id', 'status'],
@@ -31,60 +78,23 @@ return new class extends Migration
             'idx_hourly_rate' => ['hourly_rate'],
             'idx_therapist_created' => ['created_at'],
         ]);
-
         $this->addIndexes('user_matches', [
             'idx_user_match' => ['user1_id', 'user2_id'],
             'idx_match_created' => ['created_at'],
         ]);
-
         $this->addIndexes('user_likes', [
             'idx_user_like' => ['user_id', 'liked_user_id'],
             'idx_like_created' => ['created_at'],
         ]);
-
         $this->addIndexes('messages', [
             'idx_message_participants' => ['sender_id', 'receiver_id'],
             'idx_message_created' => ['created_at'],
             'idx_message_read' => ['is_read'],
         ]);
-
         $this->addIndexes('notifications', [
             'idx_notifiable' => ['notifiable_id', 'notifiable_type'],
             'idx_read_at' => ['read_at'],
             'idx_notification_created' => ['created_at'],
-        ]);
-    }
-
-    public function down(): void
-    {
-        $this->dropIndexes('therapist_bookings', [
-            'idx_user_status',
-            'idx_therapist_status',
-            'idx_datetime_status',
-            'idx_payment_reference',
-            'idx_payment_status',
-            'idx_created_at',
-            'idx_zoho_booking_id',
-            'idx_availability_check',
-        ]);
-
-        $this->dropIndexes('therapists', [
-            'idx_therapist_status',
-            'idx_hourly_rate',
-            'idx_therapist_created',
-        ]);
-
-        $this->dropIndexes('user_matches', ['idx_user_match', 'idx_match_created']);
-        $this->dropIndexes('user_likes', ['idx_user_like', 'idx_like_created']);
-        $this->dropIndexes('messages', [
-            'idx_message_participants',
-            'idx_message_created',
-            'idx_message_read',
-        ]);
-        $this->dropIndexes('notifications', [
-            'idx_notifiable',
-            'idx_read_at',
-            'idx_notification_created',
         ]);
     }
 
@@ -113,24 +123,6 @@ return new class extends Migration
             if (!$hasEquivalentIndex && !Schema::hasIndex($tableName, $safeIndexName)) {
                 Schema::table($tableName, function (Blueprint $table) use ($columns, $safeIndexName) {
                     $table->index($columns, $safeIndexName);
-                });
-            }
-        }
-    }
-
-    /**
-     * @param list<string> $indexes
-     */
-    private function dropIndexes(string $tableName, array $indexes): void
-    {
-        if (!Schema::hasTable($tableName)) {
-            return;
-        }
-
-        foreach ($indexes as $indexName) {
-            if (Schema::hasIndex($tableName, $indexName)) {
-                Schema::table($tableName, function (Blueprint $table) use ($indexName) {
-                    $table->dropIndex($indexName);
                 });
             }
         }
