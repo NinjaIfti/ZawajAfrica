@@ -67,6 +67,8 @@ class User extends Authenticatable
         'kyc_failure_reason',
         'kyc_bvn_verified',
         'kyc_nin_verified',
+        'role',
+        'status',
     ];
 
     /**

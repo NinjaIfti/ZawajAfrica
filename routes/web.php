@@ -346,15 +346,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/subscription/purchase', [App\Http\Controllers\SubscriptionController::class, 'purchase'])->name('subscription.purchase');
 });
 
-// Payment callback route - outside auth middleware to prevent issues
-Route::get('/payment/callback', [App\Http\Controllers\PaymentController::class, 'handleCallback'])->name('payment.callback');
-
-// Payment routes
-Route::middleware('auth')->group(function () {
-    Route::post('/payment/subscription/initialize', [App\Http\Controllers\PaymentController::class, 'initializeSubscription'])->name('payment.subscription.initialize');
-    });
-
-
 // API route to get fresh CSRF token
 Route::get('/api/csrf-token', function () {
     return response()->json([

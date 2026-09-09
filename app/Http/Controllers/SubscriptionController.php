@@ -5,18 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
-use App\Services\PaystackService;
 use Illuminate\Support\Facades\Auth;
 
 class SubscriptionController extends Controller
 {
-    protected $paystackService;
-
-    public function __construct(PaystackService $paystackService)
-    {
-        $this->paystackService = $paystackService;
-    }
-
     /**
      * Display the subscription plans page.
      */
@@ -119,7 +111,7 @@ class SubscriptionController extends Controller
             'user' => $user,
             'plans' => $plans,
             'userGender' => $user->gender ?? 'male',
-            'paystackPublicKey' => $this->paystackService->getPublicKey(),
+            'paystackPublicKey' => config('payments.gateways.paystack.public_key'),
             'currentSubscription' => [
                 'plan' => $user->subscription_plan,
                 'status' => $user->subscription_status,
@@ -174,4 +166,4 @@ class SubscriptionController extends Controller
         
         return back()->with('success', 'Subscription purchased successfully!');
     }
-} 
+}

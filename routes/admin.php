@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Admin\PaymentGatewaySettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -38,5 +39,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/subscriptions/{user}/reactivate', [AdminController::class, 'reactivateSubscription'])->name('subscriptions.reactivate');
     Route::post('/subscriptions/{user}/gift', [AdminController::class, 'giftSubscription'])->name('subscriptions.gift');
     Route::get('/premium-users', [AdminController::class, 'getPremiumUsers'])->name('premium.users');
+    Route::get('/payment-gateways', [PaymentGatewaySettingsController::class, 'page'])->name('payment-gateways.page');
     
 });
