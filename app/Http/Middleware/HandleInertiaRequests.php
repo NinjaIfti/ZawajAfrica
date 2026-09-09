@@ -4,62 +4,45 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use App\Services\AdsterraService;
 
 class HandleInertiaRequests extends Middleware
 {
-    protected AdsterraService $adsterraService;
-
-    public function __construct(AdsterraService $adsterraService)
-    {
-        $this->adsterraService = $adsterraService;
-    }
-
-    /**
-     * The root template that is loaded on the first page visit.
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determine the current asset version.
-     */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
         $user = $request->user();
-        
-        // Generate a virtual location property for the user from city, state, country
+
         if ($user) {
-            // Don't modify the actual user model, just add a property for the view
-            $location = '';
-            if ($user->city && trim($user->city) !== '') {
-                $location .= trim($user->city);
-            }
-            if ($user->state && trim($user->state) !== '') {
-                $location .= ($location ? ', ' : '') . trim($user->state);
-            }
-            if ($user->country && trim($user->country) !== '') {
-                $location .= ($location ? ', ' : '') . trim($user->country);
-            }
-            // Add as a virtual property, not actually saving to database
-            $user->setAttribute('location', !empty($location) ? $location : 'Location not set');
+            $location = collect([$user->city, $user->state, $user->country])
+                ->filter(fn ($value) => filled(trim((string) $value)))
+                ->map(fn ($value) => trim((string) $value))
+                ->implode(', ');
+            $user->setAttribute('location', $location ?: 'Location not set');
         }
-        
+
+        $product = config('product');
+
         return [
             ...parent::share($request),
-            'auth' => [
-                'user' => $user,
+            'auth' => ['user' => $user],
+            'product' => [
+                'name' => $product['name'],
+                'tagline' => $product['tagline'],
+                'logos' => $product['logos'],
+                'colors' => $product['colors'],
+                'locale' => $product['locale'],
+                'timezone' => $product['timezone'],
+                'defaults' => $product['defaults'],
+                'supported' => $product['supported'],
+                'legal' => $product['legal'],
+                'features' => $product['features'],
+                'payment_providers' => $product['payment_providers'],
             ],
             'flash' => [
                 'payment_success' => $request->session()->get('payment_success'),
@@ -69,16 +52,9 @@ class HandleInertiaRequests extends Middleware
                 'csrf_token' => $request->session()->get('csrf_token'),
             ],
             'csrf_token' => csrf_token(),
-            // Always include a fresh CSRF token
             'csrf' => [
                 'token' => csrf_token(),
                 'header' => 'X-CSRF-TOKEN',
-            ],
-            // Adsterra configuration for frontend
-            'adsterra' => [
-                'config' => $this->adsterraService->getAdsterraConfig($user),
-                'show_on_page' => $this->adsterraService->shouldShowAdsOnPage($request),
-                'consent' => $this->adsterraService->getConsentStatus($request),
             ],
         ];
     }

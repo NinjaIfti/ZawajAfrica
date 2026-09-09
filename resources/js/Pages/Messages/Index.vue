@@ -2,8 +2,6 @@
     import { Head, Link } from '@inertiajs/vue3';
     import { ref, onMounted, onUnmounted } from 'vue';
     import Sidebar from '@/Components/Sidebar.vue';
-    import AdsterraBanner728x90 from '@/Components/AdsterraBanner728x90.vue';
-    import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue';
 
     const props = defineProps({
         user: Object,
@@ -136,8 +134,6 @@
             </div>
 
             <!-- Banner Ads -->
-            <AdsterraBanner728x90 />
-            <AdsterraBanner320x50 />
 
             <!-- Messages content -->
             <div class="flex flex-col md:flex-row h-full">

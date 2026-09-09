@@ -6,13 +6,13 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class AdminMiddleware
+class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
-        abort_unless($user && $user->isActive() && $user->isAdmin(), 403);
+        abort_unless($user && $user->isActive() && $user->hasAnyRole($roles), 403);
 
         return $next($request);
     }

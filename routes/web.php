@@ -14,10 +14,6 @@ use Illuminate\Support\Facades\Cache;
 // Include admin routes
 require __DIR__.'/admin.php';
 
-// Ad tracking routes
-Route::post('/api/adsterra/close', [App\Http\Controllers\AdsterraController::class, 'recordAdClose'])->middleware('auth');
-Route::get('/api/adsterra/can-show', [App\Http\Controllers\AdsterraController::class, 'canShowAd'])->middleware('auth');
-
 // Redirect root to login page
 Route::get('/', function () {
     return redirect()->route('login');
@@ -27,8 +23,7 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
     
-    // Check if user is admin (based on email)
-    if ($user->email === 'admin@zawagafrica.com') {
+    if ($user->isAdmin()) {
         return redirect()->route('admin.dashboard');
     }
     
@@ -58,15 +53,6 @@ Route::get('/dashboard', function () {
     $matchingService = app(\App\Services\MatchingService::class);
     $matchResults = $matchingService->getMatches($user, [], 1000); // Unlimited matches (high limit)
     $potentialMatches = $matchResults['matches']; // Use the formatted matches directly
-    
-    // Get active therapists for the widget
-    $therapists = \App\Models\Therapist::where('status', 'active')
-        ->take(3)
-        ->get()
-        ->map(function ($therapist) {
-            $therapist->photo_url = $therapist->photo_url;
-            return $therapist;
-        });
     
     // Get recent messages for the widget
     $conversations = $user->conversations()->take(5);
@@ -117,7 +103,6 @@ Route::get('/dashboard', function () {
         'profile' => $user->profile,
         'profileCompletion' => $profileCompletion,
         'potentialMatches' => $potentialMatches,
-        'therapists' => $therapists,
         'recentMessages' => $recentMessages,
         'tierInfo' => $tierInfo,
         'dailyUsage' => $dailyUsage,
@@ -139,21 +124,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/reports', [App\Http\Controllers\ReportController::class, 'store'])->name('reports.store');
     Route::post('/reports/block', [App\Http\Controllers\ReportController::class, 'block'])->name('reports.block');
 
-    // Therapist routes
-Route::get('/therapists', [App\Http\Controllers\TherapistBookingController::class, 'index'])->name('therapists.index');
-Route::get('/therapists/manual-payment', [App\Http\Controllers\TherapistBookingController::class, 'manualPayment'])->name('therapists.manual-payment');
-Route::get('/therapists/{id}', [App\Http\Controllers\TherapistBookingController::class, 'show'])->name('therapists.show');
-Route::post('/therapists/book', [App\Http\Controllers\TherapistBookingController::class, 'store'])->name('therapists.book');
-
-// Therapist booking management routes
-Route::get('/my-bookings', [App\Http\Controllers\TherapistBookingController::class, 'userBookings'])->name('therapists.bookings');
-Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingController::class, 'cancel'])->name('therapists.bookings.cancel');
-    
-    // Therapist booking reminder routes (for admin/system use)
-    Route::post('/therapist-bookings/reminders/{type}', [App\Http\Controllers\TherapistBookingController::class, 'sendReminders'])
-        ->where('type', '24h|1h|15m')
-        ->name('bookings.reminders');
-    
     // New Me profile routes
     Route::get('/me/profile', [App\Http\Controllers\Me\ProfileController::class, 'index'])->name('me.profile');
     
@@ -181,7 +151,6 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
     Route::post('/matches/{user}/like', [App\Http\Controllers\MatchController::class, 'like'])->name('matches.like');
     Route::post('/matches/pass', [App\Http\Controllers\MatchController::class, 'pass'])->name('matches.pass');
     Route::get('/matches/filters', [App\Http\Controllers\MatchController::class, 'getFilters'])->name('matches.filters');
-    Route::get('/matches/ai-suggestions', [App\Http\Controllers\MatchController::class, 'getAISuggestions'])->name('matches.ai-suggestions');
     
     // Messages routes
     Route::get('/messages', [App\Http\Controllers\MessageController::class, 'index'])->name('messages');
@@ -191,16 +160,6 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
     // Add new routes for profile updates
     Route::post('/profile/update', [App\Http\Controllers\Me\ProfileController::class, 'update']);
     Route::post('/profile/photo-update', [App\Http\Controllers\Me\ProfileController::class, 'updatePhoto']);
-    
-    // AI Chatbot routes
-    Route::get('/chatbot', [App\Http\Controllers\ChatbotController::class, 'index'])->name('chatbot.index');
-    Route::post('/chatbot/chat', [App\Http\Controllers\ChatbotController::class, 'chat'])->name('chatbot.chat');
-    Route::delete('/chatbot/history', [App\Http\Controllers\ChatbotController::class, 'clearHistory'])->name('chatbot.clear');
-    Route::get('/chatbot/history', [App\Http\Controllers\ChatbotController::class, 'getHistory'])->name('chatbot.history');
-    Route::get('/chatbot/starters', [App\Http\Controllers\ChatbotController::class, 'getStarters'])->name('chatbot.starters');
-    Route::post('/chatbot/preferences', [App\Http\Controllers\ChatbotController::class, 'updatePreferences'])->name('chatbot.preferences.update');
-    Route::get('/chatbot/preferences', [App\Http\Controllers\ChatbotController::class, 'getPreferences'])->name('chatbot.preferences');
-    Route::get('/chatbot/status', [App\Http\Controllers\ChatbotController::class, 'status'])->name('chatbot.status');
     
     // Notification routes
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.index');
@@ -296,195 +255,11 @@ Route::put('/bookings/{id}/cancel', [App\Http\Controllers\TherapistBookingContro
     })->name('api.tier-usage');
 
 
-    // Adsterra API routes
-    Route::prefix('api/adsterra')->name('api.adsterra.')->group(function () {
-        Route::post('/consent', function (Request $request) {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            
-            $request->validate([
-                'consent' => 'required|boolean',
-            ]);
-            
-            $adsterraService->updateConsent($request, $request->only([
-                'consent'
-            ]));
-            
-            return response()->json(['success' => true]);
-        })->name('consent');
-        
-        Route::get('/config', function (Request $request) {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            $user = Auth::user();
-            
-            return response()->json([
-                'config' => $adsterraService->getAdsterraConfig($user),
-                'show_on_page' => $adsterraService->shouldShowAdsOnPage($request),
-                'consent' => $adsterraService->getConsentStatus($request)
-            ]);
-        })->name('config');
-        
-        Route::post('/impression', function (Request $request) {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            $user = Auth::user();
-            
-            if ($user) {
-                $adsterraService->logAdImpression($user, $request->input('ad_type', 'banner'), 
-                    $request->input('metadata', []));
-            }
-            
-            return response()->json(['success' => true]);
-        })->name('impression');
-        
-        Route::post('/click', function (Request $request) {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            $user = Auth::user();
-            
-            if ($user) {
-                $adsterraService->logAdClick($user, $request->input('ad_type', 'banner'), 
-                    $request->input('metadata', []));
-            }
-            
-            return response()->json(['success' => true]);
-        })->name('click');
-        
-        Route::post('/watch-for-chat', function (Request $request) {
-            $user = Auth::user();
-            
-            if (!$user) {
-                return response()->json(['error' => 'Authentication required'], 401);
-            }
-            
-            $request->validate([
-                'watch_duration' => 'required|integer|min:1'
-            ]);
-            
-            $adUnlockService = app(\App\Services\AdUnlockChatService::class);
-            $tierService = app(\App\Services\UserTierService::class);
-            
-            // Debug logging
-            \Log::info('Ad watch attempt', [
-                'user_id' => $user->id,
-                'user_tier' => $tierService->getUserTier($user),
-                'watch_duration' => $request->input('watch_duration')
-            ]);
-            
-            $result = $adUnlockService->recordAdWatchForChat($user, $request->input('watch_duration'));
-            
-            if ($result['success']) {
-                return response()->json($result);
-            } else {
-                \Log::warning('Ad watch failed', [
-                    'user_id' => $user->id,
-                    'result' => $result
-                ]);
-                return response()->json($result, 400);
-            }
-        })->name('watch-for-chat');
-        
-        
-        Route::post('/track', function (Request $request) {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            $user = Auth::user();
-            
-            $request->validate([
-                'event_type' => 'required|string',
-                'data' => 'array'
-            ]);
-            
-            $eventType = $request->input('event_type');
-            $data = $request->input('data', []);
-            
-            switch ($eventType) {
-                case 'script_loaded':
-                case 'ad_loaded':
-                    if ($user) {
-                        $adsterraService->logAdImpression($user, $data['ad_type'] ?? 'banner', $data);
-                    }
-                    break;
-                    
-                case 'ad_clicked':
-                    if ($user) {
-                        $adsterraService->logAdClick($user, $data['ad_type'] ?? 'banner', $data);
-                    }
-                    break;
-                    
-                case 'error':
-                    $adsterraService->logAdError($data['error'] ?? 'Unknown error', $data);
-                    break;
-            }
-            
-            return response()->json(['success' => true]);
-        })->name('track');
-        
-        Route::get('/health', function () {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            $health = $adsterraService->healthCheck();
-            
-            return response()->json($health)
-                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                ->header('Pragma', 'no-cache')
-                ->header('Expires', '0');
-        })->name('health');
-        
-        Route::get('/debug', function () {
-            $adsterraService = app(\App\Services\AdsterraService::class);
-            $user = Auth::user();
-            
-            return response()->json([
-                'adsterra_enabled' => config('adsterra.enabled'),
-                'debug_mode' => config('adsterra.debug.enabled'),
-                'script_url' => config('adsterra.script_url'),
-                'publisher_id' => config('adsterra.publisher_id'),
-                'ad_zones' => config('adsterra.ad_zones'),
-                'should_show_ads' => $adsterraService->shouldShowAds($user),
-                'should_show_on_page' => $adsterraService->shouldShowAdsOnPage(request()),
-                'user_tier' => $user ? app(\App\Services\UserTierService::class)->getUserTier($user) : 'guest',
-                'user_subscription' => $user ? [
-                    'status' => $user->subscription_status,
-                    'plan' => $user->subscription_plan,
-                    'expires_at' => $user->subscription_expires_at,
-                ] : null,
-                'config' => $adsterraService->getAdsterraConfig($user),
-            ]);
-        })->name('debug');
-        
-        Route::get('/user-debug', function () {
-            $user = Auth::user();
-            $tierService = app(\App\Services\UserTierService::class);
-            
-            if (!$user) {
-                return response()->json(['error' => 'Not authenticated']);
-            }
-            
-            return response()->json([
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'user_email' => $user->email,
-                'subscription_status' => $user->subscription_status,
-                'subscription_plan' => $user->subscription_plan,
-                'subscription_expires_at' => $user->subscription_expires_at,
-                'user_tier' => $tierService->getUserTier($user),
-                'user_limits' => $tierService->getUserLimits($user),
-                'ads_frequency' => $tierService->getUserLimits($user)['ads_frequency'] ?? 0,
-                'should_show_ads_with_count_0' => $tierService->shouldShowAds($user, 0),
-                'should_show_ads_with_count_1' => $tierService->shouldShowAds($user, 1),
-                'should_show_ads_with_count_10' => $tierService->shouldShowAds($user, 10),
-            ]);
-        })->name('user.debug');
-    });
-
-    // KYC Routes for Monnify verification
-    Route::prefix('kyc')->name('kyc.')->group(function () {
-        Route::get('/', [App\Http\Controllers\KycController::class, 'index'])->name('index');
-        Route::post('/bvn', [App\Http\Controllers\KycController::class, 'submitBvn'])->name('submit.bvn');
-        Route::post('/nin', [App\Http\Controllers\KycController::class, 'submitNin'])->name('submit.nin');
-        Route::post('/both', [App\Http\Controllers\KycController::class, 'submitBoth'])->name('submit.both');
-        Route::get('/status', [App\Http\Controllers\KycController::class, 'getStatus'])->name('status');
-    });
 });
 
 // Verification routes
 Route::middleware(['auth'])->group(function () {
+    Route::get('/verification/{verification}/{side}', [App\Http\Controllers\VerificationController::class, 'document'])->where('side', 'front|back')->name('verification.document');
     Route::get('/verification', [App\Http\Controllers\VerificationController::class, 'intro'])->name('verification.intro');
     Route::get('/verification/document-type', [App\Http\Controllers\VerificationController::class, 'documentTypeSelection'])->name('verification.document-type');
     Route::get('/verification/document-upload', [App\Http\Controllers\VerificationController::class, 'documentUpload'])->name('verification.document-upload');
@@ -577,11 +352,8 @@ Route::get('/payment/callback', [App\Http\Controllers\PaymentController::class, 
 // Payment routes
 Route::middleware('auth')->group(function () {
     Route::post('/payment/subscription/initialize', [App\Http\Controllers\PaymentController::class, 'initializeSubscription'])->name('payment.subscription.initialize');
-    Route::post('/payment/therapist/initialize', [App\Http\Controllers\PaymentController::class, 'initializeTherapistBooking'])->name('payment.therapist.initialize');
-});
+    });
 
-Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook');
-Route::post('/monnify/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('monnify.webhook');
 
 // API route to get fresh CSRF token
 Route::get('/api/csrf-token', function () {

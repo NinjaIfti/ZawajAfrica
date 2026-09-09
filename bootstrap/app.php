@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register admin middleware
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
             'verified.user' => \App\Http\Middleware\VerifiedUserMiddleware::class,
             'tier.access' => \App\Http\Middleware\TierAccessMiddleware::class,
             'fresh.csrf' => \App\Http\Middleware\EnsureFreshCsrfToken::class,

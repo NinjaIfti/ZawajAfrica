@@ -1,17 +1,8 @@
 <template>
     <div class="min-h-screen bg-gray-50">
         <!-- Adsterra Manager Component -->
-        <AdsterraManager 
-            :adsterra-config="$page.props.adsterra.config"
-            :show-on-page="$page.props.adsterra.show_on_page"
-            :consent-data="$page.props.adsterra.consent"
-        />
         
         <!-- Adsterra Notice for Free Users -->
-        <AdsterraNotice 
-            :user-tier="getUserTier()"
-            :current-page="getCurrentPageName()"
-        />
         
         <!-- Header -->
         <AppHeader />
@@ -96,21 +87,14 @@
         <WhatsAppWidget :user="$page.props.auth.user" />
         
         <!-- Floating Therapy Button -->
-        <FloatingTherapyButton 
-            :show-button="true"
-            :pulse-interval="4000"
-            @therapy-clicked="handleTherapyClick"
-        />
     </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import AdsterraManager from '@/Components/AdsterraManager.vue'
-import AdsterraNotice from '@/Components/AdsterraNotice.vue'
+
 import WhatsAppWidget from '@/Components/WhatsAppWidget.vue'
-import FloatingTherapyButton from '@/Components/FloatingTherapyButton.vue'
 
 defineProps({
     title: {

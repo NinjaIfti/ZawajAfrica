@@ -31,11 +31,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/reports/{id}', [ReportsController::class, 'show'])->name('reports.show');
     Route::put('/reports/{id}', [ReportsController::class, 'update'])->name('reports.update');
     
-    // Therapist Management
-    Route::resource('therapists', \App\Http\Controllers\Admin\TherapistsController::class);
-    Route::get('/therapist-bookings', [\App\Http\Controllers\Admin\TherapistsController::class, 'bookings'])->name('therapists.bookings');
-    Route::put('/therapist-bookings/{booking}', [\App\Http\Controllers\Admin\TherapistsController::class, 'updateBooking'])->name('therapists.bookings.update');
-    
     // Subscription Management
     Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
     Route::post('/subscriptions/{user}/extend', [AdminController::class, 'extendSubscription'])->name('subscriptions.extend');
@@ -44,34 +39,4 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/subscriptions/{user}/gift', [AdminController::class, 'giftSubscription'])->name('subscriptions.gift');
     Route::get('/premium-users', [AdminController::class, 'getPremiumUsers'])->name('premium.users');
     
-    // AI-Powered Admin Tools
-    Route::get('/ai-insights', [AdminController::class, 'aiInsights'])->name('ai.insights');
-    Route::post('/ai-broadcast/generate', [AdminController::class, 'generateBroadcast'])->name('ai.generate-broadcast');
-    Route::post('/ai-broadcast/send', [AdminController::class, 'sendBroadcast'])->name('ai.send-broadcast');
-    Route::get('/ai-broadcast/search-users', [AdminController::class, 'searchBroadcastUsers'])->name('ai.search-broadcast-users');
-    Route::post('/ai-broadcast/save-draft', [AdminController::class, 'saveBroadcastDraft'])->name('ai.save-broadcast-draft');
-    Route::get('/ai-broadcast/load-draft', [AdminController::class, 'loadBroadcastDraft'])->name('ai.load-broadcast-draft');
-    Route::delete('/ai-broadcast/delete-draft', [AdminController::class, 'deleteBroadcastDraft'])->name('ai.delete-broadcast-draft');
-    Route::post('/ai-insights/generate', [AdminController::class, 'generateUserInsights'])->name('ai.insights.generate');
-    
-    // Zoho Campaign Management
-    Route::post('/zoho-campaign/import-users', [AdminController::class, 'importUsersToZoho'])->name('zoho.import-users');
-    Route::get('/zoho-campaign/mailing-lists', [AdminController::class, 'getMailingLists'])->name('zoho.mailing-lists');
-    Route::post('/zoho-campaign/create-campaign', [AdminController::class, 'createCampaign'])->name('zoho.create-campaign');
-    Route::post('/zoho-campaign/send-campaign', [AdminController::class, 'sendCampaign'])->name('zoho.send-campaign');
-    Route::get('/zoho-campaign/stats/{campaignKey}', [AdminController::class, 'getCampaignStats'])->name('zoho.campaign-stats');
-    
-    // AI User Insights Chatbot
-    Route::post('/ai-user-insights', [AdminController::class, 'handleUserInsights'])->name('ai.user-insights');
-    Route::get('/user-insights', [AdminController::class, 'userInsightsPage'])->name('user-insights');
-    
-    // AI Admin Assistant
-    Route::post('/ai-admin-assistant', [AdminController::class, 'handleAdminAssistant'])->name('ai.admin-assistant');
-
-    // GPT API Integration
-    Route::post('/gpt-api/command', [\App\Http\Controllers\Admin\GptApiController::class, 'handleCommand'])->name('gpt.command');
-    Route::get('/gpt-api/commands', [\App\Http\Controllers\Admin\GptApiController::class, 'getAvailableCommands'])->name('gpt.commands');
-    Route::post('/gpt-api/seo-audit', [\App\Http\Controllers\Admin\GptApiController::class, 'runSeoAudit'])->name('gpt.seo-audit');
-    Route::get('/gpt-integration', [\App\Http\Controllers\Admin\GptApiController::class, 'gptIntegrationPage'])->name('gpt.integration');
-
-}); 
+});

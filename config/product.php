@@ -48,14 +48,14 @@ return [
         'verification' => (bool) env('FEATURE_VERIFICATION_ENABLED', true),
         'kyc' => (bool) env('FEATURE_KYC_ENABLED', true),
         'subscriptions' => (bool) env('FEATURE_SUBSCRIPTIONS_ENABLED', true),
-        'therapists' => (bool) env('FEATURE_THERAPISTS_ENABLED', true),
-        'ai' => (bool) env('FEATURE_AI_ENABLED', true),
-        'advertising' => (bool) env('FEATURE_ADVERTISING_ENABLED', true),
-        'zoho' => (bool) env('FEATURE_ZOHO_ENABLED', true),
+        'therapists' => (bool) env('FEATURE_THERAPISTS_ENABLED', false),
+        'ai' => (bool) env('FEATURE_AI_ENABLED', false),
+        'advertising' => (bool) env('FEATURE_ADVERTISING_ENABLED', false),
+        'zoho' => (bool) env('FEATURE_ZOHO_ENABLED', false),
     ],
 
     // Provider names are public capability flags. Credentials remain in config/services.php.
-    'payment_providers' => $csv('PAYMENT_PROVIDERS_ENABLED', 'paystack,monnify,manual'),
+    'payment_providers' => $csv('PAYMENT_PROVIDERS_ENABLED', 'stripe,paypal,paystack'),
 
     // Disabled by default. This is migration compatibility only, not the primary authorization model.
     'legacy_admin' => [

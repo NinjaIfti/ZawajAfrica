@@ -20,6 +20,11 @@ class Verification extends Model
         'document_type',
         'front_image',
         'back_image',
+        'storage_disk',
+        'front_mime_type',
+        'front_size',
+        'back_mime_type',
+        'back_size',
         'status',
         'rejection_reason',
         'verified_at',
@@ -32,6 +37,14 @@ class Verification extends Model
      */
     protected $casts = [
         'verified_at' => 'datetime',
+        'front_size' => 'integer',
+        'back_size' => 'integer',
+    ];
+
+    protected $hidden = [
+        'front_image',
+        'back_image',
+        'storage_disk',
     ];
 
     /**
@@ -41,4 +54,4 @@ class Verification extends Model
     {
         return $this->belongsTo(User::class);
     }
-} 
+}

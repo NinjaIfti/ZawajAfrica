@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Services\UserTierService;
-use App\Services\OpenAIService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -13,7 +12,6 @@ use Carbon\Carbon;
 class MatchingService
 {
     protected UserTierService $tierService;
-    protected OpenAIService $openAIService;
 
     // Matching weights for different criteria
     private array $matchingWeights = [
@@ -25,10 +23,9 @@ class MatchingService
         'lifestyle_compatibility' => 10
     ];
 
-    public function __construct(UserTierService $tierService, OpenAIService $openAIService)
+    public function __construct(UserTierService $tierService)
     {
         $this->tierService = $tierService;
-        $this->openAIService = $openAIService;
     }
 
     /**
@@ -139,8 +136,7 @@ class MatchingService
                 'interests' => function($q) { $q->select('user_id', 'entertainment', 'food', 'music', 'sports'); }
             ])
             ->where('id', '!=', $user->id)
-            ->where('id', '!=', 4) // Exclude admin user
-            ->where('email', '!=', 'admin@zawagafrica.com')
+            ->whereNotIn('role', [User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])
             ->whereNotNull('profile_photo');
 
         // Restrict elite member visibility to Platinum users only
@@ -683,4 +679,4 @@ class MatchingService
         
         return min($bonus, 25); // Cap bonus at 25 points
     }
-} 
+}

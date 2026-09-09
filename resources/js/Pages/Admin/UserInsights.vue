@@ -1,7 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import UserInsightsChatbot from '@/Components/Admin/UserInsightsChatbot.vue';
 
 const props = defineProps({
     stats: {
@@ -115,7 +114,6 @@ const props = defineProps({
 
                 <!-- AI Chatbot Component -->
                 <div class="bg-white shadow-sm sm:rounded-lg">
-                    <UserInsightsChatbot />
                 </div>
 
                 <!-- Usage Tips -->

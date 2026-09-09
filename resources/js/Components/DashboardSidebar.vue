@@ -2,16 +2,10 @@
     import { ref, computed } from 'vue';
     import { usePage } from '@inertiajs/vue3';
     import AppHeader from '@/Components/AppHeader.vue';
-    import TherapistWidget from '@/Components/TherapistWidget.vue';
     import MessagesWidget from '@/Components/MessagesWidget.vue';
-    import AdsterraBanner320x50 from '@/Components/AdsterraBanner320x50.vue';
 
     const props = defineProps({
         user: Object,
-        therapists: {
-            type: Array,
-            default: () => [],
-        },
         messages: {
             type: Array,
             default: () => [],
@@ -41,14 +35,6 @@
     <div class="w-50 p-6">
         <!-- Profile and Language at the top -->
         <AppHeader :user="user" />
-
-        <!-- Therapists Widget Component -->
-        <TherapistWidget :therapists="therapists" />
-
-        <!-- Sidebar Banner Ad -->
-        <div class="my-4">
-            <AdsterraBanner320x50 />
-        </div>
 
         <!-- Messages Widget Component -->
         <MessagesWidget :messages="messages" />

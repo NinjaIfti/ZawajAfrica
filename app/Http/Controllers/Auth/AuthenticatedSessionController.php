@@ -34,7 +34,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         // Check if the user is an admin
-        if (Auth::user()->email === 'admin@zawagafrica.com') {
+        if (Auth::user()->isAdmin()) {
             return redirect()->route('admin.dashboard')->with('csrf_token', csrf_token());
         }
 

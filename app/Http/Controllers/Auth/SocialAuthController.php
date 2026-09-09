@@ -36,7 +36,7 @@ class SocialAuthController extends Controller
                 Auth::login($user);
                 
                 // Check if the user is an admin
-                if ($user->email === 'admin@zawagafrica.com') {
+                if ($user->isAdmin()) {
                     return redirect()->route('admin.dashboard')->with('csrf_token', csrf_token());
                 }
                 

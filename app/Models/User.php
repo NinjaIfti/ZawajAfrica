@@ -22,6 +22,15 @@ use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
+    public const ROLE_MEMBER = 'member';
+    public const ROLE_MODERATOR = 'moderator';
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_SUPER_ADMIN = 'super_admin';
+
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_SUSPENDED = 'suspended';
+    public const STATUS_BANNED = 'banned';
+
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
@@ -53,11 +62,6 @@ class User extends Authenticatable
         'subscription_status',
         'subscription_expires_at',
         'last_activity_at',
-        // Monnify KYC fields
-        'bvn',
-        'nin',
-        'monnify_account_reference',
-        'monnify_reserved_accounts',
         'kyc_status',
         'kyc_verified_at',
         'kyc_failure_reason',
@@ -73,6 +77,14 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'bvn',
+        'nin',
+        'monnify_account_reference',
+        'monnify_reserved_accounts',
+        'bvn_encrypted',
+        'nin_encrypted',
+        'monnify_account_reference_encrypted',
+        'monnify_reserved_accounts_encrypted',
     ];
 
     /**
@@ -100,7 +112,40 @@ class User extends Authenticatable
         'kyc_nin_verified' => 'boolean',
         'monnify_reserved_accounts' => 'array',
         'last_activity_at' => 'datetime',
+        'role' => 'string',
+        'status' => 'string',
     ];
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    /** @param iterable<string> $roles */
+    public function hasAnyRole(iterable $roles): bool
+    {
+        return in_array($this->role, is_array($roles) ? $roles : iterator_to_array($roles), true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasAnyRole([self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN]);
+    }
+
+    public function isModerator(): bool
+    {
+        return $this->hasAnyRole([self::ROLE_MODERATOR, self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN]);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(self::ROLE_SUPER_ADMIN);
+    }
 
     /**
      * Override the save method to exclude virtual attributes
@@ -323,14 +368,6 @@ class User extends Authenticatable
             ->where('reported_user_id', $userId)
             ->where('is_blocked', true)
             ->exists();
-    }
-
-    /**
-     * Get therapist bookings for this user.
-     */
-    public function therapistBookings()
-    {
-        return $this->hasMany(TherapistBooking::class);
     }
 
     /**
